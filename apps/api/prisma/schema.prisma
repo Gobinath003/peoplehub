@@ -1,0 +1,437 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Tenant {
+  id        String         @id @default(uuid()) @db.Uuid
+  slug      String         @unique
+  name      String
+  industry  String         // e.g. GARMENTS, MANUFACTURING, LABOUR, CONSULTANCY, LOGISTICS, CORPORATE
+  status    String         // ACTIVE, SUSPENDED, DEACTIVATED
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  tenantModules    TenantModule[]
+  tenantUsers      TenantUser[]
+  roles            Role[]
+  userRoles        UserRoleAssignment[]
+  auditLogs        AuditLog[]
+  employees            Employee[]
+  departments          Department[]
+  designations         Designation[]
+  branches             Branch[]
+  shifts               Shift[]
+  employmentTypes      EmploymentType[]
+  salaryStructures     SalaryStructure[]
+  payslips             Payslip[]
+  pieceRateActivities  PieceRateActivity[]
+  pieceRateLogs        PieceRateLog[]
+
+  @@map("tenants")
+}
+
+model Module {
+  code        String   @id
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenantModules TenantModule[]
+  permissions   Permission[]
+
+  @@map("modules")
+}
+
+model TenantModule {
+  tenantId   String   @map("tenant_id") @db.Uuid
+  moduleCode String   @map("module_code")
+  isEnabled  Boolean  @default(true) @map("is_enabled")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  module Module @relation(fields: [moduleCode], references: [code], onDelete: Cascade)
+
+  @@id([tenantId, moduleCode])
+  @@map("tenant_modules")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  status       String   // ACTIVE, PENDING, INACTIVE
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenantUsers   TenantUser[]
+  userRoles     UserRoleAssignment[]
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+  employees     Employee[]
+
+  @@map("users")
+}
+
+model TenantUser {
+  tenantId  String   @map("tenant_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  status    String   // ACTIVE, INACTIVE
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  userRoles UserRoleAssignment[]
+
+  @@id([tenantId, userId])
+  @@map("tenant_users")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String?  @map("tenant_id") @db.Uuid // null means system/global template roles
+  code        String
+  name        String
+  description String?
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant          Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+  userRoles       UserRoleAssignment[]
+
+  @@unique([tenantId, code])
+  @@map("roles")
+}
+
+model Permission {
+  code        String   @id
+  name        String
+  description String?
+  moduleCode  String   @map("module_code")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  module          Module           @relation(fields: [moduleCode], references: [code], onDelete: Cascade)
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId         String @map("role_id") @db.Uuid
+  permissionCode String @map("permission_code")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionCode], references: [code], onDelete: Cascade)
+
+  @@id([roleId, permissionCode])
+  @@map("role_permissions")
+}
+
+model UserRoleAssignment {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  roleId    String   @map("role_id") @db.Uuid
+  scopeType String   @map("scope_type") // TENANT, COMPANY, BRANCH, DEPARTMENT, OWN
+  scopeId   String?  @map("scope_id")   // ID of corresponding branch, department, company, or individual employee
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  tenantUser TenantUser @relation(fields: [tenantId, userId], references: [tenantId, userId], onDelete: Cascade)
+
+  @@map("user_role_assignments")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String?  @map("tenant_id") @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  action     String   // e.g. CREATE, UPDATE, DELETE, LOGIN, SWITCH_TENANT
+  entityName String   @map("entity_name") // e.g. Employee, UserRoleAssignment
+  entityId   String?  @map("entity_id")
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([tenantId, userId])
+  @@map("audit_logs")
+}
+
+model Employee {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  userId       String?  @map("user_id") @db.Uuid
+  employeeCode String   @map("employee_code")
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  email        String
+  phone        String?
+  department       String
+  designation      String
+  branch           String?
+  departmentId     String?          @map("department_id") @db.Uuid
+  designationId    String?          @map("designation_id") @db.Uuid
+  branchId         String?          @map("branch_id") @db.Uuid
+  shiftId          String?          @map("shift_id") @db.Uuid
+  employmentTypeId String?          @map("employment_type_id") @db.Uuid
+  salaryType       String           @default("MONTHLY_FIXED") @map("salary_type") // MONTHLY_FIXED, PIECE_RATE
+  joiningDate      DateTime         @map("joining_date")
+  status           String           @default("ACTIVE") // ACTIVE, PROBATION, TERMINATED, ON_LEAVE
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user              User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  departmentRel     Department?     @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  designationRel    Designation?    @relation(fields: [designationId], references: [id], onDelete: SetNull)
+  branchRel         Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  shiftRel          Shift?          @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  employmentTypeRel EmploymentType? @relation(fields: [employmentTypeId], references: [id], onDelete: SetNull)
+  salaryStructure   SalaryStructure?
+  payslips          Payslip[]
+  pieceRateLogs     PieceRateLog[]
+
+  @@unique([tenantId, employeeCode])
+  @@index([tenantId])
+  @@index([tenantId, branch])
+  @@index([tenantId, department])
+  @@map("employees")
+}
+
+model SalaryStructure {
+  id                  String   @id @default(uuid()) @db.Uuid
+  tenantId            String   @map("tenant_id") @db.Uuid
+  employeeId          String   @unique @map("employee_id") @db.Uuid
+  basicSalary         Float    @map("basic_salary")
+  hra                 Float    @default(0)
+  specialAllowance    Float    @default(0) @map("special_allowance")
+  conveyanceAllowance Float    @default(0) @map("conveyance_allowance")
+  pfDeduction         Float    @default(0) @map("pf_deduction")
+  taxDeduction        Float    @default(0) @map("tax_deduction")
+  otherDeductions     Float    @default(0) @map("other_deductions")
+  grossSalary         Float    @map("gross_salary")
+  netSalary           Float    @map("net_salary")
+  currency            String   @default("INR")
+  effectiveDate       DateTime @default(now()) @map("effective_date")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("salary_structures")
+}
+
+model Payslip {
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  employeeId       String    @map("employee_id") @db.Uuid
+  payPeriod        String    @map("pay_period")
+  salaryType       String    @default("MONTHLY_FIXED") @map("salary_type") // MONTHLY_FIXED, PIECE_RATE
+  month            Int
+  year             Int
+  workingDays      Int       @default(30) @map("working_days")
+  presentDays      Int       @default(30) @map("present_days")
+  paidDays         Float     @default(30) @map("paid_days")
+  pieceRateUnits   Float?    @map("piece_rate_units")
+  pieceRateDetails Json?     @map("piece_rate_details")
+  basicSalary      Float     @map("basic_salary")
+  hra              Float     @default(0)
+  allowances       Float     @default(0)
+  grossEarnings    Float     @map("gross_earnings")
+  pfDeduction      Float     @default(0) @map("pf_deduction")
+  taxDeduction     Float     @default(0) @map("tax_deduction")
+  otherDeductions  Float     @default(0) @map("other_deductions")
+  totalDeductions  Float     @map("total_deductions")
+  netPayable       Float     @map("net_payable")
+  status           String    @default("GENERATED") // DRAFT, GENERATED, PAID
+  paymentDate      DateTime? @map("payment_date")
+  remarks          String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, employeeId, month, year])
+  @@index([tenantId])
+  @@index([tenantId, month, year])
+  @@map("payslips")
+}
+
+model PieceRateActivity {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  code        String
+  name        String
+  unit        String   @default("piece") // piece, dozen, meter, bundle
+  ratePerUnit Float    @map("rate_per_unit")
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  logs     PieceRateLog[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("piece_rate_activities")
+}
+
+model PieceRateLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  employeeId  String   @map("employee_id") @db.Uuid
+  activityId  String   @map("activity_id") @db.Uuid
+  logDate     DateTime @map("log_date")
+  quantity    Float
+  unitRate    Float    @map("unit_rate")
+  totalAmount Float    @map("total_amount")
+  remarks     String?
+  recordedBy  String?  @map("recorded_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  activity PieceRateActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, logDate])
+  @@index([tenantId, employeeId, logDate])
+  @@map("piece_rate_logs")
+}
+
+model Department {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  code        String
+  name        String
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  designations Designation[]
+  employees    Employee[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("departments")
+}
+
+model Designation {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  departmentId String?  @map("department_id") @db.Uuid
+  code         String
+  name         String
+  description  String?
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  employees  Employee[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("designations")
+}
+
+model Branch {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  code      String
+  name      String
+  type      String   @default("BRANCH_OFFICE") // HEAD_OFFICE, FACTORY_UNIT, BRANCH_OFFICE, WAREHOUSE
+  city      String?
+  state     String?
+  address   String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employees Employee[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("branches")
+}
+
+model Shift {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  code         String
+  name         String
+  startTime    String   @map("start_time") // e.g. "09:00"
+  endTime      String   @map("end_time")   // e.g. "18:00"
+  breakMinutes Int      @default(60) @map("break_minutes")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employees Employee[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("shifts")
+}
+
+model EmploymentType {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  code        String
+  name        String
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employees Employee[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("employment_types")
+}

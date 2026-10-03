@@ -1,0 +1,55 @@
+services:
+  # -------------------------------------------------------------
+  # 1. NestJS Backend REST API
+  # -------------------------------------------------------------
+  - type: web
+    name: peoplehub-api
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build:types && npm run prisma:generate && npm run prisma:migrate:deploy && npm run prisma:seed && npm run build:api
+    startCommand: npm run start:prod --workspace=@people-hub/api
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION
+        value: 7d
+      - key: DATABASE_URL
+        fromDatabase:
+          name: peoplehub-db
+          property: connectionString
+
+  # -------------------------------------------------------------
+  # 2. Next.js Web Frontend
+  # -------------------------------------------------------------
+  - type: web
+    name: peoplehub-web
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build:types && npm run build:web
+    startCommand: npm run start --workspace=@people-hub/web
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: peoplehub-api
+          envVarKey: RENDER_EXTERNAL_URL
+
+databases:
+  # -------------------------------------------------------------
+  # 3. Managed PostgreSQL Database
+  # -------------------------------------------------------------
+  - name: peoplehub-db
+    plan: free
+    region: oregon
+    databaseName: peoplehub
+    user: peoplehub_admin

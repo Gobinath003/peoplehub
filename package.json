@@ -1,0 +1,28 @@
+{
+  "name": "people-hub-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=@people-hub/api",
+    "dev:web": "npm run dev --workspace=@people-hub/web",
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "build:types": "npm run build --workspace=@people-hub/shared-types",
+    "build:api": "npm run build --workspace=@people-hub/api",
+    "build:web": "npm run build --workspace=@people-hub/web",
+    "build": "npm run build:types && npm run prisma:generate && npm run build:api && npm run build:web",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "prisma:generate": "npm run prisma:generate --workspace=@people-hub/api",
+    "prisma:migrate": "npm run prisma:migrate --workspace=@people-hub/api",
+    "prisma:migrate:deploy": "npm run prisma:migrate:deploy --workspace=@people-hub/api",
+    "prisma:seed": "npm run prisma:seed --workspace=@people-hub/api"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  }
+}

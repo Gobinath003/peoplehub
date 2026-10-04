@@ -7,7 +7,7 @@ services:
     runtime: node
     plan: free
     region: oregon
-    buildCommand: npm install && npm run build:types && npm run prisma:generate && npm run prisma:migrate:deploy && npm run prisma:seed && npm run build:api
+    buildCommand: npm install && npm run build:types && npm run prisma:generate && npm run prisma:migrate:deploy && npm run build:api
     startCommand: npm run start:prod --workspace=@people-hub/api
     envVars:
       - key: NODE_ENV
@@ -16,7 +16,11 @@ services:
         value: 10000
       - key: JWT_SECRET
         generateValue: true
-      - key: JWT_EXPIRATION
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_EXPIRY
+        value: 15m
+      - key: JWT_REFRESH_EXPIRY
         value: 7d
       - key: DATABASE_URL
         fromDatabase:

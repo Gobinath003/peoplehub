@@ -21,6 +21,10 @@
     "prisma:migrate:deploy": "npm run prisma:migrate:deploy --workspace=@people-hub/api",
     "prisma:seed": "npm run prisma:seed --workspace=@people-hub/api"
   },
+  "dependencies": {
+    "@nestjs/cli": "^10.2.1",
+    "typescript": "^5.3.3"
+  },
   "devDependencies": {
     "concurrently": "^8.2.2",
     "typescript": "^5.3.3"

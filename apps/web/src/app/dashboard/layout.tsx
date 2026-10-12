@@ -9,7 +9,7 @@ import {
   Settings, MessageSquare, Mail, LogOut, 
   Search, RotateCcw, Building, ChevronRight, 
   Menu, X, BadgeCheck, FileText, Landmark, 
-  Scissors, SlidersHorizontal, UserCheck, Bell
+  Scissors, SlidersHorizontal, UserCheck, Bell, Building2
 } from 'lucide-react';
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
@@ -41,15 +41,15 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F4F7FE]">
-        <div className="flex flex-col items-center gap-4 text-center p-8 bg-white rounded-3xl shadow-[0_10px_30px_rgba(112,144,176,0.08)] border border-slate-100 max-w-sm w-full mx-4">
-          <div className="w-12 h-12 rounded-2xl bg-[#5D5FEF] flex items-center justify-center text-white font-extrabold text-xl shadow-lg shadow-indigo-200">
-            u
+        <div className="flex flex-col items-center gap-4 text-center p-8 bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200 max-w-sm w-full mx-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-md">
+            <Building2 className="w-6 h-6 text-white" />
           </div>
-          <div className="w-8 h-8 border-4 border-[#5D5FEF] border-t-transparent rounded-full animate-spin mt-2"></div>
-          <p className="text-slate-700 font-extrabold text-sm">Redirecting to login...</p>
+          <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin mt-2"></div>
+          <p className="text-slate-800 font-extrabold text-sm">Loading PeopleHub...</p>
           <a
             href="/login"
-            className="text-xs font-bold text-[#5D5FEF] hover:underline"
+            className="text-xs font-bold text-slate-600 hover:text-slate-900 hover:underline"
           >
             Click here if not redirected automatically
           </a>
@@ -58,24 +58,15 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Navigation matching the reference UI design
+  // Enterprise Corporate Navigation
   const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutGrid, show: true },
-    { name: 'Tasks', path: '/dashboard/piece-rate', icon: ListTodo, show: true, badge: 'Piece-Rate' },
-    { name: 'Profiles', path: '/dashboard/employees', icon: UserCircle, show: true, badge: 'Employees' },
-    { name: 'Roll And Permission', path: '/dashboard/masters', icon: Shield, show: true, badge: 'Masters' },
-    { name: 'Admin Settings', path: isSuperAdmin ? '/dashboard/tenants' : '/dashboard/settings/modules', icon: Settings, show: true },
-    { name: 'Payroll & Slips', path: '/dashboard/payroll', icon: FileText, show: true, badge: 'Payroll' },
-    { name: 'Chat', path: '#chat', icon: MessageSquare, show: true, comingSoon: true },
-    { name: 'Messages', path: '#messages', icon: Mail, show: true, comingSoon: true },
-  ];
-
-  // Garment Department / Project categories
-  const projectCategories = [
-    { name: 'Cutting & Pattern', color: 'bg-[#4318FF]', path: '/dashboard/masters' },
-    { name: 'Sewing & Tailoring', color: 'bg-[#EE5D50]', path: '/dashboard/piece-rate' },
-    { name: 'Quality Inspection', color: 'bg-[#FFB547]', path: '/dashboard/masters' },
-    { name: 'HR & Administration', color: 'bg-[#05CD99]', path: '/dashboard/employees' },
+    { name: 'Executive Overview', path: '/dashboard', icon: LayoutGrid, show: true },
+    { name: 'Workforce & Employees', path: '/dashboard/employees', icon: UserCheck, show: true },
+    { name: 'Piece-Rate Operations', path: '/dashboard/piece-rate', icon: Scissors, show: true },
+    { name: 'Payroll & Compensation', path: '/dashboard/payroll', icon: FileText, show: true },
+    { name: 'Organization Masters', path: '/dashboard/masters', icon: Landmark, show: true },
+    { name: 'Tenants & RBAC', path: isSuperAdmin ? '/dashboard/tenants' : '/dashboard/users', icon: Shield, show: true },
+    { name: 'Audit & Compliance', path: '/dashboard/audit-logs', icon: BadgeCheck, show: true },
   ];
 
   return (
@@ -93,15 +84,20 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-white border-r border-slate-100/90 shadow-[4px_0_24px_rgba(112,144,176,0.06)] transition-transform duration-300 lg:static lg:translate-x-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        {/* Brand Logo: Violet icon with "U" + "HUB" */}
-        <div className="flex h-20 items-center justify-between px-7">
+        {/* Brand Logo: PeopleHub Enterprise */}
+        <div className="flex h-20 items-center justify-between px-6 border-b border-slate-100/80">
           <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#5D5FEF] flex items-center justify-center text-white font-extrabold text-xl shadow-lg shadow-indigo-200">
-              u
+            <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-md">
+              <Building2 className="w-5 h-5 text-white" />
             </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black text-slate-900 tracking-tight">HUB</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-[#5D5FEF]"></span>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-base font-black text-slate-900 tracking-tight">PeopleHub</span>
+                <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                  HRMS
+                </span>
+              </div>
+              <p className="text-[10px] font-medium text-slate-400">Enterprise Operations</p>
             </div>
           </Link>
           <button className="lg:hidden text-slate-400 hover:text-slate-600" onClick={() => setSidebarOpen(false)}>
@@ -110,72 +106,55 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Navigation Menu */}
-        <nav className="flex-1 px-4 py-2 space-y-1.5 overflow-y-auto">
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.path;
 
-            if (item.comingSoon) {
-              return (
-                <div
-                  key={item.name}
-                  className="flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-semibold text-slate-400 opacity-60 cursor-not-allowed"
-                >
-                  <div className="flex items-center gap-3.5">
-                    <Icon className="w-4 h-4 text-slate-400" />
-                    <span>{item.name}</span>
-                  </div>
-                  <span className="text-[10px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded-full font-bold">Soon</span>
-                </div>
-              );
-            }
-
             return (
               <div key={item.name} className="relative">
-                {/* Active Purple Indicator Curve */}
-                {isActive && (
-                  <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-2.5 h-7 bg-[#5D5FEF] rounded-r-full shadow-sm"></div>
-                )}
                 <Link
                   href={item.path}
                   onClick={() => setSidebarOpen(false)}
                   className={`
-                    group flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-200
+                    group flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-150
                     ${isActive 
-                      ? 'text-[#5D5FEF] bg-[#EEF0FD]/60' 
-                      : 'text-slate-400 hover:text-slate-800 hover:bg-slate-50/80'}
+                      ? 'text-white bg-slate-900 shadow-sm' 
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'}
                   `}
                 >
-                  <div className="flex items-center gap-3.5">
-                    <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-[#5D5FEF]' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                  <div className="flex items-center gap-3">
+                    <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-900'}`} />
                     <span className="tracking-tight">{item.name}</span>
                   </div>
-                  {item.badge && !isActive && (
-                    <span className="text-[9px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">
-                      {item.badge}
-                    </span>
+                  {isActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                   )}
                 </Link>
               </div>
             );
           })}
 
-          {/* PROJECTS Section */}
-          <div className="pt-6 pb-2 px-3">
-            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3 px-1">
-              PROJECTS
+          {/* ACTIVE WORKSPACE CONTEXT */}
+          <div className="pt-6 pb-2 px-2">
+            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 px-1">
+              Active Organization
             </div>
-            <div className="space-y-2.5">
-              {projectCategories.map((proj) => (
-                <Link
-                  key={proj.name}
-                  href={proj.path}
-                  className="flex items-center gap-3 px-2 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition"
-                >
-                  <span className={`w-2.5 h-2.5 rounded-full ${proj.color} shadow-sm shrink-0`}></span>
-                  <span className="truncate">{proj.name}</span>
-                </Link>
-              ))}
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold text-slate-900 truncate">
+                  {activeTenant?.name || 'ABC Garments Ltd'}
+                </span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Active
+                </span>
+              </div>
+              <div className="text-[10px] text-slate-500 font-medium">
+                Industry: <strong className="text-slate-700">{activeTenant?.industry || 'GARMENTS'}</strong>
+              </div>
+              <div className="text-[10px] text-slate-500 font-medium">
+                Scope: <strong className="text-slate-700">{activeBranchScope || 'All Branches'}</strong>
+              </div>
             </div>
           </div>
         </nav>

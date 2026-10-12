@@ -246,8 +246,8 @@ export default function EmployeesPage() {
       employeeCode: employeeCode.trim(),
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
+      email: email.trim() ? email.trim() : undefined,
+      phone: phone.trim() ? phone.trim() : undefined,
       department: department.trim(),
       designation: designation.trim(),
       branch: branch.trim(),
@@ -497,7 +497,7 @@ export default function EmployeesPage() {
                           <div className="flex items-center gap-2 text-slate-400 text-[11px] mt-0.5">
                             <span className="font-mono bg-slate-100 px-1.5 py-0.2 rounded">{emp.employeeCode}</span>
                             <span>•</span>
-                            <span>{emp.email}</span>
+                            <span>{emp.email || emp.phone || 'No email registered'}</span>
                           </div>
                         </div>
                       </div>
@@ -645,13 +645,14 @@ export default function EmployeesPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Email Address *</label>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Email Address <span className="text-slate-400 font-normal">(Optional)</span>
+                    </label>
                     <input
                       type="email"
-                      required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="e.g. meena@garments.com"
+                      placeholder="e.g. meena@garments.com (Optional for floor workers)"
                       className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     />
                   </div>

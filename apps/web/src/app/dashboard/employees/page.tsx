@@ -306,16 +306,16 @@ export default function EmployeesPage() {
       employeeCode: payload.employeeCode,
       firstName: payload.firstName,
       lastName: payload.lastName,
-      email: payload.email,
-      phone: payload.phone,
+      email: payload.email || null,
+      phone: payload.phone || null,
       department: payload.department,
       designation: payload.designation,
-      branch: payload.branch,
-      departmentId: payload.departmentId,
-      designationId: payload.designationId,
-      branchId: payload.branchId,
-      shiftId: payload.shiftId,
-      employmentTypeId: payload.employmentTypeId,
+      branch: payload.branch || null,
+      departmentId: payload.departmentId || null,
+      designationId: payload.designationId || null,
+      branchId: payload.branchId || null,
+      shiftId: payload.shiftId || null,
+      employmentTypeId: payload.employmentTypeId || null,
       salaryType: payload.salaryType,
       joiningDate: payload.joiningDate,
       status: 'ACTIVE',
@@ -382,8 +382,8 @@ export default function EmployeesPage() {
   const filteredEmployees = employees.filter(emp => {
     const matchesSearch = 
       emp.employeeCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (emp.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (emp.phone || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       emp.designation.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesDept = selectedDept === 'ALL' || emp.department === selectedDept;

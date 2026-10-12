@@ -215,7 +215,7 @@ export interface EmployeeDto {
   employeeCode: string;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string | null;
   phone: string | null;
   department: string;
   designation: string;
@@ -236,7 +236,7 @@ export interface CreateEmployeeRequest {
   employeeCode: string;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string;
   phone?: string;
   department?: string;
   designation?: string;

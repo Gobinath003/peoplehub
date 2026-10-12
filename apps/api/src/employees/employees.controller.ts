@@ -26,8 +26,9 @@ class CreateEmployeeDto implements CreateEmployeeRequest {
   @IsString()
   lastName!: string;
 
+  @IsOptional()
   @IsString()
-  email!: string;
+  email?: string;
 
   @IsOptional()
   @IsString()

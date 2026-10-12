@@ -49,8 +49,17 @@ export class AuthService {
   }
 
   async login(dto: LoginRequest): Promise<LoginResponse> {
-    const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+    const identifier = dto.email ? dto.email.trim() : '';
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: identifier },
+          { email: identifier.toLowerCase() },
+          { employees: { some: { employeeCode: identifier } } },
+          { employees: { some: { employeeCode: identifier.toUpperCase() } } },
+          { employees: { some: { phone: identifier } } }
+        ]
+      },
       include: {
         tenantUsers: {
           include: {

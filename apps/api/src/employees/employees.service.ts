@@ -80,7 +80,7 @@ export class EmployeesService {
           employeeCode: dto.employeeCode.trim(),
           firstName: dto.firstName.trim(),
           lastName: dto.lastName.trim(),
-          email: dto.email.toLowerCase().trim(),
+          email: dto.email ? dto.email.toLowerCase().trim() : null,
           phone: dto.phone || null,
           department: deptName,
           designation: desigName,
@@ -143,7 +143,7 @@ export class EmployeesService {
     const data: any = {};
     if (dto.firstName !== undefined) data.firstName = dto.firstName;
     if (dto.lastName !== undefined) data.lastName = dto.lastName;
-    if (dto.email !== undefined) data.email = dto.email;
+    if (dto.email !== undefined) data.email = dto.email ? dto.email.toLowerCase().trim() : null;
     if (dto.phone !== undefined) data.phone = dto.phone;
     if (dto.department !== undefined) data.department = dto.department;
     if (dto.designation !== undefined) data.designation = dto.designation;

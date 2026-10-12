@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Building2 } from 'lucide-react';
 
 export default function Home() {
   const router = useRouter();
@@ -22,15 +23,15 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F4F7FE] font-sans">
-      <div className="flex flex-col items-center gap-4 text-center p-8 bg-white rounded-3xl shadow-[0_10px_30px_rgba(112,144,176,0.08)] border border-slate-100 max-w-sm w-full mx-4">
-        <div className="w-12 h-12 rounded-2xl bg-[#5D5FEF] flex items-center justify-center text-white font-extrabold text-xl shadow-lg shadow-indigo-200">
-          u
+      <div className="flex flex-col items-center gap-4 text-center p-8 bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200 max-w-sm w-full mx-4">
+        <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-md">
+          <Building2 className="w-6 h-6 text-white" />
         </div>
-        <div className="w-8 h-8 border-4 border-[#5D5FEF] border-t-transparent rounded-full animate-spin mt-2"></div>
-        <p className="text-slate-800 font-extrabold text-sm">Redirecting to People Hub...</p>
+        <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin mt-2"></div>
+        <p className="text-slate-800 font-extrabold text-sm">Opening PeopleHub...</p>
         <a 
           href="/login" 
-          className="text-xs text-[#5D5FEF] hover:underline font-bold"
+          className="text-xs text-slate-600 hover:text-slate-900 hover:underline font-bold"
         >
           Click here if not redirected automatically
         </a>

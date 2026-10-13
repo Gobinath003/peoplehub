@@ -381,7 +381,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Dynamic Content Container */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 lg:p-6">
           {children}
         </main>
       </div>

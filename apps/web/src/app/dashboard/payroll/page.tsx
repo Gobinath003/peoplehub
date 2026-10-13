@@ -7,7 +7,7 @@ import {
   FileText, DollarSign, Calendar, Check, X, 
   Printer, Play, Search, Filter, Building2, 
   Briefcase, ArrowUpRight, Award, ShieldCheck, 
-  ChevronRight, Edit3, Scissors 
+  ChevronRight, ChevronLeft, Edit3, Scissors, AlertCircle 
 } from 'lucide-react';
 import { PayslipDto, SalaryStructureDto } from '@people-hub/shared-types';
 
@@ -348,54 +348,63 @@ export default function PayrollPage() {
     setGenerating(false);
   };
 
+  // Pagination States
+  const [structPage, setStructPage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
+  const pageSize = 10;
+
+  const totalStructPages = Math.max(1, Math.ceil(structures.length / pageSize));
+  const paginatedStructures = structures.slice((structPage - 1) * pageSize, structPage * pageSize);
+
+  const totalHistoryPages = Math.max(1, Math.ceil(payslips.length / pageSize));
+  const paginatedPayslips = payslips.slice((historyPage - 1) * pageSize, historyPage * pageSize);
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-slate-800">Payroll & Payslip Management</h1>
-            <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-xs border border-emerald-200">
-              {activeTenant?.name}
+    <div className="space-y-3">
+      {/* Compact Header & Tab Switcher */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2">
+          <h1 className="text-base font-bold text-slate-900 tracking-tight">Payroll & Compensation</h1>
+          {activeTenant?.name && (
+            <span className="bg-emerald-50 text-emerald-700 font-medium px-2 py-0.5 rounded text-[11px] border border-emerald-200">
+              {activeTenant.name}
             </span>
-          </div>
-          <p className="text-slate-500 text-sm mt-1">
-            Establish employee salary structures, execute monthly payroll runs, and generate print-ready payslips.
-          </p>
+          )}
         </div>
 
-        {/* Tab Buttons */}
-        <div className="flex bg-slate-200/80 p-1 rounded-xl text-xs font-bold self-start md:self-auto">
+        {/* Compact Tab Switcher */}
+        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
           <button
             onClick={() => setActiveTab('structures')}
-            className={`px-3 py-1.5 rounded-lg transition ${
-              activeTab === 'structures' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-600 hover:text-slate-800'
+            className={`px-3 py-1 rounded-md font-semibold transition ${
+              activeTab === 'structures' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Salary Structures
+            Salary Structures ({structures.length})
           </button>
           <button
             onClick={() => setActiveTab('generate')}
-            className={`px-3 py-1.5 rounded-lg transition ${
-              activeTab === 'generate' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-600 hover:text-slate-800'
+            className={`px-3 py-1 rounded-md font-semibold transition flex items-center gap-1 ${
+              activeTab === 'generate' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Run Monthly Payroll
+            <Play className="w-3 h-3 text-emerald-600" />
+            <span>Run Payroll</span>
           </button>
           <button
             onClick={() => setActiveTab('history')}
-            className={`px-3 py-1.5 rounded-lg transition ${
-              activeTab === 'history' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-600 hover:text-slate-800'
+            className={`px-3 py-1 rounded-md font-semibold transition ${
+              activeTab === 'history' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Generated Payslips ({payslips.length})
+            Payslips ({payslips.length})
           </button>
         </div>
       </div>
 
       {/* Success / Error alerts */}
       {successMsg && (
-        <div className="p-4 bg-emerald-50 border-l-4 border-emerald-500 text-emerald-800 rounded-lg text-xs flex items-center justify-between font-semibold">
+        <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs flex items-center justify-between font-medium">
           <div className="flex items-center gap-2">
             <Check className="w-4 h-4 text-emerald-600" />
             <span>{successMsg}</span>
@@ -407,9 +416,12 @@ export default function PayrollPage() {
       )}
 
       {errorMsg && (
-        <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-800 rounded-lg text-xs flex items-center justify-between font-semibold">
-          <span>{errorMsg}</span>
-          <button onClick={() => setErrorMsg(null)} className="text-red-600 hover:text-red-800">
+        <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs flex items-center justify-between font-medium">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600" />
+            <span>{errorMsg}</span>
+          </div>
+          <button onClick={() => setErrorMsg(null)} className="text-rose-600 hover:text-rose-800">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -417,84 +429,79 @@ export default function PayrollPage() {
 
       {/* TAB 1: SALARY STRUCTURES */}
       {activeTab === 'structures' && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between text-xs">
-            <span className="font-bold text-slate-700">Staff Compensation Directory</span>
-            <span className="text-slate-400">Click &quot;Configure Salary&quot; on any employee to update compensation breakdown</span>
-          </div>
-
+        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  <th className="py-3.5 px-6">Employee</th>
-                  <th className="py-3.5 px-6">Basic Salary</th>
-                  <th className="py-3.5 px-6">Allowances (HRA + Special)</th>
-                  <th className="py-3.5 px-6">Deductions (PF + Tax)</th>
-                  <th className="py-3.5 px-6">Gross / Net Monthly</th>
-                  <th className="py-3.5 px-6 text-right">Action</th>
+                <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  <th className="py-2.5 px-3.5">Employee</th>
+                  <th className="py-2.5 px-3.5">Basic Salary</th>
+                  <th className="py-2.5 px-3.5">Allowances (HRA + Special)</th>
+                  <th className="py-2.5 px-3.5">Deductions (PF + Tax)</th>
+                  <th className="py-2.5 px-3.5">Gross / Net Monthly</th>
+                  <th className="py-2.5 px-3.5 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {structures.map(emp => {
+                {paginatedStructures.map(emp => {
                   const st = emp.salaryStructure;
                   return (
-                    <tr key={emp.employeeId} className="hover:bg-slate-50/70 transition">
-                      <td className="py-4 px-6">
-                        <div className="font-bold text-slate-800 text-sm">{emp.employeeName}</div>
-                        <div className="text-slate-400 text-[11px]">
-                          <span className="font-mono bg-slate-100 px-1 rounded">{emp.employeeCode}</span>
-                          <span className="mx-1.5">•</span>
+                    <tr key={emp.employeeId} className="hover:bg-slate-50/60 transition">
+                      <td className="py-2 px-3.5">
+                        <div className="font-semibold text-slate-900 text-xs">{emp.employeeName}</div>
+                        <div className="text-slate-500 text-[10px] flex items-center gap-1.5">
+                          <span className="font-mono bg-slate-100 px-1 py-0.2 rounded font-semibold text-slate-700">{emp.employeeCode}</span>
+                          <span>•</span>
                           <span>{emp.designation}</span>
                         </div>
                       </td>
 
-                      <td className="py-4 px-6 font-mono font-semibold text-slate-700">
+                      <td className="py-2 px-3.5 font-mono font-medium text-slate-800">
                         {st ? `₹${st.basicSalary.toLocaleString()}` : '—'}
                       </td>
 
-                      <td className="py-4 px-6 text-slate-600">
+                      <td className="py-2 px-3.5 text-slate-700">
                         {st ? (
                           <div>
-                            <span className="font-mono">₹{(st.hra + st.specialAllowance + st.conveyanceAllowance).toLocaleString()}</span>
-                            <span className="text-[10px] text-slate-400 block mt-0.5">HRA: ₹{st.hra.toLocaleString()}</span>
+                            <span className="font-mono font-medium">₹{(st.hra + st.specialAllowance + st.conveyanceAllowance).toLocaleString()}</span>
+                            <span className="text-[10px] text-slate-400 block">HRA: ₹{st.hra.toLocaleString()}</span>
                           </div>
                         ) : '—'}
                       </td>
 
-                      <td className="py-4 px-6 text-red-600 font-mono">
+                      <td className="py-2 px-3.5 text-rose-600 font-mono">
                         {st ? (
                           <div>
-                            <span>₹{(st.pfDeduction + st.taxDeduction).toLocaleString()}</span>
-                            <span className="text-[10px] text-slate-400 block mt-0.5">PF: ₹{st.pfDeduction.toLocaleString()}</span>
+                            <span className="font-medium">-₹{(st.pfDeduction + st.taxDeduction).toLocaleString()}</span>
+                            <span className="text-[10px] text-slate-400 block">PF: ₹{st.pfDeduction.toLocaleString()}</span>
                           </div>
                         ) : '—'}
                       </td>
 
-                      <td className="py-4 px-6">
+                      <td className="py-2 px-3.5">
                         {st ? (
                           <div>
-                            <div className="font-black text-emerald-700 text-sm font-mono">
-                              ₹{st.netSalary.toLocaleString()} <span className="text-[10px] font-normal text-slate-400">Net</span>
+                            <div className="font-bold text-emerald-700 text-xs font-mono">
+                              ₹{st.netSalary.toLocaleString()} <span className="text-[10px] font-normal text-slate-500">Net</span>
                             </div>
-                            <div className="text-[11px] text-slate-400 font-mono">
+                            <div className="text-[10px] text-slate-400 font-mono">
                               Gross: ₹{st.grossSalary.toLocaleString()}
                             </div>
                           </div>
                         ) : (
-                          <span className="text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-[10px] font-bold border border-amber-200">
+                          <span className="text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded text-[10px] font-semibold border border-amber-200">
                             Not Configured
                           </span>
                         )}
                       </td>
 
-                      <td className="py-4 px-6 text-right">
+                      <td className="py-2 px-3.5 text-right">
                         <button
                           onClick={() => openEditSalary(emp)}
-                          className="text-xs font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1 ml-auto bg-primary-50 px-3 py-1.5 rounded-lg border border-primary-100 transition"
+                          className="text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 transition inline-flex items-center gap-1 shadow-2xs"
                         >
-                          <Edit3 className="w-3 h-3" />
-                          <span>{st ? 'Edit Salary' : 'Setup Salary'}</span>
+                          <Edit3 className="w-3 h-3 text-slate-500" />
+                          <span>{st ? 'Edit' : 'Setup'}</span>
                         </button>
                       </td>
                     </tr>
@@ -502,6 +509,36 @@ export default function PayrollPage() {
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="px-3.5 py-2 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between text-xs text-slate-500">
+            <div>
+              Showing <span className="font-semibold text-slate-800">{structures.length === 0 ? 0 : (structPage - 1) * pageSize + 1}</span> to <span className="font-semibold text-slate-800">{Math.min(structPage * pageSize, structures.length)}</span> of <span className="font-semibold text-slate-800">{structures.length}</span> staff
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={structPage <= 1}
+                onClick={() => setStructPage(p => Math.max(1, p - 1))}
+                className="px-2 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Prev</span>
+              </button>
+              <span className="px-2 py-1 font-mono text-xs text-slate-700 font-semibold">
+                Page {structPage} of {totalStructPages}
+              </span>
+              <button
+                type="button"
+                disabled={structPage >= totalStructPages}
+                onClick={() => setStructPage(p => Math.min(totalStructPages, p + 1))}
+                className="px-2 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1"
+              >
+                <span>Next</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -592,92 +629,119 @@ export default function PayrollPage() {
 
       {/* TAB 3: GENERATED PAYSLIPS */}
       {activeTab === 'history' && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between text-xs">
-            <span className="font-bold text-slate-700">Issued Employee Payslips</span>
-            <span className="text-slate-400">Click &quot;View &amp; Print&quot; to inspect official employee payslip</span>
-          </div>
-
+        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
           {payslips.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 text-xs">
-              No payslips generated yet. Go to &quot;Run Monthly Payroll&quot; tab to issue payslips.
+            <div className="p-8 text-center text-slate-400 text-xs">
+              No payslips generated yet. Go to &quot;Run Payroll&quot; tab to issue payslips.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="py-3.5 px-6">Employee</th>
-                    <th className="py-3.5 px-6">Pay Period</th>
-                    <th className="py-3.5 px-6">Gross Earnings</th>
-                    <th className="py-3.5 px-6">Total Deductions</th>
-                    <th className="py-3.5 px-6">Net Payout</th>
-                    <th className="py-3.5 px-6">Status</th>
-                    <th className="py-3.5 px-6 text-right">Payslip Document</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {payslips.map(ps => (
-                    <tr key={ps.id} className="hover:bg-slate-50/70 transition">
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-slate-800 text-sm">{ps.employeeName}</span>
-                          {ps.salaryType === 'PIECE_RATE' ? (
-                            <span className="bg-amber-50 text-amber-800 font-bold px-1.5 py-0.5 rounded text-[9px] border border-amber-200 inline-flex items-center gap-0.5">
-                              <Scissors className="w-2.5 h-2.5 text-amber-600" />
-                              <span>Piece-Rate</span>
-                            </span>
-                          ) : (
-                            <span className="bg-blue-50 text-blue-800 font-bold px-1.5 py-0.5 rounded text-[9px] border border-blue-200">
-                              Fixed
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-slate-400 text-[11px] mt-0.5">
-                          <span className="font-mono bg-slate-100 px-1 rounded">{ps.employeeCode}</span>
-                          <span className="mx-1.5">•</span>
-                          <span>{ps.department}</span>
-                          {ps.pieceRateUnits ? (
-                            <span className="ml-1.5 text-amber-800 font-mono font-bold">({ps.pieceRateUnits} units)</span>
-                          ) : null}
-                        </div>
-                      </td>
-
-                      <td className="py-4 px-6 font-semibold text-slate-700">
-                        {ps.payPeriod}
-                      </td>
-
-                      <td className="py-4 px-6 font-mono text-slate-700">
-                        ₹{ps.grossEarnings.toLocaleString()}
-                      </td>
-
-                      <td className="py-4 px-6 font-mono text-red-600">
-                        -₹{ps.totalDeductions.toLocaleString()}
-                      </td>
-
-                      <td className="py-4 px-6 font-mono font-black text-emerald-700 text-sm">
-                        ₹{ps.netPayable.toLocaleString()}
-                      </td>
-
-                      <td className="py-4 px-6">
-                        <span className="bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded text-[10px] border border-emerald-200">
-                          {ps.status}
-                        </span>
-                      </td>
-
-                      <td className="py-4 px-6 text-right">
-                        <button
-                          onClick={() => setViewPayslip(ps)}
-                          className="text-xs font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1.5 ml-auto bg-primary-50 px-3 py-1.5 rounded-lg border border-primary-100 hover:bg-primary-100 transition"
-                        >
-                          <Printer className="w-3.5 h-3.5" />
-                          <span>View & Print</span>
-                        </button>
-                      </td>
+            <div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                      <th className="py-2.5 px-3.5">Employee</th>
+                      <th className="py-2.5 px-3.5">Pay Period</th>
+                      <th className="py-2.5 px-3.5">Gross Earnings</th>
+                      <th className="py-2.5 px-3.5">Total Deductions</th>
+                      <th className="py-2.5 px-3.5">Net Payout</th>
+                      <th className="py-2.5 px-3.5">Status</th>
+                      <th className="py-2.5 px-3.5 text-right">Document</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {paginatedPayslips.map(ps => (
+                      <tr key={ps.id} className="hover:bg-slate-50/60 transition">
+                        <td className="py-2 px-3.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-slate-900 text-xs">{ps.employeeName}</span>
+                            {ps.salaryType === 'PIECE_RATE' ? (
+                              <span className="bg-amber-50 text-amber-800 font-semibold px-1.5 py-0.2 rounded text-[9px] border border-amber-200 inline-flex items-center gap-0.5">
+                                <Scissors className="w-2.5 h-2.5 text-amber-600" />
+                                <span>Piece-Rate</span>
+                              </span>
+                            ) : (
+                              <span className="bg-blue-50 text-blue-700 font-semibold px-1.5 py-0.2 rounded text-[9px] border border-blue-200">
+                                Fixed
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-slate-500 text-[10px] flex items-center gap-1.5">
+                            <span className="font-mono bg-slate-100 px-1 py-0.2 rounded font-semibold text-slate-700">{ps.employeeCode}</span>
+                            <span>•</span>
+                            <span>{ps.department}</span>
+                            {ps.pieceRateUnits ? (
+                              <span className="text-amber-800 font-mono font-semibold">({ps.pieceRateUnits} units)</span>
+                            ) : null}
+                          </div>
+                        </td>
+
+                        <td className="py-2 px-3.5 font-medium text-slate-700">
+                          {ps.payPeriod}
+                        </td>
+
+                        <td className="py-2 px-3.5 font-mono font-medium text-slate-800">
+                          ₹{ps.grossEarnings.toLocaleString()}
+                        </td>
+
+                        <td className="py-2 px-3.5 font-mono text-rose-600 font-medium">
+                          -₹{ps.totalDeductions.toLocaleString()}
+                        </td>
+
+                        <td className="py-2 px-3.5 font-mono font-bold text-emerald-700 text-xs">
+                          ₹{ps.netPayable.toLocaleString()}
+                        </td>
+
+                        <td className="py-2 px-3.5">
+                          <span className="bg-emerald-50 text-emerald-700 font-semibold px-1.5 py-0.2 rounded text-[10px] border border-emerald-200">
+                            {ps.status}
+                          </span>
+                        </td>
+
+                        <td className="py-2 px-3.5 text-right">
+                          <button
+                            onClick={() => setViewPayslip(ps)}
+                            className="text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 transition inline-flex items-center gap-1 shadow-2xs"
+                          >
+                            <Printer className="w-3 h-3 text-slate-500" />
+                            <span>Print</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              <div className="px-3.5 py-2 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between text-xs text-slate-500">
+                <div>
+                  Showing <span className="font-semibold text-slate-800">{payslips.length === 0 ? 0 : (historyPage - 1) * pageSize + 1}</span> to <span className="font-semibold text-slate-800">{Math.min(historyPage * pageSize, payslips.length)}</span> of <span className="font-semibold text-slate-800">{payslips.length}</span> payslips
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={historyPage <= 1}
+                    onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                    className="px-2 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span>Prev</span>
+                  </button>
+                  <span className="px-2 py-1 font-mono text-xs text-slate-700 font-semibold">
+                    Page {historyPage} of {totalHistoryPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={historyPage >= totalHistoryPages}
+                    onClick={() => setHistoryPage(p => Math.min(totalHistoryPages, p + 1))}
+                    className="px-2 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1"
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

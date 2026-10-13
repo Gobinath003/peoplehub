@@ -13,17 +13,34 @@ import {
   IndustryType 
 } from '@people-hub/shared-types';
 
+import { IsString, IsBoolean, IsOptional } from 'class-validator';
+
 class UpdateModuleStateDto {
+  @IsBoolean()
   isEnabled!: boolean;
 }
 
 class CreateTenantDto implements CreateTenantWithAdminRequest {
+  @IsString()
   name!: string;
+
+  @IsString()
   slug!: string;
+
+  @IsString()
   industry!: IndustryType;
+
+  @IsString()
   adminEmail!: string;
+
+  @IsOptional()
+  @IsString()
   adminPassword!: string;
+
+  @IsString()
   adminFirstName!: string;
+
+  @IsString()
   adminLastName!: string;
 }
 

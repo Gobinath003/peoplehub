@@ -100,21 +100,28 @@ export class TenantsService {
 
       if (!adminUser) {
         const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(dto.adminPassword, salt);
+        const hashedPassword = await bcrypt.hash(dto.adminPassword || 'manager_pass', salt);
         adminUser = await tx.user.create({
           data: {
-            email: dto.adminEmail,
+            email: dto.adminEmail.toLowerCase().trim(),
             passwordHash: hashedPassword,
-            firstName: dto.adminFirstName,
-            lastName: dto.adminLastName,
+            firstName: dto.adminFirstName.trim(),
+            lastName: dto.adminLastName.trim(),
             status: 'ACTIVE',
           }
         });
       }
 
-      // 3. Link user to tenant
-      await tx.tenantUser.create({
-        data: {
+      // 3. Link user to tenant (upsert in case already linked)
+      await tx.tenantUser.upsert({
+        where: {
+          tenantId_userId: {
+            tenantId: tenant.id,
+            userId: adminUser.id
+          }
+        },
+        update: { status: 'ACTIVE' },
+        create: {
           tenantId: tenant.id,
           userId: adminUser.id,
           status: 'ACTIVE'
@@ -162,6 +169,25 @@ export class TenantsService {
         ]
       });
 
+      // Also grant the platform Super Admin (admin@peoplehub.com) access to the newly created tenant
+      const superAdmin = await tx.user.findUnique({ where: { email: 'admin@peoplehub.com' } });
+      if (superAdmin && superAdmin.id !== adminUser.id) {
+        await tx.tenantUser.upsert({
+          where: { tenantId_userId: { tenantId: tenant.id, userId: superAdmin.id } },
+          update: { status: 'ACTIVE' },
+          create: { tenantId: tenant.id, userId: superAdmin.id, status: 'ACTIVE' }
+        });
+        await tx.userRoleAssignment.create({
+          data: {
+            userId: superAdmin.id,
+            tenantId: tenant.id,
+            roleId: adminRole.id,
+            scopeType: ScopeType.TENANT,
+            scopeId: null
+          }
+        });
+      }
+
       // 6. Setup default modules
       const defaultModules = [
         ModuleCode.ORGANIZATION,
@@ -181,6 +207,19 @@ export class TenantsService {
         defaultModules.push(ModuleCode.TIMESHEET);
       } else if (dto.industry === IndustryType.MANUFACTURING || dto.industry === IndustryType.LABOUR) {
         defaultModules.push(ModuleCode.MUSTER_ROLL);
+      }
+
+      // Ensure all default modules exist in global catalog before linking
+      for (const code of defaultModules) {
+        await tx.module.upsert({
+          where: { code },
+          update: {},
+          create: {
+            code,
+            name: String(code).replace(/_/g, ' '),
+            description: `${code} enterprise module`
+          }
+        });
       }
 
       await tx.tenantModule.createMany({

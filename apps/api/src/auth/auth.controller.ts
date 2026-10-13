@@ -10,20 +10,35 @@ import {
   IndustryType 
 } from '@people-hub/shared-types';
 
+import { IsString, IsOptional } from 'class-validator';
+
 class RegisterDto {
+  @IsString()
   email!: string;
+
+  @IsString()
   passwordHash!: string;
+
+  @IsString()
   firstName!: string;
+
+  @IsString()
   lastName!: string;
 }
 
 class CreateTenantDto {
+  @IsString()
   name!: string;
+
+  @IsString()
   slug!: string;
+
+  @IsString()
   industry!: IndustryType;
 }
 
 class SwitchTenantDto {
+  @IsString()
   tenantId!: string;
 }
 

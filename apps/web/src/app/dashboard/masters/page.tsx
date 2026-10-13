@@ -25,6 +25,7 @@ import {
   AlertCircle,
   Users,
   ChevronRight,
+  ChevronLeft,
   Sparkles,
   ArrowUpRight,
   ShieldCheck,
@@ -247,187 +248,140 @@ export default function MastersPage() {
     (e) => e.name.toLowerCase().includes(searchQuery.toLowerCase()) || e.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  const getActiveList = () => {
+    switch (activeTab) {
+      case 'departments': return filteredDepartments;
+      case 'designations': return filteredDesignations;
+      case 'branches': return filteredBranches;
+      case 'shifts': return filteredShifts;
+      case 'employmentTypes': return filteredEmploymentTypes;
+    }
+  };
+
+  const activeList = getActiveList();
+  const totalPages = Math.max(1, Math.ceil(activeList.length / pageSize));
+  const paginatedDepartments = filteredDepartments.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginatedDesignations = filteredDesignations.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginatedBranches = filteredBranches.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginatedShifts = filteredShifts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginatedEmploymentTypes = filteredEmploymentTypes.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const tabs = [
+    { key: 'departments' as MasterTab, label: 'Departments', count: bundle.departments.length, icon: Building2 },
+    { key: 'designations' as MasterTab, label: 'Designations', count: bundle.designations.length, icon: Briefcase },
+    { key: 'branches' as MasterTab, label: 'Branches & Units', count: bundle.branches.length, icon: MapPin },
+    { key: 'shifts' as MasterTab, label: 'Work Shifts', count: bundle.shifts.length, icon: Clock },
+    { key: 'employmentTypes' as MasterTab, label: 'Employment Types', count: bundle.employmentTypes.length, icon: Tag },
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Enterprise Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-sm">
-              <Building2 className="w-5 h-5" />
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Master Data Management</h1>
-            <span className="bg-indigo-50 text-indigo-700 font-bold px-2.5 py-0.5 rounded-lg text-xs border border-indigo-200">
-              {activeTenant?.name}
+    <div className="space-y-3">
+      {/* Compact Header & Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2">
+          <h1 className="text-base font-bold text-slate-900 tracking-tight">Organization Masters</h1>
+          {activeTenant?.name && (
+            <span className="bg-emerald-50 text-emerald-700 font-medium px-2 py-0.5 rounded text-[11px] border border-emerald-200">
+              {activeTenant.name}
             </span>
-          </div>
-          <p className="text-slate-500 text-xs mt-1">
-            Maintain pre-defined organizational masters. Values configured here automatically populate all employee creation and payroll dropdowns.
-          </p>
+          )}
         </div>
 
-        <button
-          onClick={() => openCreateModal(activeTab)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shadow flex items-center gap-2 self-start md:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>
-            {activeTab === 'departments' && 'Add Department'}
-            {activeTab === 'designations' && 'Add Designation'}
-            {activeTab === 'branches' && 'Add Branch / Unit'}
-            {activeTab === 'shifts' && 'Add Shift'}
-            {activeTab === 'employmentTypes' && 'Add Employment Type'}
-          </span>
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+            <input
+              type="text"
+              placeholder={`Search ${activeTab}...`}
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 w-44 sm:w-56"
+            />
+          </div>
+
+          <button
+            onClick={() => openCreateModal(activeTab)}
+            className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition shadow-2xs flex items-center gap-1.5 shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>
+              {activeTab === 'departments' && 'Add Department'}
+              {activeTab === 'designations' && 'Add Designation'}
+              {activeTab === 'branches' && 'Add Branch'}
+              {activeTab === 'shifts' && 'Add Shift'}
+              {activeTab === 'employmentTypes' && 'Add Type'}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Success / Error Banners */}
       {successMsg && (
-        <div className="p-3.5 bg-emerald-50 border-l-4 border-emerald-500 text-emerald-800 rounded-lg text-xs flex items-center justify-between font-semibold">
+        <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs flex items-center justify-between font-medium">
           <div className="flex items-center gap-2">
             <Check className="w-4 h-4 text-emerald-600" />
             <span>{successMsg}</span>
           </div>
           <button onClick={() => setSuccessMsg(null)} className="text-emerald-600 hover:text-emerald-800">
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
       {errorMsg && (
-        <div className="p-3.5 bg-rose-50 border-l-4 border-rose-500 text-rose-800 rounded-lg text-xs flex items-center justify-between font-semibold">
+        <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs flex items-center justify-between font-medium">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-rose-600" />
             <span>{errorMsg}</span>
           </div>
           <button onClick={() => setErrorMsg(null)} className="text-rose-600 hover:text-rose-800">
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
-      {/* Masters Summary Metrics Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <button
-          onClick={() => setActiveTab('departments')}
-          className={`p-4 rounded-2xl border text-left transition-all ${
-            activeTab === 'departments'
-              ? 'bg-white border-indigo-500 shadow-md ring-2 ring-indigo-500/10'
-              : 'bg-white/70 border-slate-200 hover:bg-white'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-              <Building2 className="w-4 h-4" />
-            </div>
-            <span className="text-lg font-black text-slate-800 font-mono">{bundle.departments.length}</span>
-          </div>
-          <div className="text-xs font-bold text-slate-800 mt-2">Departments</div>
-          <div className="text-[10px] text-slate-400">Org business units</div>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('designations')}
-          className={`p-4 rounded-2xl border text-left transition-all ${
-            activeTab === 'designations'
-              ? 'bg-white border-indigo-500 shadow-md ring-2 ring-indigo-500/10'
-              : 'bg-white/70 border-slate-200 hover:bg-white'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="p-2 bg-purple-50 text-purple-600 rounded-xl">
-              <Briefcase className="w-4 h-4" />
-            </div>
-            <span className="text-lg font-black text-slate-800 font-mono">{bundle.designations.length}</span>
-          </div>
-          <div className="text-xs font-bold text-slate-800 mt-2">Designations</div>
-          <div className="text-[10px] text-slate-400">Job roles & titles</div>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('branches')}
-          className={`p-4 rounded-2xl border text-left transition-all ${
-            activeTab === 'branches'
-              ? 'bg-white border-indigo-500 shadow-md ring-2 ring-indigo-500/10'
-              : 'bg-white/70 border-slate-200 hover:bg-white'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
-              <MapPin className="w-4 h-4" />
-            </div>
-            <span className="text-lg font-black text-slate-800 font-mono">{bundle.branches.length}</span>
-          </div>
-          <div className="text-xs font-bold text-slate-800 mt-2">Branches & Units</div>
-          <div className="text-[10px] text-slate-400">Factories & locations</div>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('shifts')}
-          className={`p-4 rounded-2xl border text-left transition-all ${
-            activeTab === 'shifts'
-              ? 'bg-white border-indigo-500 shadow-md ring-2 ring-indigo-500/10'
-              : 'bg-white/70 border-slate-200 hover:bg-white'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
-              <Clock className="w-4 h-4" />
-            </div>
-            <span className="text-lg font-black text-slate-800 font-mono">{bundle.shifts.length}</span>
-          </div>
-          <div className="text-xs font-bold text-slate-800 mt-2">Work Shifts</div>
-          <div className="text-[10px] text-slate-400">Work timings & breaks</div>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('employmentTypes')}
-          className={`p-4 rounded-2xl border text-left transition-all col-span-2 sm:col-span-1 ${
-            activeTab === 'employmentTypes'
-              ? 'bg-white border-indigo-500 shadow-md ring-2 ring-indigo-500/10'
-              : 'bg-white/70 border-slate-200 hover:bg-white'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="p-2 bg-rose-50 text-rose-600 rounded-xl">
-              <Tag className="w-4 h-4" />
-            </div>
-            <span className="text-lg font-black text-slate-800 font-mono">{bundle.employmentTypes.length}</span>
-          </div>
-          <div className="text-xs font-bold text-slate-800 mt-2">Employment Types</div>
-          <div className="text-[10px] text-slate-400">Contract, Perm, Piece</div>
-        </button>
-      </div>
-
-      {/* Search and Action Bar */}
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            placeholder={`Search ${activeTab}...`}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 text-slate-500 font-medium">
-          <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-lg font-mono font-bold">
-            {activeTab === 'departments' && `${filteredDepartments.length} Departments`}
-            {activeTab === 'designations' && `${filteredDesignations.length} Designations`}
-            {activeTab === 'branches' && `${filteredBranches.length} Branches / Units`}
-            {activeTab === 'shifts' && `${filteredShifts.length} Shifts`}
-            {activeTab === 'employmentTypes' && `${filteredEmploymentTypes.length} Employment Categories`}
-          </span>
-        </div>
+      {/* Compact Segmented Master Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 border-b border-slate-200/80">
+        {tabs.map((tab) => {
+          const TabIcon = tab.icon;
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => {
+                setActiveTab(tab.key);
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-t-lg transition flex items-center gap-1.5 border-b-2 -mb-px ${
+                isActive
+                  ? 'border-slate-900 text-slate-900 bg-white'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
+              }`}
+            >
+              <TabIcon className="w-3.5 h-3.5" />
+              <span>{tab.label}</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-semibold ${
+                isActive ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
+              }`}>
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Main Masters Content Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
         {loading ? (
-          <div className="p-16 flex justify-center">
-            <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="p-8 flex justify-center">
+            <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : (
           <div>
@@ -436,27 +390,27 @@ export default function MastersPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      <th className="py-3.5 px-6">Dept Code</th>
-                      <th className="py-3.5 px-6">Department Name</th>
-                      <th className="py-3.5 px-6">Division Details</th>
-                      <th className="py-3.5 px-6 text-center">Headcount</th>
-                      <th className="py-3.5 px-6 text-center">Status</th>
+                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                      <th className="py-2.5 px-3.5">Dept Code</th>
+                      <th className="py-2.5 px-3.5">Department Name</th>
+                      <th className="py-2.5 px-3.5">Division Details</th>
+                      <th className="py-2.5 px-3.5 text-center">Headcount</th>
+                      <th className="py-2.5 px-3.5 text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredDepartments.map((dept) => (
+                    {paginatedDepartments.map((dept) => (
                       <tr key={dept.id} className="hover:bg-slate-50/60 transition">
-                        <td className="py-4 px-6 font-mono font-bold text-indigo-700">{dept.code}</td>
-                        <td className="py-4 px-6 font-bold text-slate-800">{dept.name}</td>
-                        <td className="py-4 px-6 text-slate-500">{dept.description || '—'}</td>
-                        <td className="py-4 px-6 text-center font-mono">
-                          <span className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full font-bold">
+                        <td className="py-2 px-3.5 font-mono font-bold text-slate-800">{dept.code}</td>
+                        <td className="py-2 px-3.5 font-semibold text-slate-800">{dept.name}</td>
+                        <td className="py-2 px-3.5 text-slate-500 text-[11px]">{dept.description || '—'}</td>
+                        <td className="py-2 px-3.5 text-center font-mono">
+                          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">
                             {dept.employeeCount || 0} employees
                           </span>
                         </td>
-                        <td className="py-4 px-6 text-center">
-                          <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold">
+                        <td className="py-2 px-3.5 text-center">
+                          <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded text-[10px] font-semibold border border-emerald-200">
                             Active
                           </span>
                         </td>
@@ -472,33 +426,33 @@ export default function MastersPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      <th className="py-3.5 px-6">Role Code</th>
-                      <th className="py-3.5 px-6">Designation Title</th>
-                      <th className="py-3.5 px-6">Department Mapping</th>
-                      <th className="py-3.5 px-6">Job Description</th>
-                      <th className="py-3.5 px-6 text-center">Headcount</th>
-                      <th className="py-3.5 px-6 text-center">Status</th>
+                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                      <th className="py-2.5 px-3.5">Role Code</th>
+                      <th className="py-2.5 px-3.5">Designation Title</th>
+                      <th className="py-2.5 px-3.5">Department Mapping</th>
+                      <th className="py-2.5 px-3.5">Job Description</th>
+                      <th className="py-2.5 px-3.5 text-center">Headcount</th>
+                      <th className="py-2.5 px-3.5 text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredDesignations.map((desig) => (
+                    {paginatedDesignations.map((desig) => (
                       <tr key={desig.id} className="hover:bg-slate-50/60 transition">
-                        <td className="py-4 px-6 font-mono font-bold text-purple-700">{desig.code}</td>
-                        <td className="py-4 px-6 font-bold text-slate-800">{desig.name}</td>
-                        <td className="py-4 px-6">
-                          <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-[11px] font-semibold">
+                        <td className="py-2 px-3.5 font-mono font-bold text-slate-800">{desig.code}</td>
+                        <td className="py-2 px-3.5 font-semibold text-slate-800">{desig.name}</td>
+                        <td className="py-2 px-3.5">
+                          <span className="bg-slate-100 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded text-[10px] font-medium">
                             {desig.departmentName || 'All Departments'}
                           </span>
                         </td>
-                        <td className="py-4 px-6 text-slate-500">{desig.description || '—'}</td>
-                        <td className="py-4 px-6 text-center font-mono">
-                          <span className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full font-bold">
+                        <td className="py-2 px-3.5 text-slate-500 text-[11px]">{desig.description || '—'}</td>
+                        <td className="py-2 px-3.5 text-center font-mono">
+                          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">
                             {desig.employeeCount || 0} employees
                           </span>
                         </td>
-                        <td className="py-4 px-6 text-center">
-                          <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold">
+                        <td className="py-2 px-3.5 text-center">
+                          <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded text-[10px] font-semibold border border-emerald-200">
                             Active
                           </span>
                         </td>
@@ -514,43 +468,43 @@ export default function MastersPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      <th className="py-3.5 px-6">Unit Code</th>
-                      <th className="py-3.5 px-6">Branch / Unit Name</th>
-                      <th className="py-3.5 px-6">Facility Type</th>
-                      <th className="py-3.5 px-6">Location (City, State)</th>
-                      <th className="py-3.5 px-6">Address</th>
-                      <th className="py-3.5 px-6 text-center">Assigned Workforce</th>
-                      <th className="py-3.5 px-6 text-center">Status</th>
+                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                      <th className="py-2.5 px-3.5">Unit Code</th>
+                      <th className="py-2.5 px-3.5">Branch / Unit Name</th>
+                      <th className="py-2.5 px-3.5">Facility Type</th>
+                      <th className="py-2.5 px-3.5">Location</th>
+                      <th className="py-2.5 px-3.5">Address</th>
+                      <th className="py-2.5 px-3.5 text-center">Workforce</th>
+                      <th className="py-2.5 px-3.5 text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredBranches.map((b) => (
+                    {paginatedBranches.map((b) => (
                       <tr key={b.id} className="hover:bg-slate-50/60 transition">
-                        <td className="py-4 px-6 font-mono font-bold text-emerald-700">{b.code}</td>
-                        <td className="py-4 px-6 font-bold text-slate-800">{b.name}</td>
-                        <td className="py-4 px-6">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                        <td className="py-2 px-3.5 font-mono font-bold text-slate-800">{b.code}</td>
+                        <td className="py-2 px-3.5 font-semibold text-slate-800">{b.name}</td>
+                        <td className="py-2 px-3.5">
+                          <span className={`px-1.5 py-0.2 rounded text-[10px] font-semibold uppercase tracking-wider border ${
                             b.type === 'FACTORY_UNIT'
                               ? 'bg-amber-50 text-amber-800 border-amber-200'
                               : b.type === 'HEAD_OFFICE'
-                              ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                              ? 'bg-blue-50 text-blue-800 border-blue-200'
                               : 'bg-slate-100 text-slate-700 border-slate-200'
                           }`}>
                             {b.type.replace('_', ' ')}
                           </span>
                         </td>
-                        <td className="py-4 px-6 font-medium text-slate-700">
+                        <td className="py-2 px-3.5 font-medium text-slate-700">
                           {b.city ? `${b.city}, ${b.state || ''}` : '—'}
                         </td>
-                        <td className="py-4 px-6 text-slate-500">{b.address || '—'}</td>
-                        <td className="py-4 px-6 text-center font-mono">
-                          <span className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full font-bold">
+                        <td className="py-2 px-3.5 text-slate-500 text-[11px]">{b.address || '—'}</td>
+                        <td className="py-2 px-3.5 text-center font-mono">
+                          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">
                             {b.employeeCount || 0} employees
                           </span>
                         </td>
-                        <td className="py-4 px-6 text-center">
-                          <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold">
+                        <td className="py-2 px-3.5 text-center">
+                          <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded text-[10px] font-semibold border border-emerald-200">
                             Active
                           </span>
                         </td>
@@ -566,31 +520,31 @@ export default function MastersPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      <th className="py-3.5 px-6">Shift Code</th>
-                      <th className="py-3.5 px-6">Shift Name</th>
-                      <th className="py-3.5 px-6">Working Hours</th>
-                      <th className="py-3.5 px-6">Break Duration</th>
-                      <th className="py-3.5 px-6 text-center">Assigned Employees</th>
-                      <th className="py-3.5 px-6 text-center">Status</th>
+                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                      <th className="py-2.5 px-3.5">Shift Code</th>
+                      <th className="py-2.5 px-3.5">Shift Name</th>
+                      <th className="py-2.5 px-3.5">Working Hours</th>
+                      <th className="py-2.5 px-3.5">Break</th>
+                      <th className="py-2.5 px-3.5 text-center">Assigned Employees</th>
+                      <th className="py-2.5 px-3.5 text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredShifts.map((s) => (
+                    {paginatedShifts.map((s) => (
                       <tr key={s.id} className="hover:bg-slate-50/60 transition">
-                        <td className="py-4 px-6 font-mono font-bold text-amber-700">{s.code}</td>
-                        <td className="py-4 px-6 font-bold text-slate-800">{s.name}</td>
-                        <td className="py-4 px-6 font-mono font-semibold text-slate-700">
+                        <td className="py-2 px-3.5 font-mono font-bold text-slate-800">{s.code}</td>
+                        <td className="py-2 px-3.5 font-semibold text-slate-800">{s.name}</td>
+                        <td className="py-2 px-3.5 font-mono font-semibold text-slate-700">
                           {s.startTime} — {s.endTime}
                         </td>
-                        <td className="py-4 px-6 text-slate-500">{s.breakMinutes} mins</td>
-                        <td className="py-4 px-6 text-center font-mono">
-                          <span className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full font-bold">
+                        <td className="py-2 px-3.5 text-slate-500">{s.breakMinutes} mins</td>
+                        <td className="py-2 px-3.5 text-center font-mono">
+                          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">
                             {s.employeeCount || 0} employees
                           </span>
                         </td>
-                        <td className="py-4 px-6 text-center">
-                          <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold">
+                        <td className="py-2 px-3.5 text-center">
+                          <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded text-[10px] font-semibold border border-emerald-200">
                             Active
                           </span>
                         </td>
@@ -606,27 +560,27 @@ export default function MastersPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      <th className="py-3.5 px-6">Category Code</th>
-                      <th className="py-3.5 px-6">Employment Category</th>
-                      <th className="py-3.5 px-6">Description</th>
-                      <th className="py-3.5 px-6 text-center">Assigned Workforce</th>
-                      <th className="py-3.5 px-6 text-center">Status</th>
+                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                      <th className="py-2.5 px-3.5">Category Code</th>
+                      <th className="py-2.5 px-3.5">Employment Category</th>
+                      <th className="py-2.5 px-3.5">Description</th>
+                      <th className="py-2.5 px-3.5 text-center">Assigned Workforce</th>
+                      <th className="py-2.5 px-3.5 text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredEmploymentTypes.map((et) => (
+                    {paginatedEmploymentTypes.map((et) => (
                       <tr key={et.id} className="hover:bg-slate-50/60 transition">
-                        <td className="py-4 px-6 font-mono font-bold text-rose-700">{et.code}</td>
-                        <td className="py-4 px-6 font-bold text-slate-800">{et.name}</td>
-                        <td className="py-4 px-6 text-slate-500">{et.description || '—'}</td>
-                        <td className="py-4 px-6 text-center font-mono">
-                          <span className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full font-bold">
+                        <td className="py-2 px-3.5 font-mono font-bold text-slate-800">{et.code}</td>
+                        <td className="py-2 px-3.5 font-semibold text-slate-800">{et.name}</td>
+                        <td className="py-2 px-3.5 text-slate-500 text-[11px]">{et.description || '—'}</td>
+                        <td className="py-2 px-3.5 text-center font-mono">
+                          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">
                             {et.employeeCount || 0} employees
                           </span>
                         </td>
-                        <td className="py-4 px-6 text-center">
-                          <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold">
+                        <td className="py-2 px-3.5 text-center">
+                          <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded text-[10px] font-semibold border border-emerald-200">
                             Active
                           </span>
                         </td>
@@ -636,6 +590,36 @@ export default function MastersPage() {
                 </table>
               </div>
             )}
+
+            {/* Pagination Controls */}
+            <div className="px-3.5 py-2 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between text-xs text-slate-500">
+              <div>
+                Showing <span className="font-semibold text-slate-800">{activeList.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}</span> to <span className="font-semibold text-slate-800">{Math.min(currentPage * pageSize, activeList.length)}</span> of <span className="font-semibold text-slate-800">{activeList.length}</span> records
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  className="px-2 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Prev</span>
+                </button>
+                <span className="px-2 py-1 font-mono text-xs text-slate-700 font-semibold">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  className="px-2 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

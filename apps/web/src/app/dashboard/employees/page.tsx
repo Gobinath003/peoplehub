@@ -7,7 +7,7 @@ import { API_BASE_URL } from '../../../config/api';
 import { 
   Users, Plus, Search, Filter, Check, X, 
   Building2, Briefcase, Calendar, Phone, 
-  BadgeCheck, DollarSign, ChevronRight, AlertCircle, Scissors, Layers,
+  BadgeCheck, DollarSign, ChevronRight, ChevronLeft, AlertCircle, Scissors, Layers,
   Pencil, Trash2, Lock
 } from 'lucide-react';
 import { EmployeeDto, MasterBundleDto } from '@people-hub/shared-types';
@@ -503,6 +503,10 @@ export default function EmployeesPage() {
     setSuccessMsg(`Employee "${emp.firstName} ${emp.lastName}" (${emp.employeeCode}) deleted successfully.`);
   };
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
   // Filtered employees
   const filteredEmployees = employees.filter(emp => {
     const matchesSearch = 
@@ -515,201 +519,233 @@ export default function EmployeesPage() {
     return matchesSearch && matchesDept;
   });
 
+  const totalPages = Math.max(1, Math.ceil(filteredEmployees.length / pageSize));
+  const paginatedEmployees = filteredEmployees.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   const departments = ['ALL', ...Array.from(new Set([
     ...masterBundle.departments.map(d => d.name),
     ...employees.map(e => e.department)
   ]))];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-slate-800">Employee Directory</h1>
-            <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-xs border border-emerald-200">
-              {activeTenant?.name}
+    <div className="space-y-3">
+      {/* Compact Action Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2">
+          <h1 className="text-base font-bold text-slate-900 tracking-tight">Employee Directory</h1>
+          <span className="bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded text-[11px] border border-slate-200 font-mono">
+            {filteredEmployees.length}
+          </span>
+          {activeTenant?.name && (
+            <span className="bg-emerald-50 text-emerald-700 font-medium px-2 py-0.5 rounded text-[11px] border border-emerald-200">
+              {activeTenant.name}
             </span>
-          </div>
-          <p className="text-slate-500 text-sm mt-1">
-            Maintain organizational headcount, designations, branch assignments, and employee wage profiles.
-          </p>
+          )}
         </div>
 
-        <button
-          onClick={handleOpenAddModal}
-          className="bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shadow flex items-center gap-2 self-start md:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add New Employee</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+            <input
+              type="text"
+              placeholder="Search code, name, phone..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 w-44 sm:w-56"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <select
+              value={selectedDept}
+              onChange={(e) => {
+                setSelectedDept(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="py-1.5 px-2.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-slate-400"
+            >
+              {departments.map(d => (
+                <option key={d} value={d}>{d === 'ALL' ? 'All Depts' : d}</option>
+              ))}
+            </select>
+
+            <button
+              onClick={handleOpenAddModal}
+              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition shadow-2xs flex items-center gap-1.5 shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Employee</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Success Banner */}
       {successMsg && (
-        <div className="p-4 bg-emerald-50 border-l-4 border-emerald-500 text-emerald-800 rounded-lg text-xs flex items-center justify-between font-semibold">
+        <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs flex items-center justify-between font-medium">
           <div className="flex items-center gap-2">
             <Check className="w-4 h-4 text-emerald-600" />
             <span>{successMsg}</span>
           </div>
           <button onClick={() => setSuccessMsg(null)} className="text-emerald-600 hover:text-emerald-800">
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
-      {/* Search and Filters Bar */}
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            placeholder="Search by code, name, phone, designation..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Filter className="w-4 h-4 text-slate-400" />
-          <span className="text-slate-500 font-semibold">Department:</span>
-          <select
-            value={selectedDept}
-            onChange={(e) => setSelectedDept(e.target.value)}
-            className="border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            {departments.map(d => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
       {/* Employee List Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
         {loading ? (
-          <div className="p-12 flex justify-center">
-            <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="p-8 flex justify-center">
+            <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : filteredEmployees.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-xs">
+          <div className="p-8 text-center text-slate-400 text-xs">
             No employees found matching criteria.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  <th className="py-3.5 px-6">Employee</th>
-                  <th className="py-3.5 px-6">Department & Role</th>
-                  <th className="py-3.5 px-6">Branch Scope</th>
-                  <th className="py-3.5 px-6">Compensation Profile</th>
-                  <th className="py-3.5 px-6">Status</th>
-                  <th className="py-3.5 px-6 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredEmployees.map(emp => (
-                  <tr key={emp.id} className="hover:bg-slate-50/70 transition">
-                    {/* Employee Info - Email omitted in default visible mode */}
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-primary-100 text-primary-700 font-bold flex items-center justify-center text-xs">
-                          {emp.firstName[0]}{emp.lastName[0]}
-                        </div>
-                        <div>
-                          <div className="font-bold text-slate-800 text-sm">{emp.firstName} {emp.lastName}</div>
-                          <div className="flex items-center gap-2 text-slate-400 text-[11px] mt-0.5">
-                            <span className="font-mono bg-slate-100 px-1.5 py-0.2 rounded font-bold text-slate-700">{emp.employeeCode}</span>
-                            <span>•</span>
-                            <span className="flex items-center gap-1">
-                              <Phone className="w-3 h-3 text-slate-400" />
-                              <span>{emp.phone || 'No mobile'}</span>
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Department & Role */}
-                    <td className="py-4 px-6">
-                      <div className="font-semibold text-slate-700">{emp.designation}</div>
-                      <div className="text-slate-400 text-[11px] flex items-center gap-1 mt-0.5">
-                        <Briefcase className="w-3 h-3 text-slate-400" />
-                        <span>{emp.department}</span>
-                      </div>
-                    </td>
-
-                    {/* Branch */}
-                    <td className="py-4 px-6">
-                      <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 font-semibold px-2.5 py-1 rounded-full text-[11px] border border-slate-200">
-                        <Building2 className="w-3 h-3 text-slate-400" />
-                        <span>{emp.branch || 'Global Branch'}</span>
-                      </span>
-                    </td>
-
-                    {/* Compensation */}
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        {emp.salaryType === 'PIECE_RATE' ? (
-                          <span className="bg-amber-50 text-amber-800 font-bold px-2 py-0.5 rounded text-[10px] border border-amber-200 inline-flex items-center gap-1">
-                            <Scissors className="w-3 h-3 text-amber-600" />
-                            <span>Piece-Rate Worker</span>
-                          </span>
-                        ) : (
-                          <span className="bg-blue-50 text-blue-800 font-bold px-2 py-0.5 rounded text-[10px] border border-blue-200">
-                            Monthly Fixed
-                          </span>
-                        )}
-                      </div>
-                      {emp.salaryType === 'PIECE_RATE' ? (
-                        <div className="text-[11px] text-slate-500 font-medium">
-                          Daily piece output rate
-                        </div>
-                      ) : emp.salaryStructure ? (
-                        <div>
-                          <div className="font-bold text-emerald-700 text-xs">
-                            ₹{emp.salaryStructure.grossSalary.toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">/ mo</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-slate-400 text-[10px]">Standard Scale</span>
-                      )}
-                    </td>
-
-                    {/* Status */}
-                    <td className="py-4 px-6">
-                      <span className="bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded text-[10px] border border-emerald-200">
-                        {emp.status}
-                      </span>
-                    </td>
-
-                    {/* Action Buttons: Edit and Delete */}
-                    <td className="py-4 px-6 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditModal(emp)}
-                          title="Edit Employee"
-                          className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteEmployee(emp)}
-                          title="Delete Employee"
-                          className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+          <div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                    <th className="py-2.5 px-3.5">Employee</th>
+                    <th className="py-2.5 px-3.5">Department & Role</th>
+                    <th className="py-2.5 px-3.5">Branch Scope</th>
+                    <th className="py-2.5 px-3.5">Compensation Profile</th>
+                    <th className="py-2.5 px-3.5">Status</th>
+                    <th className="py-2.5 px-3.5 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {paginatedEmployees.map(emp => (
+                    <tr key={emp.id} className="hover:bg-slate-50/60 transition">
+                      {/* Employee Info - Email omitted in default visible mode */}
+                      <td className="py-2 px-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-md bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-[10px] shrink-0 border border-slate-200">
+                            {emp.firstName[0]}{emp.lastName[0]}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-semibold text-slate-900 text-xs truncate">
+                              {emp.firstName} {emp.lastName}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-slate-500 text-[10px]">
+                              <span className="font-mono bg-slate-100 px-1 py-0.2 rounded font-semibold text-slate-700">{emp.employeeCode}</span>
+                              <span>•</span>
+                              <span className="flex items-center gap-0.5">
+                                <Phone className="w-2.5 h-2.5 text-slate-400" />
+                                <span>{emp.phone || 'No mobile'}</span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Department & Role */}
+                      <td className="py-2 px-3.5">
+                        <div className="font-medium text-slate-800 text-xs">{emp.designation}</div>
+                        <div className="text-slate-400 text-[10px]">{emp.department}</div>
+                      </td>
+
+                      {/* Branch */}
+                      <td className="py-2 px-3.5">
+                        <span className="inline-flex items-center gap-1 bg-slate-50 text-slate-700 font-medium px-2 py-0.5 rounded text-[11px] border border-slate-200">
+                          <Building2 className="w-3 h-3 text-slate-400" />
+                          <span>{emp.branch || 'Global Branch'}</span>
+                        </span>
+                      </td>
+
+                      {/* Compensation */}
+                      <td className="py-2 px-3.5">
+                        <div className="flex items-center gap-1.5">
+                          {emp.salaryType === 'PIECE_RATE' ? (
+                            <span className="bg-amber-50 text-amber-800 font-semibold px-2 py-0.5 rounded text-[10px] border border-amber-200 inline-flex items-center gap-1">
+                              <Scissors className="w-2.5 h-2.5 text-amber-600" />
+                              <span>Piece-Rate Output</span>
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              <span className="bg-blue-50 text-blue-700 font-semibold px-1.5 py-0.5 rounded text-[10px] border border-blue-200">
+                                Fixed
+                              </span>
+                              {emp.salaryStructure && (
+                                <span className="font-bold text-slate-900 text-xs font-mono">
+                                  ₹{emp.salaryStructure.grossSalary.toLocaleString()}
+                                  <span className="text-[10px] text-slate-400 font-normal">/mo</span>
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-2 px-3.5">
+                        <span className="bg-emerald-50 text-emerald-700 font-semibold px-1.5 py-0.5 rounded text-[10px] border border-emerald-200">
+                          {emp.status}
+                        </span>
+                      </td>
+
+                      {/* Action Buttons: Edit and Delete */}
+                      <td className="py-2 px-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditModal(emp)}
+                            title="Edit Employee"
+                            className="p-1 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded transition"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteEmployee(emp)}
+                            title="Delete Employee"
+                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="px-3.5 py-2 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between text-xs text-slate-500">
+              <div>
+                Showing <span className="font-semibold text-slate-800">{filteredEmployees.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}</span> to <span className="font-semibold text-slate-800">{Math.min(currentPage * pageSize, filteredEmployees.length)}</span> of <span className="font-semibold text-slate-800">{filteredEmployees.length}</span> records
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  className="px-2 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Prev</span>
+                </button>
+                <span className="px-2 py-1 font-mono text-xs text-slate-700 font-semibold">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  className="px-2 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

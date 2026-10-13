@@ -8,9 +8,17 @@ import { RequirePermissions } from '../auth/permissions.decorator';
 import { CurrentTenantId } from '../auth/current-tenant.decorator';
 import { PermissionCode, ScopeType, UserResponse, UserRoleResponse } from '@people-hub/shared-types';
 
+import { IsString, IsOptional } from 'class-validator';
+
 class AssignRoleDto {
+  @IsString()
   roleId!: string;
+
+  @IsString()
   scopeType!: ScopeType;
+
+  @IsOptional()
+  @IsString()
   scopeId!: string | null;
 }
 

@@ -21,6 +21,7 @@ interface AppContextProps {
   accessToken: string | null;
   loading: boolean;
   isSuperAdmin: boolean;
+  isTenantAdmin: boolean;
   isHRManager: boolean;
   activeBranchScope: string | null;
   login: (email: string, passwordHash: string) => Promise<boolean>;
@@ -43,9 +44,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Derived role properties
-  const isSuperAdmin = roles.some(r => r.roleCode === 'TENANT_ADMIN') || user?.email === 'admin@peoplehub.com';
-  const isHRManager = roles.some(r => r.roleCode === 'HR_MANAGER');
+  // Derived role properties: Platform Super Admin is restricted to global admin@peoplehub.com
+  const isSuperAdmin = user?.email === 'admin@peoplehub.com';
+  const isTenantAdmin = roles.some(r => r.roleCode === 'TENANT_ADMIN') || isSuperAdmin;
+  const isHRManager = roles.some(r => r.roleCode === 'HR_MANAGER') || isTenantAdmin;
   const branchRole = roles.find(r => r.scopeType === ScopeType.BRANCH);
   const activeBranchScope = branchRole ? branchRole.scopeId : null;
 
@@ -275,6 +277,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       accessToken,
       loading,
       isSuperAdmin,
+      isTenantAdmin,
       isHRManager,
       activeBranchScope,
       login,

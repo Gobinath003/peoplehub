@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, HttpCode, HttpStatus, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { TenantsService } from './tenants.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -6,6 +6,7 @@ import { TenantGuard } from '../auth/tenant.guard';
 import { PermissionGuard } from '../auth/permission.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
 import { CurrentTenantId } from '../auth/current-tenant.decorator';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { 
   PermissionCode, 
   TenantModuleResponse, 
@@ -54,7 +55,10 @@ export class TenantsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List all companies/tenants in the platform (Super Admin)' })
   @ApiResponse({ status: 200, description: 'All companies retrieved successfully' })
-  async listAllTenants() {
+  async listAllTenants(@CurrentUser() user: any) {
+    if (user?.email !== 'admin@peoplehub.com') {
+      throw new ForbiddenException('Only platform Super Admin can list all platform tenants');
+    }
     return this.tenantsService.listAllTenants();
   }
 
@@ -64,7 +68,10 @@ export class TenantsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new Company Tenant and provision initial HR Manager (Super Admin)' })
   @ApiResponse({ status: 201, description: 'Company Tenant and Manager created successfully' })
-  async createTenant(@Body() dto: CreateTenantDto) {
+  async createTenant(@CurrentUser() user: any, @Body() dto: CreateTenantDto) {
+    if (user?.email !== 'admin@peoplehub.com') {
+      throw new ForbiddenException('Only platform Super Admin can create new tenants');
+    }
     return this.tenantsService.createTenantWithAdmin(dto);
   }
 

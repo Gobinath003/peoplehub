@@ -43,16 +43,27 @@ export class EmployeesService {
   }
 
   async create(tenantId: string, dto: CreateEmployeeRequest): Promise<EmployeeDto> {
-    // 1. Check if employee code already exists in tenant
-    const existing = await this.prisma.tenantClient.employee.findFirst({
-      where: {
-        tenantId,
-        employeeCode: dto.employeeCode
+    // 1. Resolve or auto-generate employee code
+    let finalCode = dto.employeeCode ? dto.employeeCode.trim().toUpperCase() : '';
+    if (!finalCode) {
+      const count = await this.prisma.tenantClient.employee.count({ where: { tenantId } });
+      let attempt = count + 1;
+      finalCode = `EMP-${attempt.toString().padStart(4, '0')}`;
+      while (await this.prisma.tenantClient.employee.findFirst({ where: { tenantId, employeeCode: finalCode } })) {
+        attempt++;
+        finalCode = `EMP-${attempt.toString().padStart(4, '0')}`;
       }
-    });
+    } else {
+      const existing = await this.prisma.tenantClient.employee.findFirst({
+        where: {
+          tenantId,
+          employeeCode: finalCode
+        }
+      });
 
-    if (existing) {
-      throw new ConflictException(`Employee code "${dto.employeeCode}" already exists in this company`);
+      if (existing) {
+        throw new ConflictException(`Employee code "${finalCode}" already exists in this company`);
+      }
     }
 
     return this.prisma.$transaction(async (tx: any) => {
@@ -77,7 +88,7 @@ export class EmployeesService {
       const employee = await tx.employee.create({
         data: {
           tenantId,
-          employeeCode: dto.employeeCode.trim(),
+          employeeCode: finalCode,
           firstName: dto.firstName.trim(),
           lastName: dto.lastName.trim(),
           email: dto.email ? dto.email.toLowerCase().trim() : null,

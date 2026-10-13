@@ -17,8 +17,9 @@ import {
 import { IsString, IsOptional, IsNumber } from 'class-validator';
 
 class CreateEmployeeDto implements CreateEmployeeRequest {
+  @IsOptional()
   @IsString()
-  employeeCode!: string;
+  employeeCode?: string;
 
   @IsString()
   firstName!: string;

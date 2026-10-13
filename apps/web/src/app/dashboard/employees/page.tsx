@@ -6,8 +6,9 @@ import { useApp } from '../../../context/AppContext';
 import { API_BASE_URL } from '../../../config/api';
 import { 
   Users, Plus, Search, Filter, Check, X, 
-  Building2, Briefcase, Calendar, Phone, Mail, 
-  BadgeCheck, DollarSign, ChevronRight, AlertCircle, Scissors, Layers 
+  Building2, Briefcase, Calendar, Phone, 
+  BadgeCheck, DollarSign, ChevronRight, AlertCircle, Scissors, Layers,
+  Pencil, Trash2, Lock
 } from 'lucide-react';
 import { EmployeeDto, MasterBundleDto } from '@people-hub/shared-types';
 
@@ -39,32 +40,33 @@ const DEFAULT_GARMENT_MASTERS: MasterBundleDto = {
 };
 
 export default function EmployeesPage() {
-  const { activeTenant, accessToken, isHRManager, activeBranchScope } = useApp();
+  const { activeTenant, accessToken, activeBranchScope } = useApp();
   const [employees, setEmployees] = useState<EmployeeDto[]>([]);
   const [masterBundle, setMasterBundle] = useState<MasterBundleDto>(DEFAULT_GARMENT_MASTERS);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState('ALL');
   const [modalOpen, setModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Form State with Master IDs
+  // Add Form State
   const [salaryType, setSalaryType] = useState('MONTHLY_FIXED');
   const [employeeCode, setEmployeeCode] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [selectedDeptId, setSelectedDeptId] = useState(DEFAULT_GARMENT_MASTERS.departments[0].id);
-  const [selectedDesigId, setSelectedDesigId] = useState(DEFAULT_GARMENT_MASTERS.designations[0].id);
-  const [selectedBranchId, setSelectedBranchId] = useState(DEFAULT_GARMENT_MASTERS.branches[0].id);
-  const [selectedShiftId, setSelectedShiftId] = useState(DEFAULT_GARMENT_MASTERS.shifts[0].id);
-  const [selectedEmpTypeId, setSelectedEmpTypeId] = useState(DEFAULT_GARMENT_MASTERS.employmentTypes[0].id);
-  const [department, setDepartment] = useState(DEFAULT_GARMENT_MASTERS.departments[0].name);
-  const [designation, setDesignation] = useState(DEFAULT_GARMENT_MASTERS.designations[0].name);
-  const [branch, setBranch] = useState(DEFAULT_GARMENT_MASTERS.branches[0].name);
+  const [selectedDeptId, setSelectedDeptId] = useState('');
+  const [selectedDesigId, setSelectedDesigId] = useState('');
+  const [selectedBranchId, setSelectedBranchId] = useState('');
+  const [selectedShiftId, setSelectedShiftId] = useState('');
+  const [selectedEmpTypeId, setSelectedEmpTypeId] = useState('');
+  const [department, setDepartment] = useState('');
+  const [designation, setDesignation] = useState('');
+  const [branch, setBranch] = useState('');
   const [joiningDate, setJoiningDate] = useState('2026-01-15');
   const [basicSalary, setBasicSalary] = useState('22000');
   const [hra, setHra] = useState('8000');
@@ -72,6 +74,25 @@ export default function EmployeesPage() {
   const [conveyanceAllowance, setConveyanceAllowance] = useState('1500');
   const [pfDeduction, setPfDeduction] = useState('1800');
   const [taxDeduction, setTaxDeduction] = useState('1000');
+
+  // Edit Form State
+  const [editingEmpId, setEditingEmpId] = useState('');
+  const [editEmpCode, setEditEmpCode] = useState('');
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editDeptId, setEditDeptId] = useState('');
+  const [editDesigId, setEditDesigId] = useState('');
+  const [editBranchId, setEditBranchId] = useState('');
+  const [editShiftId, setEditShiftId] = useState('');
+  const [editEmpTypeId, setEditEmpTypeId] = useState('');
+  const [editDepartment, setEditDepartment] = useState('');
+  const [editDesignation, setEditDesignation] = useState('');
+  const [editBranch, setEditBranch] = useState('');
+  const [editSalaryType, setEditSalaryType] = useState('MONTHLY_FIXED');
+  const [editBasicSalary, setEditBasicSalary] = useState('20000');
+  const [editHra, setEditHra] = useState('5000');
+  const [editStatus, setEditStatus] = useState('ACTIVE');
 
   const fetchMasters = async () => {
     try {
@@ -104,7 +125,7 @@ export default function EmployeesPage() {
         }
       }
     } catch (e) {
-      console.warn('Could not fetch master bundle from API, using robust default garment masters', e);
+      console.warn('Could not fetch master bundle from API, using default masters', e);
     }
   };
 
@@ -128,13 +149,13 @@ export default function EmployeesPage() {
       console.warn('API error fetching employees, using mock', e);
     }
 
-    // Mock initial data
+    // Initial mock data if empty
     const mockEmployees: EmployeeDto[] = [
       {
         id: 'e1',
         tenantId: activeTenant.id,
         userId: null,
-        employeeCode: 'EMP-101',
+        employeeCode: 'EMP-0001',
         firstName: 'Kavitha',
         lastName: 'Ramesh',
         email: 'kavitha.r@garments.com',
@@ -149,15 +170,15 @@ export default function EmployeesPage() {
         salaryStructure: {
           id: 's1',
           employeeId: 'e1',
-          basicSalary: 25000,
-          hra: 10000,
-          specialAllowance: 3000,
-          conveyanceAllowance: 2000,
+          basicSalary: 24000,
+          hra: 9600,
+          specialAllowance: 2500,
+          conveyanceAllowance: 1500,
           pfDeduction: 1800,
           taxDeduction: 1200,
           otherDeductions: 0,
-          grossSalary: 40000,
-          netSalary: 37000,
+          grossSalary: 37600,
+          netSalary: 34600,
           currency: 'INR',
           effectiveDate: '2025-06-01T00:00:00Z'
         }
@@ -166,65 +187,19 @@ export default function EmployeesPage() {
         id: 'e2',
         tenantId: activeTenant.id,
         userId: null,
-        employeeCode: 'EMP-102',
-        firstName: 'Anand',
-        lastName: 'Murugan',
-        email: 'anand.m@garments.com',
+        employeeCode: 'EMP-0002',
+        firstName: 'Muthu',
+        lastName: 'Vel',
+        email: 'muthu.v@garments.com',
         phone: '+91 98402 34567',
-        department: 'Cutting & Tailoring',
-        designation: 'Cutting Master & Multi-Skill Artisan',
-        branch: 'Chennai Branch',
-        salaryType: 'PIECE_RATE',
-        joiningDate: '2025-09-15T00:00:00Z',
-        status: 'ACTIVE',
-        createdAt: '2025-09-15T00:00:00Z',
-        salaryStructure: {
-          id: 's2',
-          employeeId: 'e2',
-          basicSalary: 0,
-          hra: 0,
-          specialAllowance: 1500,
-          conveyanceAllowance: 1000,
-          pfDeduction: 1200,
-          taxDeduction: 500,
-          otherDeductions: 0,
-          grossSalary: 2500,
-          netSalary: 800,
-          currency: 'INR',
-          effectiveDate: '2025-09-15T00:00:00Z'
-        }
-      },
-      {
-        id: 'e3',
-        tenantId: activeTenant.id,
-        userId: null,
-        employeeCode: 'EMP-103',
-        firstName: 'Suresh',
-        lastName: 'Babu',
-        email: 'suresh.b@garments.com',
-        phone: '+91 98403 45678',
-        department: 'Cutting & Pattern',
-        designation: 'Pattern Specialist',
+        department: 'Sewing & Stitching',
+        designation: 'Senior Tailor Master',
         branch: 'Tirupur Unit',
-        salaryType: 'MONTHLY_FIXED',
-        joiningDate: '2026-02-01T00:00:00Z',
+        salaryType: 'PIECE_RATE',
+        joiningDate: '2026-01-10T00:00:00Z',
         status: 'ACTIVE',
-        createdAt: '2026-02-01T00:00:00Z',
-        salaryStructure: {
-          id: 's3',
-          employeeId: 'e3',
-          basicSalary: 22000,
-          hra: 8800,
-          specialAllowance: 2500,
-          conveyanceAllowance: 1500,
-          pfDeduction: 1800,
-          taxDeduction: 800,
-          otherDeductions: 0,
-          grossSalary: 34800,
-          netSalary: 32200,
-          currency: 'INR',
-          effectiveDate: '2026-02-01T00:00:00Z'
-        }
+        createdAt: '2026-01-10T00:00:00Z',
+        salaryStructure: null
       }
     ];
 
@@ -237,10 +212,59 @@ export default function EmployeesPage() {
     fetchMasters();
   }, [activeTenant, accessToken]);
 
+  // Generate next automatic employee code
+  const getNextEmployeeCode = () => {
+    const codes = employees.map(e => e.employeeCode.toUpperCase());
+    let nextNum = employees.length + 1;
+    let generated = `EMP-${nextNum.toString().padStart(4, '0')}`;
+    while (codes.includes(generated)) {
+      nextNum++;
+      generated = `EMP-${nextNum.toString().padStart(4, '0')}`;
+    }
+    return generated;
+  };
+
+  const handleOpenAddModal = () => {
+    const autoCode = getNextEmployeeCode();
+    setEmployeeCode(autoCode);
+    setFirstName('');
+    setLastName('');
+    setEmail('');
+    setPhone('');
+    setSalaryType('MONTHLY_FIXED');
+    setBasicSalary('22000');
+    setHra('8000');
+    setSpecialAllowance('2500');
+    setConveyanceAllowance('1500');
+    setPfDeduction('1800');
+    setTaxDeduction('1000');
+    if (masterBundle.departments.length > 0) {
+      setSelectedDeptId(masterBundle.departments[0].id);
+      setDepartment(masterBundle.departments[0].name);
+    }
+    if (masterBundle.designations.length > 0) {
+      setSelectedDesigId(masterBundle.designations[0].id);
+      setDesignation(masterBundle.designations[0].name);
+    }
+    if (masterBundle.branches.length > 0) {
+      setSelectedBranchId(masterBundle.branches[0].id);
+      setBranch(masterBundle.branches[0].name);
+    }
+    if (masterBundle.shifts.length > 0) {
+      setSelectedShiftId(masterBundle.shifts[0].id);
+    }
+    if (masterBundle.employmentTypes.length > 0) {
+      setSelectedEmpTypeId(masterBundle.employmentTypes[0].id);
+    }
+    setModalOpen(true);
+  };
+
   const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setErrorMsg(null);
+
+    const isPieceRate = salaryType === 'PIECE_RATE';
 
     const payload = {
       employeeCode: employeeCode.trim(),
@@ -259,12 +283,12 @@ export default function EmployeesPage() {
       salaryType,
       joiningDate,
       status: 'ACTIVE',
-      basicSalary: Number(basicSalary) || 0,
-      hra: Number(hra) || 0,
-      specialAllowance: Number(specialAllowance) || 0,
-      conveyanceAllowance: Number(conveyanceAllowance) || 0,
-      pfDeduction: Number(pfDeduction) || 0,
-      taxDeduction: Number(taxDeduction) || 0,
+      basicSalary: isPieceRate ? 0 : (Number(basicSalary) || 0),
+      hra: isPieceRate ? 0 : (Number(hra) || 0),
+      specialAllowance: isPieceRate ? 0 : (Number(specialAllowance) || 0),
+      conveyanceAllowance: isPieceRate ? 0 : (Number(conveyanceAllowance) || 0),
+      pfDeduction: isPieceRate ? 0 : (Number(pfDeduction) || 0),
+      taxDeduction: isPieceRate ? 0 : (Number(taxDeduction) || 0),
     };
 
     try {
@@ -279,10 +303,9 @@ export default function EmployeesPage() {
       });
 
       if (res.ok) {
-        setSuccessMsg(`Employee "${payload.firstName} ${payload.lastName}" (${payload.employeeCode}) added successfully with ${salaryType === 'PIECE_RATE' ? 'Piece-Rate' : 'Monthly Fixed'} salary!`);
+        setSuccessMsg(`Employee "${payload.firstName} ${payload.lastName}" (${payload.employeeCode}) created successfully!`);
         await fetchEmployees();
         setModalOpen(false);
-        resetForm();
         setSaving(false);
         return;
       } else {
@@ -296,9 +319,6 @@ export default function EmployeesPage() {
     }
 
     // Local fallback
-    const gross = payload.basicSalary + payload.hra + payload.specialAllowance + payload.conveyanceAllowance;
-    const net = gross - (payload.pfDeduction + payload.taxDeduction);
-
     const newEmp: EmployeeDto = {
       id: `e-${Date.now()}`,
       tenantId: activeTenant?.id || '',
@@ -320,7 +340,7 @@ export default function EmployeesPage() {
       joiningDate: payload.joiningDate,
       status: 'ACTIVE',
       createdAt: new Date().toISOString(),
-      salaryStructure: {
+      salaryStructure: isPieceRate ? null : {
         id: `s-${Date.now()}`,
         employeeId: `e-${Date.now()}`,
         basicSalary: payload.basicSalary,
@@ -330,59 +350,164 @@ export default function EmployeesPage() {
         pfDeduction: payload.pfDeduction,
         taxDeduction: payload.taxDeduction,
         otherDeductions: 0,
-        grossSalary: gross,
-        netSalary: net,
+        grossSalary: payload.basicSalary + payload.hra + payload.specialAllowance + payload.conveyanceAllowance,
+        netSalary: (payload.basicSalary + payload.hra + payload.specialAllowance + payload.conveyanceAllowance) - (payload.pfDeduction + payload.taxDeduction),
         currency: 'INR',
         effectiveDate: payload.joiningDate
       }
     };
 
     setEmployees([newEmp, ...employees]);
-    setSuccessMsg(`Employee ${newEmp.employeeCode} onboarded with gross salary ₹${gross.toLocaleString()}!`);
+    setSuccessMsg(`Employee ${newEmp.employeeCode} (${newEmp.firstName} ${newEmp.lastName}) onboarded successfully!`);
     setModalOpen(false);
-    resetForm();
     setSaving(false);
   };
 
-  const resetForm = () => {
-    setEmployeeCode('');
-    setFirstName('');
-    setLastName('');
-    setEmail('');
-    setPhone('');
-    if (masterBundle.departments.length > 0) {
-      setSelectedDeptId(masterBundle.departments[0].id);
-      setDepartment(masterBundle.departments[0].name);
+  // Open Edit Modal with Employee Data
+  const handleOpenEditModal = (emp: EmployeeDto) => {
+    setEditingEmpId(emp.id);
+    setEditEmpCode(emp.employeeCode);
+    setEditFirstName(emp.firstName);
+    setEditLastName(emp.lastName);
+    setEditPhone(emp.phone || '');
+    setEditDepartment(emp.department);
+    setEditDesignation(emp.designation);
+    setEditBranch(emp.branch || '');
+    setEditDeptId(emp.departmentId || '');
+    setEditDesigId(emp.designationId || '');
+    setEditBranchId(emp.branchId || '');
+    setEditShiftId(emp.shiftId || '');
+    setEditEmpTypeId(emp.employmentTypeId || '');
+    setEditSalaryType(emp.salaryType || 'MONTHLY_FIXED');
+    setEditStatus(emp.status || 'ACTIVE');
+    if (emp.salaryStructure) {
+      setEditBasicSalary(emp.salaryStructure.basicSalary.toString());
+      setEditHra(emp.salaryStructure.hra.toString());
     } else {
-      setDepartment('Production');
+      setEditBasicSalary('20000');
+      setEditHra('5000');
     }
-    if (masterBundle.designations.length > 0) {
-      setSelectedDesigId(masterBundle.designations[0].id);
-      setDesignation(masterBundle.designations[0].name);
-    } else {
-      setDesignation('Tailor');
+    setEditModalOpen(true);
+  };
+
+  // Submit Edit Employee
+  const handleSaveEditEmployee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setErrorMsg(null);
+
+    const isPieceRate = editSalaryType === 'PIECE_RATE';
+    const payload = {
+      firstName: editFirstName.trim(),
+      lastName: editLastName.trim(),
+      phone: editPhone.trim() ? editPhone.trim() : undefined,
+      department: editDepartment.trim(),
+      designation: editDesignation.trim(),
+      branch: editBranch.trim() ? editBranch.trim() : undefined,
+      departmentId: editDeptId || undefined,
+      designationId: editDesigId || undefined,
+      branchId: editBranchId || undefined,
+      shiftId: editShiftId || undefined,
+      employmentTypeId: editEmpTypeId || undefined,
+      salaryType: editSalaryType,
+      status: editStatus,
+      basicSalary: isPieceRate ? 0 : (Number(editBasicSalary) || 0),
+      hra: isPieceRate ? 0 : (Number(editHra) || 0),
+    };
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/employees/${editingEmpId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+          'x-tenant-id': activeTenant?.id || ''
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        setSuccessMsg(`Employee ${editEmpCode} updated successfully!`);
+        await fetchEmployees();
+        setEditModalOpen(false);
+        setSaving(false);
+        return;
+      }
+    } catch (e) {
+      console.warn('API error updating employee, updating locally', e);
     }
-    if (masterBundle.branches.length > 0) {
-      setSelectedBranchId(masterBundle.branches[0].id);
-      setBranch(masterBundle.branches[0].name);
-    } else {
-      setBranch(activeBranchScope || 'Chennai Branch');
+
+    // Local fallback update
+    setEmployees(employees.map(emp => {
+      if (emp.id === editingEmpId) {
+        return {
+          ...emp,
+          firstName: payload.firstName,
+          lastName: payload.lastName,
+          phone: payload.phone || null,
+          department: payload.department,
+          designation: payload.designation,
+          branch: payload.branch || null,
+          salaryType: payload.salaryType,
+          status: payload.status,
+          salaryStructure: isPieceRate ? null : {
+            id: emp.salaryStructure?.id || 's-edit',
+            employeeId: emp.id,
+            basicSalary: payload.basicSalary,
+            hra: payload.hra,
+            specialAllowance: 0,
+            conveyanceAllowance: 0,
+            pfDeduction: 0,
+            taxDeduction: 0,
+            otherDeductions: 0,
+            grossSalary: payload.basicSalary + payload.hra,
+            netSalary: payload.basicSalary + payload.hra,
+            currency: 'INR',
+            effectiveDate: new Date().toISOString()
+          }
+        };
+      }
+      return emp;
+    }));
+
+    setSuccessMsg(`Employee ${editEmpCode} updated successfully!`);
+    setEditModalOpen(false);
+    setSaving(false);
+  };
+
+  // Delete Employee
+  const handleDeleteEmployee = async (emp: EmployeeDto) => {
+    if (!window.confirm(`Are you sure you want to delete employee "${emp.firstName} ${emp.lastName}" (${emp.employeeCode})?`)) {
+      return;
     }
-    if (masterBundle.shifts.length > 0) {
-      setSelectedShiftId(masterBundle.shifts[0].id);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/employees/${emp.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'x-tenant-id': activeTenant?.id || ''
+        }
+      });
+
+      if (res.ok) {
+        setSuccessMsg(`Employee "${emp.firstName} ${emp.lastName}" (${emp.employeeCode}) deleted successfully.`);
+        await fetchEmployees();
+        return;
+      }
+    } catch (e) {
+      console.warn('API error deleting employee, removing locally', e);
     }
-    if (masterBundle.employmentTypes.length > 0) {
-      setSelectedEmpTypeId(masterBundle.employmentTypes[0].id);
-    }
-    setBasicSalary('22000');
-    setHra('8000');
+
+    setEmployees(employees.filter(e => e.id !== emp.id));
+    setSuccessMsg(`Employee "${emp.firstName} ${emp.lastName}" (${emp.employeeCode}) deleted successfully.`);
   };
 
   // Filtered employees
   const filteredEmployees = employees.filter(emp => {
     const matchesSearch = 
       emp.employeeCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (emp.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (emp.phone || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       emp.designation.toLowerCase().includes(searchQuery.toLowerCase());
     
@@ -407,12 +532,12 @@ export default function EmployeesPage() {
             </span>
           </div>
           <p className="text-slate-500 text-sm mt-1">
-            Maintain organizational headcount, job designations, branch scopes, and employee salary profiles.
+            Maintain organizational headcount, designations, branch assignments, and employee wage profiles.
           </p>
         </div>
 
         <button
-          onClick={() => setModalOpen(true)}
+          onClick={handleOpenAddModal}
           className="bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shadow flex items-center gap-2 self-start md:self-auto"
         >
           <Plus className="w-4 h-4" />
@@ -439,7 +564,7 @@ export default function EmployeesPage() {
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input
             type="text"
-            placeholder="Search by code, name, designation..."
+            placeholder="Search by code, name, phone, designation..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -481,12 +606,13 @@ export default function EmployeesPage() {
                   <th className="py-3.5 px-6">Branch Scope</th>
                   <th className="py-3.5 px-6">Compensation Profile</th>
                   <th className="py-3.5 px-6">Status</th>
+                  <th className="py-3.5 px-6 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredEmployees.map(emp => (
                   <tr key={emp.id} className="hover:bg-slate-50/70 transition">
-                    {/* Employee Info */}
+                    {/* Employee Info - Email omitted in default visible mode */}
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-primary-100 text-primary-700 font-bold flex items-center justify-center text-xs">
@@ -495,9 +621,12 @@ export default function EmployeesPage() {
                         <div>
                           <div className="font-bold text-slate-800 text-sm">{emp.firstName} {emp.lastName}</div>
                           <div className="flex items-center gap-2 text-slate-400 text-[11px] mt-0.5">
-                            <span className="font-mono bg-slate-100 px-1.5 py-0.2 rounded">{emp.employeeCode}</span>
+                            <span className="font-mono bg-slate-100 px-1.5 py-0.2 rounded font-bold text-slate-700">{emp.employeeCode}</span>
                             <span>•</span>
-                            <span>{emp.email || emp.phone || 'No email registered'}</span>
+                            <span className="flex items-center gap-1">
+                              <Phone className="w-3 h-3 text-slate-400" />
+                              <span>{emp.phone || 'No mobile'}</span>
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -522,7 +651,7 @@ export default function EmployeesPage() {
 
                     {/* Compensation */}
                     <td className="py-4 px-6">
-                      <div className="flex items-center gap-1.5 mb-1.5">
+                      <div className="flex items-center gap-1.5 mb-1">
                         {emp.salaryType === 'PIECE_RATE' ? (
                           <span className="bg-amber-50 text-amber-800 font-bold px-2 py-0.5 rounded text-[10px] border border-amber-200 inline-flex items-center gap-1">
                             <Scissors className="w-3 h-3 text-amber-600" />
@@ -536,21 +665,16 @@ export default function EmployeesPage() {
                       </div>
                       {emp.salaryType === 'PIECE_RATE' ? (
                         <div className="text-[11px] text-slate-500 font-medium">
-                          Daily unit output logged at month-end
+                          Daily piece output rate
                         </div>
                       ) : emp.salaryStructure ? (
                         <div>
                           <div className="font-bold text-emerald-700 text-xs">
-                            ₹{emp.salaryStructure.grossSalary.toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">/ mo (Gross)</span>
-                          </div>
-                          <div className="text-[11px] text-slate-400 mt-0.5">
-                            Net: ₹{emp.salaryStructure.netSalary.toLocaleString()}
+                            ₹{emp.salaryStructure.grossSalary.toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">/ mo</span>
                           </div>
                         </div>
                       ) : (
-                        <span className="text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-[10px] font-semibold border border-amber-200">
-                          Pending Setup
-                        </span>
+                        <span className="text-slate-400 text-[10px]">Standard Scale</span>
                       )}
                     </td>
 
@@ -560,6 +684,28 @@ export default function EmployeesPage() {
                         {emp.status}
                       </span>
                     </td>
+
+                    {/* Action Buttons: Edit and Delete */}
+                    <td className="py-4 px-6 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditModal(emp)}
+                          title="Edit Employee"
+                          className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteEmployee(emp)}
+                          title="Delete Employee"
+                          className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -568,7 +714,9 @@ export default function EmployeesPage() {
         )}
       </div>
 
-      {/* Modal: Add Employee (Wider Enterprise ERP Layout) */}
+      {/* ======================================================== */}
+      {/* MODAL: ADD NEW EMPLOYEE                                  */}
+      {/* ======================================================== */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full border border-slate-200 overflow-hidden my-auto flex flex-col max-h-[92vh]">
@@ -580,7 +728,7 @@ export default function EmployeesPage() {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-slate-800 text-base">Add New Employee</h3>
-                  <p className="text-xs text-slate-500">Register employee and allocate pre-defined company master data</p>
+                  <p className="text-xs text-slate-500">Employee code is automatically assigned by the system</p>
                 </div>
               </div>
               <button 
@@ -608,15 +756,20 @@ export default function EmployeesPage() {
                 </h4>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Automatic Employee Code */}
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Employee Code *</label>
+                    <label className="block font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                      <span>Employee Code</span>
+                      <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                        <Lock className="w-2.5 h-2.5" />
+                        Auto-Generated
+                      </span>
+                    </label>
                     <input
                       type="text"
-                      required
+                      readOnly
                       value={employeeCode}
-                      onChange={(e) => setEmployeeCode(e.target.value)}
-                      placeholder="e.g. EMP-104"
-                      className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none bg-slate-50/50"
+                      className="w-full border border-slate-200 rounded-xl p-2.5 font-mono text-slate-700 text-xs font-bold bg-slate-100 cursor-not-allowed"
                     />
                   </div>
                   <div>
@@ -626,7 +779,7 @@ export default function EmployeesPage() {
                       required
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      placeholder="e.g. Meena"
+                      placeholder="e.g. Ramesh"
                       className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     />
                   </div>
@@ -637,7 +790,7 @@ export default function EmployeesPage() {
                       required
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      placeholder="e.g. Kumari"
+                      placeholder="e.g. Kumar"
                       className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     />
                   </div>
@@ -652,12 +805,12 @@ export default function EmployeesPage() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="e.g. meena@garments.com (Optional for floor workers)"
+                      placeholder="Optional for floor workers"
                       className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Phone Number</label>
+                    <label className="block font-semibold text-slate-700 mb-1">Phone / Mobile</label>
                     <input
                       type="text"
                       value={phone}
@@ -679,7 +832,7 @@ export default function EmployeesPage() {
                 </div>
               </div>
 
-              {/* 2. Enterprise Master Allocation (Pure Dropdowns from Masters) */}
+              {/* 2. Company Master Allocation */}
               <div className="bg-slate-50/90 border border-slate-200 rounded-2xl p-5 space-y-4 shadow-xs">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                   <div className="flex items-center gap-2.5">
@@ -688,26 +841,15 @@ export default function EmployeesPage() {
                     </div>
                     <div>
                       <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Company Master Allocation</h4>
-                      <p className="text-[11px] text-slate-500">Pre-defined master values loaded from active company database</p>
+                      <p className="text-[11px] text-slate-500">Departments, roles, branches, and shifts</p>
                     </div>
                   </div>
-                  <Link 
-                    href="/dashboard/masters" 
-                    target="_blank"
-                    className="text-xs text-primary-600 hover:text-primary-700 font-bold hover:underline flex items-center gap-1.5 bg-white px-3.5 py-1.5 rounded-xl border border-primary-200 shadow-xs"
-                  >
-                    <span>Manage Masters Hub</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Department Master Dropdown */}
+                  {/* Department */}
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-                      <span>Department *</span>
-                      <span className="text-[10px] bg-primary-50 text-primary-700 px-1.5 py-0.5 rounded font-medium border border-primary-200">Master</span>
-                    </label>
+                    <label className="block font-bold text-slate-700 mb-1.5">Department *</label>
                     <select
                       required
                       value={selectedDeptId}
@@ -717,7 +859,7 @@ export default function EmployeesPage() {
                         const found = masterBundle.departments.find(d => d.id === val);
                         if (found) setDepartment(found.name);
                       }}
-                      className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-semibold focus:ring-2 focus:ring-primary-500 focus:outline-none shadow-xs"
+                      className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-semibold focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     >
                       {masterBundle.departments.map(d => (
                         <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
@@ -725,12 +867,9 @@ export default function EmployeesPage() {
                     </select>
                   </div>
 
-                  {/* Designation Master Dropdown */}
+                  {/* Designation */}
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-                      <span>Designation / Role *</span>
-                      <span className="text-[10px] bg-primary-50 text-primary-700 px-1.5 py-0.5 rounded font-medium border border-primary-200">Master</span>
-                    </label>
+                    <label className="block font-bold text-slate-700 mb-1.5">Designation / Role *</label>
                     <select
                       required
                       value={selectedDesigId}
@@ -740,7 +879,7 @@ export default function EmployeesPage() {
                         const found = masterBundle.designations.find(d => d.id === val);
                         if (found) setDesignation(found.name);
                       }}
-                      className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-semibold focus:ring-2 focus:ring-primary-500 focus:outline-none shadow-xs"
+                      className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-semibold focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     >
                       {masterBundle.designations.map(d => (
                         <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
@@ -748,12 +887,9 @@ export default function EmployeesPage() {
                     </select>
                   </div>
 
-                  {/* Branch Master Dropdown */}
+                  {/* Branch */}
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-                      <span>Branch / Factory Unit *</span>
-                      <span className="text-[10px] bg-primary-50 text-primary-700 px-1.5 py-0.5 rounded font-medium border border-primary-200">Master</span>
-                    </label>
+                    <label className="block font-bold text-slate-700 mb-1.5">Branch / Unit *</label>
                     <select
                       required
                       value={selectedBranchId}
@@ -763,7 +899,7 @@ export default function EmployeesPage() {
                         const found = masterBundle.branches.find(b => b.id === val);
                         if (found) setBranch(found.name);
                       }}
-                      className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-semibold focus:ring-2 focus:ring-primary-500 focus:outline-none shadow-xs"
+                      className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-semibold focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     >
                       {masterBundle.branches.map(b => (
                         <option key={b.id} value={b.id}>{b.name} ({b.code})</option>
@@ -773,16 +909,12 @@ export default function EmployeesPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                  {/* Shift Schedule Master Dropdown */}
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-                      <span>Work Shift Schedule</span>
-                      <span className="text-[10px] text-slate-400 font-normal">Timing Master</span>
-                    </label>
+                    <label className="block font-bold text-slate-700 mb-1.5">Work Shift Schedule</label>
                     <select
                       value={selectedShiftId}
                       onChange={(e) => setSelectedShiftId(e.target.value)}
-                      className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-semibold focus:ring-2 focus:ring-primary-500 focus:outline-none shadow-xs"
+                      className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-semibold focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     >
                       {masterBundle.shifts.map(s => (
                         <option key={s.id} value={s.id}>{s.name} ({s.startTime} - {s.endTime})</option>
@@ -790,16 +922,12 @@ export default function EmployeesPage() {
                     </select>
                   </div>
 
-                  {/* Employment Category Master Dropdown */}
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-                      <span>Employment Category</span>
-                      <span className="text-[10px] text-slate-400 font-normal">Classification Master</span>
-                    </label>
+                    <label className="block font-bold text-slate-700 mb-1.5">Employment Category</label>
                     <select
                       value={selectedEmpTypeId}
                       onChange={(e) => setSelectedEmpTypeId(e.target.value)}
-                      className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-semibold focus:ring-2 focus:ring-primary-500 focus:outline-none shadow-xs"
+                      className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-semibold focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     >
                       {masterBundle.employmentTypes.map(et => (
                         <option key={et.id} value={et.id}>{et.name}</option>
@@ -809,18 +937,16 @@ export default function EmployeesPage() {
                 </div>
               </div>
 
-              {/* 3. Compensation & Salary System */}
+              {/* 3. Salary System & Configuration */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="font-bold text-slate-700 uppercase tracking-wider text-[11px] flex items-center gap-2">
                     <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-[10px] font-extrabold">3</span>
-                    <span>Salary System & Compensation</span>
+                    <span>Salary System & Configuration</span>
                   </h4>
                   {salaryType === 'MONTHLY_FIXED' && (
-                    <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
-                      <span>Gross: ₹{((Number(basicSalary)||0) + (Number(hra)||0) + (Number(specialAllowance)||0) + (Number(conveyanceAllowance)||0)).toLocaleString()}</span>
-                      <span>•</span>
-                      <span>Net: ₹{(((Number(basicSalary)||0) + (Number(hra)||0) + (Number(specialAllowance)||0) + (Number(conveyanceAllowance)||0)) - ((Number(pfDeduction)||0) + (Number(taxDeduction)||0))).toLocaleString()}</span>
+                    <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-full text-xs font-bold">
+                      Gross: ₹{((Number(basicSalary)||0) + (Number(hra)||0) + (Number(specialAllowance)||0) + (Number(conveyanceAllowance)||0)).toLocaleString()}
                     </span>
                   )}
                 </div>
@@ -840,7 +966,7 @@ export default function EmployeesPage() {
                     </div>
                     <div>
                       <div className="font-bold text-sm text-slate-800">Monthly Fixed Salary</div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">Fixed monthly basic salary with allowances and statutory PF/TDS deductions.</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">Fixed monthly salary with allowances and statutory deductions.</div>
                     </div>
                   </button>
 
@@ -858,114 +984,314 @@ export default function EmployeesPage() {
                     </div>
                     <div>
                       <div className="font-bold text-sm text-slate-800">Piece-Rate Output Salary</div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">Computed from daily unit logs (cutting, stitching, stretching) submitted to HR.</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">Computed purely from daily verified piece output (cutting, stitching, etc.).</div>
                     </div>
                   </button>
                 </div>
 
+                {/* ITEM 2: When Piece-Rate is selected, fixed salary items DISAPPEAR completely */}
                 {salaryType === 'PIECE_RATE' ? (
-                  <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-2xl text-amber-950 text-xs space-y-1 leading-relaxed">
-                    <div className="font-bold flex items-center gap-1.5 text-amber-900">
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-950 text-xs space-y-1.5">
+                    <div className="font-bold flex items-center gap-1.5 text-amber-900 text-xs">
                       <Scissors className="w-4 h-4 text-amber-600" />
-                      <span>Garment Production Piece Wage Mode</span>
+                      <span>Piece-Rate Wage System Activated</span>
                     </div>
-                    <p className="text-[11px] text-amber-800">
-                      This employee's monthly basic pay will automatically be computed by the payroll engine aggregating all daily production logs (e.g. 50 cutting units @ ₹20/pc, 30 stitching units @ ₹35/pc). You can optionally set fixed allowances or deductions below.
+                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                      No fixed monthly salary structure required. Monthly earnings will be computed directly from daily logged units and approved piece rates.
                     </p>
                   </div>
-                ) : null}
+                ) : (
+                  /* Fixed Salary Inputs (shown ONLY for Monthly Fixed Salary) */
+                  <div className="space-y-4 pt-1">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <label className="block font-semibold text-slate-700 mb-1">Basic Salary (₹) *</label>
+                        <input
+                          type="number"
+                          required
+                          value={basicSalary}
+                          onChange={(e) => setBasicSalary(e.target.value)}
+                          className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-slate-700 mb-1">HRA (₹)</label>
+                        <input
+                          type="number"
+                          value={hra}
+                          onChange={(e) => setHra(e.target.value)}
+                          className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-slate-700 mb-1">Special Allowance (₹)</label>
+                        <input
+                          type="number"
+                          value={specialAllowance}
+                          onChange={(e) => setSpecialAllowance(e.target.value)}
+                          className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-slate-700 mb-1">Conveyance (₹)</label>
+                        <input
+                          type="number"
+                          value={conveyanceAllowance}
+                          onChange={(e) => setConveyanceAllowance(e.target.value)}
+                          className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
 
-                {/* Compensation Input Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-1">
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">
-                      {salaryType === 'PIECE_RATE' ? 'Base Retainer (₹)' : 'Basic Salary (₹) *'}
-                    </label>
-                    <input
-                      type="number"
-                      required={salaryType !== 'PIECE_RATE'}
-                      value={basicSalary}
-                      onChange={(e) => setBasicSalary(e.target.value)}
-                      className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                    />
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <label className="block font-semibold text-slate-700 mb-1">PF Deduction (₹)</label>
+                        <input
+                          type="number"
+                          value={pfDeduction}
+                          onChange={(e) => setPfDeduction(e.target.value)}
+                          className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-slate-700 mb-1">Tax Deduction (₹)</label>
+                        <input
+                          type="number"
+                          value={taxDeduction}
+                          onChange={(e) => setTaxDeduction(e.target.value)}
+                          className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">HRA (₹)</label>
-                    <input
-                      type="number"
-                      value={hra}
-                      onChange={(e) => setHra(e.target.value)}
-                      className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Special Allowance (₹)</label>
-                    <input
-                      type="number"
-                      value={specialAllowance}
-                      onChange={(e) => setSpecialAllowance(e.target.value)}
-                      className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Conveyance (₹)</label>
-                    <input
-                      type="number"
-                      value={conveyanceAllowance}
-                      onChange={(e) => setConveyanceAllowance(e.target.value)}
-                      className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">PF Deduction (₹)</label>
-                    <input
-                      type="number"
-                      value={pfDeduction}
-                      onChange={(e) => setPfDeduction(e.target.value)}
-                      className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">TDS / Income Tax (₹)</label>
-                    <input
-                      type="number"
-                      value={taxDeduction}
-                      onChange={(e) => setTaxDeduction(e.target.value)}
-                      className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
+                )}
               </div>
 
-              {/* Actions Footer */}
-              <div className="flex items-center justify-end gap-3 pt-5 border-t border-slate-200">
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-5 py-2.5 border border-slate-300 text-slate-700 rounded-xl hover:bg-slate-50 font-bold transition text-xs"
+                  className="px-5 py-2.5 border border-slate-300 text-slate-600 rounded-xl hover:bg-slate-50 font-bold text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold flex items-center gap-2 shadow-md transition text-xs"
+                  className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-bold text-xs flex items-center gap-2 shadow"
                 >
-                  {saving ? (
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  ) : (
-                    <Plus className="w-4 h-4" />
-                  )}
-                  <span>Save Employee Profile</span>
+                  {saving ? 'Creating Employee...' : 'Save & Onboard Employee'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* ======================================================== */}
+      {/* MODAL: EDIT EMPLOYEE                                     */}
+      {/* ======================================================== */}
+      {editModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full border border-slate-200 overflow-hidden my-auto flex flex-col max-h-[92vh]">
+            <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 bg-slate-50/80">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-indigo-100 text-indigo-700 rounded-xl">
+                  <Pencil className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-800 text-base">Edit Employee Details</h3>
+                  <p className="text-xs text-slate-500">Employee Code: <strong className="font-mono">{editEmpCode}</strong></p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setEditModalOpen(false)} 
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditEmployee} className="p-8 space-y-5 text-xs overflow-y-auto flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">First Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editFirstName}
+                    onChange={(e) => setEditFirstName(e.target.value)}
+                    className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Last Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editLastName}
+                    onChange={(e) => setEditLastName(e.target.value)}
+                    className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Phone / Mobile</label>
+                  <input
+                    type="text"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Status</label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value)}
+                    className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-semibold focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  >
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="PROBATION">PROBATION</option>
+                    <option value="ON_LEAVE">ON_LEAVE</option>
+                    <option value="TERMINATED">TERMINATED</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Department</label>
+                  <select
+                    value={editDeptId}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditDeptId(val);
+                      const found = masterBundle.departments.find(d => d.id === val);
+                      if (found) setEditDepartment(found.name);
+                    }}
+                    className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-semibold"
+                  >
+                    {masterBundle.departments.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Designation</label>
+                  <select
+                    value={editDesigId}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditDesigId(val);
+                      const found = masterBundle.designations.find(d => d.id === val);
+                      if (found) setEditDesignation(found.name);
+                    }}
+                    className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-semibold"
+                  >
+                    {masterBundle.designations.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Branch</label>
+                  <select
+                    value={editBranchId}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditBranchId(val);
+                      const found = masterBundle.branches.find(b => b.id === val);
+                      if (found) setEditBranch(found.name);
+                    }}
+                    className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-semibold"
+                  >
+                    {masterBundle.branches.map(b => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Salary System Selector */}
+              <div className="space-y-3 pt-2">
+                <label className="block font-bold text-slate-700">Salary System</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer font-semibold">
+                    <input
+                      type="radio"
+                      name="editSalaryType"
+                      value="MONTHLY_FIXED"
+                      checked={editSalaryType === 'MONTHLY_FIXED'}
+                      onChange={() => setEditSalaryType('MONTHLY_FIXED')}
+                    />
+                    <span>Monthly Fixed</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer font-semibold">
+                    <input
+                      type="radio"
+                      name="editSalaryType"
+                      value="PIECE_RATE"
+                      checked={editSalaryType === 'PIECE_RATE'}
+                      onChange={() => setEditSalaryType('PIECE_RATE')}
+                    />
+                    <span>Piece-Rate Output</span>
+                  </label>
+                </div>
+
+                {editSalaryType === 'PIECE_RATE' ? (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs">
+                    Piece-rate worker: Compensated per verified output unit. Fixed salary fields are disabled.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4 pt-1">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Basic Salary (₹)</label>
+                      <input
+                        type="number"
+                        value={editBasicSalary}
+                        onChange={(e) => setEditBasicSalary(e.target.value)}
+                        className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">HRA (₹)</label>
+                      <input
+                        type="number"
+                        value={editHra}
+                        onChange={(e) => setEditHra(e.target.value)}
+                        className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditModalOpen(false)}
+                  className="px-5 py-2.5 border border-slate-300 text-slate-600 rounded-xl hover:bg-slate-50 font-bold text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-bold text-xs"
+                >
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -2,22 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-[#F4F7FE] text-slate-800 min-h-screen antialiased;
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+@layer base {
+  body {
+    @apply bg-slate-50/70 text-slate-800 font-sans antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'tnum';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.011em;
+  }
+
+  h1, h2, h3, h4 {
+    letter-spacing: -0.02em;
+  }
 }
 
-/* Sleek custom scrollbars */
+/* Corporate thin scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: #CBD5E1;
-  border-radius: 9999px;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;

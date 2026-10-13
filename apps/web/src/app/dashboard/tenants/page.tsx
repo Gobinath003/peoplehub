@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useApp } from '../../../context/AppContext';
 import { API_BASE_URL } from '../../../config/api';
 import { 
@@ -27,13 +28,20 @@ interface CompanyTenant {
 }
 
 export default function TenantsManagementPage() {
-  const { accessToken, activeTenant, switchTenant, refreshTenants } = useApp();
+  const router = useRouter();
+  const { accessToken, activeTenant, switchTenant, refreshTenants, isSuperAdmin, loading: authLoading } = useApp();
   const [tenants, setTenants] = useState<CompanyTenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !isSuperAdmin) {
+      router.replace('/dashboard/users');
+    }
+  }, [authLoading, isSuperAdmin, router]);
 
   // Form State
   const [name, setName] = useState('');
@@ -176,6 +184,28 @@ export default function TenantsManagementPage() {
     setAdminEmail('');
     setAdminPassword('manager_pass');
   };
+
+  if (!isSuperAdmin) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <div className="bg-white p-8 rounded-3xl border border-slate-200 text-center max-w-md shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-800 mx-auto mb-4">
+            <Shield className="w-6 h-6 text-slate-700" />
+          </div>
+          <h2 className="text-lg font-black text-slate-900 mb-2">Access Restricted</h2>
+          <p className="text-xs text-slate-500 font-medium mb-4">
+            Tenant provisioning and global multi-tenant management are restricted to Platform Super Administrators.
+          </p>
+          <button
+            onClick={() => router.replace('/dashboard/users')}
+            className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold"
+          >
+            Go to Users & Roles
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

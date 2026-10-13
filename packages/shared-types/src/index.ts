@@ -233,7 +233,7 @@ export interface EmployeeDto {
 }
 
 export interface CreateEmployeeRequest {
-  employeeCode: string;
+  employeeCode?: string;
   firstName: string;
   lastName: string;
   email?: string;

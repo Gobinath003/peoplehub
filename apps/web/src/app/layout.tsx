@@ -9,8 +9,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "PeopleHub - Enterprise HRMS & Workforce Platform",
-  description: "Enterprise multi-tenant, multi-industry Human Resource Management System",
+  title: "PeopleHub | Noltrion Innovations - Enterprise HRMS Suite",
+  description: "Enterprise multi-tenant, multi-industry Human Resource Management System by Noltrion Innovations",
+  icons: {
+    icon: "/noltrion-logo.png",
+  },
 };
 
 export default function RootLayout({

@@ -61,8 +61,12 @@ function LoginContent() {
           
           {/* Brand Header Inside Widget */}
           <div className="flex flex-col items-center text-center mb-8">
-            <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-md mb-3">
-              <Building2 className="w-6 h-6 text-white" />
+            <div className="h-14 px-4 py-1.5 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-center mb-4">
+              <img 
+                src="/noltrion-logo.png" 
+                alt="Noltrion Innovations" 
+                className="h-10 w-auto object-contain mix-blend-multiply" 
+              />
             </div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xl font-black text-slate-900 tracking-tight">PeopleHub</span>
@@ -70,8 +74,11 @@ function LoginContent() {
                 Enterprise
               </span>
             </div>
-            <p className="text-xs font-medium text-slate-500">
-              Human Capital & Workforce Management
+            <p className="text-xs font-semibold text-slate-500">
+              Human Capital & Workforce Management Suite
+            </p>
+            <p className="text-[11px] font-medium text-slate-400 mt-0.5">
+              by <strong className="text-slate-600">Noltrion Innovations</strong>
             </p>
           </div>
 
@@ -184,15 +191,26 @@ function LoginContent() {
 
       {/* Page Footer */}
       <div className="relative z-10 max-w-md w-full mx-auto text-center mt-6 text-[11px] text-slate-400 space-y-2">
-        <p className="font-medium">
+        <div className="flex items-center justify-center gap-2 mb-1">
+          <img 
+            src="/noltrion-logo.png" 
+            alt="Noltrion Innovations" 
+            className="h-4 w-auto object-contain mix-blend-multiply opacity-80" 
+          />
+          <span className="font-bold text-slate-700">Noltrion Innovations</span>
+        </div>
+        <p className="font-semibold text-slate-600">
+          © 2026 Noltrion Innovations. All rights reserved.
+        </p>
+        <p className="text-[10px] text-slate-400">
           Protected by PeopleHub Enterprise Guard. Unauthorized access is monitored.
         </p>
-        <div className="flex items-center justify-center gap-4 text-slate-500 font-semibold text-[10px]">
+        <div className="flex items-center justify-center gap-4 text-slate-500 font-semibold text-[10px] pt-1">
           <a href="#privacy" onClick={(e) => { e.preventDefault(); alert('PeopleHub adheres strictly to GDPR, SOC-2, and international workforce data compliance.'); }} className="hover:text-slate-800 transition hover:underline">Privacy Policy</a>
           <span>•</span>
           <a href="#terms" onClick={(e) => { e.preventDefault(); alert('Terms of Service: Standard SaaS Enterprise Agreement.'); }} className="hover:text-slate-800 transition hover:underline">Terms of Service</a>
           <span>•</span>
-          <a href="#support" onClick={(e) => { e.preventDefault(); alert('For enterprise assistance, contact support@peoplehub.com.'); }} className="hover:text-slate-800 transition hover:underline">Help & Support</a>
+          <a href="#support" onClick={(e) => { e.preventDefault(); alert('For enterprise assistance, contact support@peoplehub.com.'); }} className="hover:text-slate-800 transition hover:underline">Enterprise Support</a>
         </div>
       </div>
 

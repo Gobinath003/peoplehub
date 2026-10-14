@@ -14,6 +14,19 @@ import {
   PieceRateLogDto, 
   EmployeeDto 
 } from '@people-hub/shared-types';
+import {
+  EnterpriseToolbar,
+  EnterpriseTable,
+  EnterpriseTableHeader,
+  EnterpriseTableTh,
+  EnterpriseTableBody,
+  EnterpriseTableRow,
+  EnterpriseTableTd,
+  EnterprisePagination,
+  EnterpriseBadge,
+  EnterpriseTabs,
+  EnterpriseTabItem,
+} from '../../../components/enterprise';
 
 interface SheetRow {
   employeeId: string;
@@ -41,6 +54,8 @@ export default function PieceRatePage() {
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [historyPage, setHistoryPage] = useState(1);
+  const pageSize = 10;
 
   // Selected Production Date
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -354,58 +369,26 @@ export default function PieceRatePage() {
   const totalFloorUnits = sheetRows.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
   const totalFloorWages = sheetRows.reduce((sum, r) => sum + (r.totalAmount || 0), 0);
 
+  const pieceRateTabs: EnterpriseTabItem<'sheet' | 'activities' | 'history'>[] = [
+    { key: 'sheet', label: 'Floor Sheet', icon: Layers },
+    { key: 'activities', label: 'Operations & Rates', count: activities.length, icon: Tag },
+    { key: 'history', label: 'Production History', count: logs.length, icon: Clock },
+  ];
+
   return (
-    <div className="space-y-3 max-w-[1600px] mx-auto pb-6">
-      {/* Compact Header & View Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2">
-          <h1 className="text-base font-bold text-slate-900 tracking-tight">
-            Garment Floor Production & Attendance
-          </h1>
-          <span className="bg-amber-50 text-amber-800 font-medium px-2 py-0.5 rounded text-[11px] border border-amber-200">
-            Floor Operations
-          </span>
-        </div>
+    <div className="space-y-3 pb-6">
+      {/* Enterprise Toolbar */}
+      <EnterpriseToolbar
+        title="Garment Floor Production & Attendance"
+        tenantName={activeTenant?.name}
+      />
 
-        {/* View Switcher Tabs */}
-        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
-          <button
-            onClick={() => setActiveTab('sheet')}
-            className={`px-3 py-1 rounded-md font-semibold transition flex items-center gap-1.5 ${
-              activeTab === 'sheet'
-                ? 'bg-white text-slate-900 shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Layers className="w-3 h-3" />
-            <span>Floor Sheet</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('activities')}
-            className={`px-3 py-1 rounded-md font-semibold transition flex items-center gap-1.5 ${
-              activeTab === 'activities'
-                ? 'bg-white text-slate-900 shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Tag className="w-3 h-3" />
-            <span>Operations & Rates</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`px-3 py-1 rounded-md font-semibold transition flex items-center gap-1.5 ${
-              activeTab === 'history'
-                ? 'bg-white text-slate-900 shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Clock className="w-3 h-3" />
-            <span>History</span>
-          </button>
-        </div>
-      </div>
+      {/* Enterprise Tabs */}
+      <EnterpriseTabs
+        tabs={pieceRateTabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
 
       {/* Success Notification */}
       {successMsg && (
@@ -420,27 +403,25 @@ export default function PieceRatePage() {
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* TAB 1: DAILY FLOOR ATTENDANCE & PRODUCTION SHEET        */}
-      {/* ======================================================== */}
+      {/* TAB 1: DAILY FLOOR ATTENDANCE & PRODUCTION SHEET */}
       {activeTab === 'sheet' && (
-        <div className="space-y-5">
+        <div className="space-y-2.5">
           {/* Controls Bar: Date Selector & Master Save Button */}
-          <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-2xl">
-                <Calendar className="w-4 h-4 text-slate-500" />
-                <span className="text-xs font-bold text-slate-700">Production Date:</span>
+          <div className="bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg">
+                <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                <span className="text-xs font-semibold text-slate-700">Production Date:</span>
                 <input
                   type="date"
                   value={selectedDate}
                   onChange={(e) => handleDateChange(e.target.value)}
-                  className="bg-transparent text-xs font-black text-slate-900 focus:outline-none"
+                  className="bg-transparent text-xs font-bold text-slate-900 focus:outline-none"
                 />
               </div>
 
-              <div className="text-xs text-slate-400 font-medium">
-                Showing all registered operators for active organization
+              <div className="text-[11px] text-slate-400">
+                Registered operators for active organization
               </div>
             </div>
 
@@ -448,49 +429,49 @@ export default function PieceRatePage() {
             <button
               onClick={handleSaveEntireSheet}
               disabled={saving}
-              className="px-6 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition flex items-center gap-2 shadow-sm self-start md:self-auto"
+              className="px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-2xs shrink-0"
             >
-              <Save className="w-4 h-4 text-emerald-400" />
-              <span>{saving ? 'Saving Sheet...' : 'Save Entire Floor Sheet'}</span>
+              <Save className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{saving ? 'Saving Sheet...' : 'Save Floor Sheet'}</span>
             </button>
           </div>
 
           {/* Quick Metrics Strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Total Operators</span>
-              <span className="text-lg font-black text-slate-900">{totalOperators}</span>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            <div className="bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-2xs text-center">
+              <span className="text-[10px] uppercase font-semibold text-slate-400 block">Total Staff</span>
+              <span className="text-sm font-bold text-slate-900">{totalOperators}</span>
             </div>
-            <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-100 text-center">
-              <span className="text-[10px] uppercase font-bold text-emerald-700 block mb-0.5">Present</span>
-              <span className="text-lg font-black text-emerald-800">{presentOperators}</span>
+            <div className="bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200 text-center">
+              <span className="text-[10px] uppercase font-semibold text-emerald-700 block">Present</span>
+              <span className="text-sm font-bold text-emerald-800">{presentOperators}</span>
             </div>
-            <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-100 text-center">
-              <span className="text-[10px] uppercase font-bold text-amber-700 block mb-0.5">Half Day</span>
-              <span className="text-lg font-black text-amber-800">{halfDayOperators}</span>
+            <div className="bg-amber-50 px-3 py-2 rounded-xl border border-amber-200 text-center">
+              <span className="text-[10px] uppercase font-semibold text-amber-700 block">Half Day</span>
+              <span className="text-sm font-bold text-amber-800">{halfDayOperators}</span>
             </div>
-            <div className="bg-rose-50/70 p-4 rounded-2xl border border-rose-100 text-center">
-              <span className="text-[10px] uppercase font-bold text-rose-700 block mb-0.5">Absent</span>
-              <span className="text-lg font-black text-rose-800">{absentOperators}</span>
+            <div className="bg-rose-50 px-3 py-2 rounded-xl border border-rose-200 text-center">
+              <span className="text-[10px] uppercase font-semibold text-rose-700 block">Absent</span>
+              <span className="text-sm font-bold text-rose-800">{absentOperators}</span>
             </div>
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Total Pieces</span>
-              <span className="text-lg font-black text-indigo-700">{totalFloorUnits.toLocaleString()}</span>
+            <div className="bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-2xs text-center">
+              <span className="text-[10px] uppercase font-semibold text-slate-400 block">Total Pieces</span>
+              <span className="text-sm font-bold text-slate-900">{totalFloorUnits.toLocaleString()}</span>
             </div>
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Floor Wages</span>
-              <span className="text-lg font-black text-emerald-700">₹{totalFloorWages.toLocaleString()}</span>
+            <div className="bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-2xs text-center">
+              <span className="text-[10px] uppercase font-semibold text-slate-400 block">Floor Wages</span>
+              <span className="text-sm font-bold text-emerald-700">₹{totalFloorWages.toLocaleString()}</span>
             </div>
           </div>
 
           {/* The Unified IRCTC-Style Roster Sheet */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
             {loading ? (
-              <div className="p-12 flex justify-center">
-                <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+              <div className="p-8 flex justify-center">
+                <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
               </div>
             ) : sheetRows.length === 0 ? (
-              <div className="p-12 text-center text-slate-400 text-xs">
+              <div className="p-8 text-center text-slate-400 text-xs">
                 No operators found. Onboard operators from the Workforce & Employees menu.
               </div>
             ) : (
@@ -646,98 +627,99 @@ export default function PieceRatePage() {
       )}
 
       {/* ======================================================== */}
-      {/* TAB 2: OPERATION RATES & ACTIVITIES CATALOG              */}
-      {/* ======================================================== */}
+      {/* TAB 2: OPERATION RATES & ACTIVITIES CATALOG */}
       {activeTab === 'activities' && (
-        <div className="space-y-5">
-          <div className="flex items-center justify-between bg-white p-5 rounded-3xl border border-slate-200">
-            <div>
-              <h2 className="text-base font-extrabold text-slate-900">
-                Piece-Rate Operations & Rates
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Standard compensation per completed unit (cutting, sewing, packing).
-              </p>
-            </div>
-            <button
-              onClick={() => setActivityModalOpen(true)}
-              className="px-4 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add New Operation</span>
-            </button>
-          </div>
+        <div className="space-y-2.5">
+          <EnterpriseToolbar
+            title="Piece-Rate Operations Catalog"
+            totalCount={activities.length}
+            primaryActionLabel="Add Operation"
+            onPrimaryAction={() => setActivityModalOpen(true)}
+          />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {activities.map(act => (
-              <div key={act.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
-                      {act.code}
-                    </span>
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      Active
-                    </span>
-                  </div>
-                  <h3 className="font-extrabold text-slate-900 text-sm">{act.name}</h3>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    {act.description || 'Standard floor piece operation.'}
-                  </p>
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-baseline justify-between">
-                  <span className="text-xs font-semibold text-slate-400">Unit Rate:</span>
-                  <div className="text-right">
-                    <span className="text-xl font-black text-slate-900">₹{act.ratePerUnit}</span>
-                    <span className="text-xs text-slate-500 font-semibold"> / {act.unit}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <EnterpriseTable
+            loading={loading}
+            isEmpty={activities.length === 0}
+            emptyMessage="No operations configured yet."
+          >
+            <table className="w-full text-left border-collapse text-xs">
+              <EnterpriseTableHeader>
+                <EnterpriseTableTh>Code</EnterpriseTableTh>
+                <EnterpriseTableTh>Operation Name</EnterpriseTableTh>
+                <EnterpriseTableTh>Description</EnterpriseTableTh>
+                <EnterpriseTableTh>Unit</EnterpriseTableTh>
+                <EnterpriseTableTh align="right">Rate per Unit</EnterpriseTableTh>
+                <EnterpriseTableTh align="center">Status</EnterpriseTableTh>
+              </EnterpriseTableHeader>
+              <EnterpriseTableBody>
+                {activities.map(act => (
+                  <EnterpriseTableRow key={act.id}>
+                    <EnterpriseTableTd className="font-mono font-bold text-slate-800">{act.code}</EnterpriseTableTd>
+                    <EnterpriseTableTd className="font-semibold text-slate-900">{act.name}</EnterpriseTableTd>
+                    <EnterpriseTableTd className="text-slate-500 text-[11px]">{act.description || '—'}</EnterpriseTableTd>
+                    <EnterpriseTableTd>
+                      <span className="font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-mono">
+                        {act.unit}
+                      </span>
+                    </EnterpriseTableTd>
+                    <EnterpriseTableTd align="right" className="font-mono font-bold text-slate-900 text-xs">
+                      ₹{act.ratePerUnit} <span className="text-[10px] text-slate-400 font-normal">/ {act.unit}</span>
+                    </EnterpriseTableTd>
+                    <EnterpriseTableTd align="center">
+                      <EnterpriseBadge variant="success">Active</EnterpriseBadge>
+                    </EnterpriseTableTd>
+                  </EnterpriseTableRow>
+                ))}
+              </EnterpriseTableBody>
+            </table>
+          </EnterpriseTable>
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* TAB 3: PRODUCTION LOGS HISTORY                           */}
-      {/* ======================================================== */}
+      {/* TAB 3: PRODUCTION LOGS HISTORY */}
       {activeTab === 'history' && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-            <h2 className="text-base font-extrabold text-slate-900">All Logged Production Records</h2>
-            <span className="text-xs text-slate-500 font-medium">{logs.length} entries recorded</span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-bold uppercase text-slate-400 tracking-wider">
-                  <th className="py-3 px-6 font-bold">Operator</th>
-                  <th className="py-3 px-6 font-bold">Operation</th>
-                  <th className="py-3 px-6 font-bold">Log Date</th>
-                  <th className="py-3 px-6 font-bold text-right">Units</th>
-                  <th className="py-3 px-6 font-bold text-right">Total Amount</th>
-                  <th className="py-3 px-6 font-bold">Remarks</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {logs.map(log => (
-                  <tr key={log.id} className="hover:bg-slate-50/60 transition">
-                    <td className="py-3 px-6 font-bold text-slate-900">
-                      {log.employeeName}
-                      <span className="block text-[10px] font-mono text-slate-400">{log.employeeCode}</span>
-                    </td>
-                    <td className="py-3 px-6 font-medium text-slate-700">{log.activityName}</td>
-                    <td className="py-3 px-6 text-slate-500">{new Date(log.logDate).toLocaleDateString()}</td>
-                    <td className="py-3 px-6 text-right font-black text-slate-900">{log.quantity}</td>
-                    <td className="py-3 px-6 text-right font-black text-emerald-600">₹{log.totalAmount.toLocaleString()}</td>
-                    <td className="py-3 px-6 text-slate-400">{log.remarks || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <EnterpriseTable
+          loading={loading}
+          isEmpty={logs.length === 0}
+          emptyMessage="No production records logged yet."
+          footer={
+            logs.length > 0 && (
+              <EnterprisePagination
+                currentPage={historyPage}
+                totalItems={logs.length}
+                pageSize={pageSize}
+                onPageChange={setHistoryPage}
+                itemLabel="records"
+              />
+            )
+          }
+        >
+          <table className="w-full text-left border-collapse text-xs">
+            <EnterpriseTableHeader>
+              <EnterpriseTableTh>Operator</EnterpriseTableTh>
+              <EnterpriseTableTh>Operation</EnterpriseTableTh>
+              <EnterpriseTableTh>Log Date</EnterpriseTableTh>
+              <EnterpriseTableTh align="right">Units Produced</EnterpriseTableTh>
+              <EnterpriseTableTh align="right">Total Accrued</EnterpriseTableTh>
+              <EnterpriseTableTh>Remarks</EnterpriseTableTh>
+            </EnterpriseTableHeader>
+            <EnterpriseTableBody>
+              {logs.slice((historyPage - 1) * pageSize, historyPage * pageSize).map(log => (
+                <EnterpriseTableRow key={log.id}>
+                  <EnterpriseTableTd>
+                    <div className="font-semibold text-slate-900 text-xs">{log.employeeName}</div>
+                    <div className="text-[10px] font-mono text-slate-400">{log.employeeCode}</div>
+                  </EnterpriseTableTd>
+                  <EnterpriseTableTd className="font-medium text-slate-800">{log.activityName}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="text-slate-500 font-mono">{new Date(log.logDate).toLocaleDateString()}</EnterpriseTableTd>
+                  <EnterpriseTableTd align="right" className="font-mono font-bold text-slate-900">{log.quantity}</EnterpriseTableTd>
+                  <EnterpriseTableTd align="right" className="font-mono font-bold text-emerald-700">₹{log.totalAmount.toLocaleString()}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="text-slate-400">{log.remarks || '—'}</EnterpriseTableTd>
+                </EnterpriseTableRow>
+              ))}
+            </EnterpriseTableBody>
+          </table>
+        </EnterpriseTable>
       )}
 
       {/* Modal: Create Operation */}

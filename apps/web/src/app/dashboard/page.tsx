@@ -117,6 +117,8 @@ export default function DashboardHome() {
                 <span>Scope: <strong className="text-slate-700">{activeBranchScope}</strong></span>
               </>
             )}
+            <span>•</span>
+            <span className="text-slate-500 font-semibold">Noltrion Innovations Platform</span>
           </div>
         </div>
 

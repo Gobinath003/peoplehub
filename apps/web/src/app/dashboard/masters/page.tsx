@@ -31,6 +31,19 @@ import {
   ShieldCheck,
   SlidersHorizontal,
 } from 'lucide-react';
+import {
+  EnterpriseToolbar,
+  EnterpriseTable,
+  EnterpriseTableHeader,
+  EnterpriseTableTh,
+  EnterpriseTableBody,
+  EnterpriseTableRow,
+  EnterpriseTableTd,
+  EnterprisePagination,
+  EnterpriseBadge,
+  EnterpriseTabs,
+  EnterpriseTabItem,
+} from '../../../components/enterprise';
 
 type MasterTab = 'departments' | 'designations' | 'branches' | 'shifts' | 'employmentTypes';
 
@@ -278,49 +291,32 @@ export default function MastersPage() {
     { key: 'employmentTypes' as MasterTab, label: 'Employment Types', count: bundle.employmentTypes.length, icon: Tag },
   ];
 
+  const getActionLabel = () => {
+    switch (activeTab) {
+      case 'departments': return 'Add Department';
+      case 'designations': return 'Add Designation';
+      case 'branches': return 'Add Branch';
+      case 'shifts': return 'Add Shift';
+      case 'employmentTypes': return 'Add Type';
+    }
+  };
+
   return (
     <div className="space-y-3">
-      {/* Compact Header & Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2">
-          <h1 className="text-base font-bold text-slate-900 tracking-tight">Organization Masters</h1>
-          {activeTenant?.name && (
-            <span className="bg-emerald-50 text-emerald-700 font-medium px-2 py-0.5 rounded text-[11px] border border-emerald-200">
-              {activeTenant.name}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
-            <input
-              type="text"
-              placeholder={`Search ${activeTab}...`}
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 w-44 sm:w-56"
-            />
-          </div>
-
-          <button
-            onClick={() => openCreateModal(activeTab)}
-            className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition shadow-2xs flex items-center gap-1.5 shrink-0"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>
-              {activeTab === 'departments' && 'Add Department'}
-              {activeTab === 'designations' && 'Add Designation'}
-              {activeTab === 'branches' && 'Add Branch'}
-              {activeTab === 'shifts' && 'Add Shift'}
-              {activeTab === 'employmentTypes' && 'Add Type'}
-            </span>
-          </button>
-        </div>
-      </div>
+      {/* Enterprise Toolbar */}
+      <EnterpriseToolbar
+        title="Organization Masters"
+        totalCount={activeList.length}
+        tenantName={activeTenant?.name}
+        searchPlaceholder={`Search ${activeTab}...`}
+        searchValue={searchQuery}
+        onSearchChange={(val) => {
+          setSearchQuery(val);
+          setCurrentPage(1);
+        }}
+        primaryActionLabel={getActionLabel()}
+        onPrimaryAction={() => openCreateModal(activeTab)}
+      />
 
       {/* Success / Error Banners */}
       {successMsg && (
@@ -347,282 +343,211 @@ export default function MastersPage() {
         </div>
       )}
 
-      {/* Compact Segmented Master Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 border-b border-slate-200/80">
-        {tabs.map((tab) => {
-          const TabIcon = tab.icon;
-          const isActive = activeTab === tab.key;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => {
-                setActiveTab(tab.key);
-                setCurrentPage(1);
-              }}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-t-lg transition flex items-center gap-1.5 border-b-2 -mb-px ${
-                isActive
-                  ? 'border-slate-900 text-slate-900 bg-white'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
-              }`}
-            >
-              <TabIcon className="w-3.5 h-3.5" />
-              <span>{tab.label}</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-semibold ${
-                isActive ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
-              }`}>
-                {tab.count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Enterprise Tabs */}
+      <EnterpriseTabs
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={(tabKey) => {
+          setActiveTab(tabKey);
+          setCurrentPage(1);
+        }}
+      />
 
-      {/* Main Masters Content Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-        {loading ? (
-          <div className="p-8 flex justify-center">
-            <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        ) : (
-          <div>
-            {/* TAB 1: DEPARTMENTS */}
-            {activeTab === 'departments' && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                      <th className="py-2.5 px-3.5">Dept Code</th>
-                      <th className="py-2.5 px-3.5">Department Name</th>
-                      <th className="py-2.5 px-3.5">Division Details</th>
-                      <th className="py-2.5 px-3.5 text-center">Headcount</th>
-                      <th className="py-2.5 px-3.5 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {paginatedDepartments.map((dept) => (
-                      <tr key={dept.id} className="hover:bg-slate-50/60 transition">
-                        <td className="py-2 px-3.5 font-mono font-bold text-slate-800">{dept.code}</td>
-                        <td className="py-2 px-3.5 font-semibold text-slate-800">{dept.name}</td>
-                        <td className="py-2 px-3.5 text-slate-500 text-[11px]">{dept.description || '—'}</td>
-                        <td className="py-2 px-3.5 text-center font-mono">
-                          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">
-                            {dept.employeeCount || 0} employees
-                          </span>
-                        </td>
-                        <td className="py-2 px-3.5 text-center">
-                          <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded text-[10px] font-semibold border border-emerald-200">
-                            Active
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* TAB 2: DESIGNATIONS */}
-            {activeTab === 'designations' && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                      <th className="py-2.5 px-3.5">Role Code</th>
-                      <th className="py-2.5 px-3.5">Designation Title</th>
-                      <th className="py-2.5 px-3.5">Department Mapping</th>
-                      <th className="py-2.5 px-3.5">Job Description</th>
-                      <th className="py-2.5 px-3.5 text-center">Headcount</th>
-                      <th className="py-2.5 px-3.5 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {paginatedDesignations.map((desig) => (
-                      <tr key={desig.id} className="hover:bg-slate-50/60 transition">
-                        <td className="py-2 px-3.5 font-mono font-bold text-slate-800">{desig.code}</td>
-                        <td className="py-2 px-3.5 font-semibold text-slate-800">{desig.name}</td>
-                        <td className="py-2 px-3.5">
-                          <span className="bg-slate-100 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded text-[10px] font-medium">
-                            {desig.departmentName || 'All Departments'}
-                          </span>
-                        </td>
-                        <td className="py-2 px-3.5 text-slate-500 text-[11px]">{desig.description || '—'}</td>
-                        <td className="py-2 px-3.5 text-center font-mono">
-                          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">
-                            {desig.employeeCount || 0} employees
-                          </span>
-                        </td>
-                        <td className="py-2 px-3.5 text-center">
-                          <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded text-[10px] font-semibold border border-emerald-200">
-                            Active
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* TAB 3: BRANCHES & UNITS */}
-            {activeTab === 'branches' && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                      <th className="py-2.5 px-3.5">Unit Code</th>
-                      <th className="py-2.5 px-3.5">Branch / Unit Name</th>
-                      <th className="py-2.5 px-3.5">Facility Type</th>
-                      <th className="py-2.5 px-3.5">Location</th>
-                      <th className="py-2.5 px-3.5">Address</th>
-                      <th className="py-2.5 px-3.5 text-center">Workforce</th>
-                      <th className="py-2.5 px-3.5 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {paginatedBranches.map((b) => (
-                      <tr key={b.id} className="hover:bg-slate-50/60 transition">
-                        <td className="py-2 px-3.5 font-mono font-bold text-slate-800">{b.code}</td>
-                        <td className="py-2 px-3.5 font-semibold text-slate-800">{b.name}</td>
-                        <td className="py-2 px-3.5">
-                          <span className={`px-1.5 py-0.2 rounded text-[10px] font-semibold uppercase tracking-wider border ${
-                            b.type === 'FACTORY_UNIT'
-                              ? 'bg-amber-50 text-amber-800 border-amber-200'
-                              : b.type === 'HEAD_OFFICE'
-                              ? 'bg-blue-50 text-blue-800 border-blue-200'
-                              : 'bg-slate-100 text-slate-700 border-slate-200'
-                          }`}>
-                            {b.type.replace('_', ' ')}
-                          </span>
-                        </td>
-                        <td className="py-2 px-3.5 font-medium text-slate-700">
-                          {b.city ? `${b.city}, ${b.state || ''}` : '—'}
-                        </td>
-                        <td className="py-2 px-3.5 text-slate-500 text-[11px]">{b.address || '—'}</td>
-                        <td className="py-2 px-3.5 text-center font-mono">
-                          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">
-                            {b.employeeCount || 0} employees
-                          </span>
-                        </td>
-                        <td className="py-2 px-3.5 text-center">
-                          <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded text-[10px] font-semibold border border-emerald-200">
-                            Active
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* TAB 4: SHIFTS */}
-            {activeTab === 'shifts' && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                      <th className="py-2.5 px-3.5">Shift Code</th>
-                      <th className="py-2.5 px-3.5">Shift Name</th>
-                      <th className="py-2.5 px-3.5">Working Hours</th>
-                      <th className="py-2.5 px-3.5">Break</th>
-                      <th className="py-2.5 px-3.5 text-center">Assigned Employees</th>
-                      <th className="py-2.5 px-3.5 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {paginatedShifts.map((s) => (
-                      <tr key={s.id} className="hover:bg-slate-50/60 transition">
-                        <td className="py-2 px-3.5 font-mono font-bold text-slate-800">{s.code}</td>
-                        <td className="py-2 px-3.5 font-semibold text-slate-800">{s.name}</td>
-                        <td className="py-2 px-3.5 font-mono font-semibold text-slate-700">
-                          {s.startTime} — {s.endTime}
-                        </td>
-                        <td className="py-2 px-3.5 text-slate-500">{s.breakMinutes} mins</td>
-                        <td className="py-2 px-3.5 text-center font-mono">
-                          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">
-                            {s.employeeCount || 0} employees
-                          </span>
-                        </td>
-                        <td className="py-2 px-3.5 text-center">
-                          <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded text-[10px] font-semibold border border-emerald-200">
-                            Active
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* TAB 5: EMPLOYMENT TYPES */}
-            {activeTab === 'employmentTypes' && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                      <th className="py-2.5 px-3.5">Category Code</th>
-                      <th className="py-2.5 px-3.5">Employment Category</th>
-                      <th className="py-2.5 px-3.5">Description</th>
-                      <th className="py-2.5 px-3.5 text-center">Assigned Workforce</th>
-                      <th className="py-2.5 px-3.5 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {paginatedEmploymentTypes.map((et) => (
-                      <tr key={et.id} className="hover:bg-slate-50/60 transition">
-                        <td className="py-2 px-3.5 font-mono font-bold text-slate-800">{et.code}</td>
-                        <td className="py-2 px-3.5 font-semibold text-slate-800">{et.name}</td>
-                        <td className="py-2 px-3.5 text-slate-500 text-[11px]">{et.description || '—'}</td>
-                        <td className="py-2 px-3.5 text-center font-mono">
-                          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">
-                            {et.employeeCount || 0} employees
-                          </span>
-                        </td>
-                        <td className="py-2 px-3.5 text-center">
-                          <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded text-[10px] font-semibold border border-emerald-200">
-                            Active
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Pagination Controls */}
-            <div className="px-3.5 py-2 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between text-xs text-slate-500">
-              <div>
-                Showing <span className="font-semibold text-slate-800">{activeList.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}</span> to <span className="font-semibold text-slate-800">{Math.min(currentPage * pageSize, activeList.length)}</span> of <span className="font-semibold text-slate-800">{activeList.length}</span> records
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  disabled={currentPage <= 1}
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  className="px-2 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                  <span>Prev</span>
-                </button>
-                <span className="px-2 py-1 font-mono text-xs text-slate-700 font-semibold">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button
-                  type="button"
-                  disabled={currentPage >= totalPages}
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  className="px-2 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1"
-                >
-                  <span>Next</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          </div>
+      {/* Enterprise Master Content Table */}
+      <EnterpriseTable
+        loading={loading}
+        isEmpty={activeList.length === 0}
+        emptyMessage={`No ${activeTab} records found matching criteria.`}
+        footer={
+          activeList.length > 0 && (
+            <EnterprisePagination
+              currentPage={currentPage}
+              totalItems={activeList.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              itemLabel={activeTab}
+            />
+          )
+        }
+      >
+        {/* TAB 1: DEPARTMENTS */}
+        {activeTab === 'departments' && (
+          <table className="w-full text-left border-collapse text-xs">
+            <EnterpriseTableHeader>
+              <EnterpriseTableTh>Dept Code</EnterpriseTableTh>
+              <EnterpriseTableTh>Department Name</EnterpriseTableTh>
+              <EnterpriseTableTh>Division Details</EnterpriseTableTh>
+              <EnterpriseTableTh align="center">Headcount</EnterpriseTableTh>
+              <EnterpriseTableTh align="center">Status</EnterpriseTableTh>
+            </EnterpriseTableHeader>
+            <EnterpriseTableBody>
+              {paginatedDepartments.map((dept) => (
+                <EnterpriseTableRow key={dept.id}>
+                  <EnterpriseTableTd className="font-mono font-bold text-slate-800">{dept.code}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="font-semibold text-slate-800">{dept.name}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="text-slate-500 text-[11px]">{dept.description || '—'}</EnterpriseTableTd>
+                  <EnterpriseTableTd align="center">
+                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold font-mono">
+                      {dept.employeeCount || 0} employees
+                    </span>
+                  </EnterpriseTableTd>
+                  <EnterpriseTableTd align="center">
+                    <EnterpriseBadge variant="success">Active</EnterpriseBadge>
+                  </EnterpriseTableTd>
+                </EnterpriseTableRow>
+              ))}
+            </EnterpriseTableBody>
+          </table>
         )}
-      </div>
+
+        {/* TAB 2: DESIGNATIONS */}
+        {activeTab === 'designations' && (
+          <table className="w-full text-left border-collapse text-xs">
+            <EnterpriseTableHeader>
+              <EnterpriseTableTh>Role Code</EnterpriseTableTh>
+              <EnterpriseTableTh>Designation Title</EnterpriseTableTh>
+              <EnterpriseTableTh>Department Mapping</EnterpriseTableTh>
+              <EnterpriseTableTh>Job Description</EnterpriseTableTh>
+              <EnterpriseTableTh align="center">Headcount</EnterpriseTableTh>
+              <EnterpriseTableTh align="center">Status</EnterpriseTableTh>
+            </EnterpriseTableHeader>
+            <EnterpriseTableBody>
+              {paginatedDesignations.map((desig) => (
+                <EnterpriseTableRow key={desig.id}>
+                  <EnterpriseTableTd className="font-mono font-bold text-slate-800">{desig.code}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="font-semibold text-slate-800">{desig.name}</EnterpriseTableTd>
+                  <EnterpriseTableTd>
+                    <span className="bg-slate-100 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                      {desig.departmentName || 'All Departments'}
+                    </span>
+                  </EnterpriseTableTd>
+                  <EnterpriseTableTd className="text-slate-500 text-[11px]">{desig.description || '—'}</EnterpriseTableTd>
+                  <EnterpriseTableTd align="center">
+                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold font-mono">
+                      {desig.employeeCount || 0} employees
+                    </span>
+                  </EnterpriseTableTd>
+                  <EnterpriseTableTd align="center">
+                    <EnterpriseBadge variant="success">Active</EnterpriseBadge>
+                  </EnterpriseTableTd>
+                </EnterpriseTableRow>
+              ))}
+            </EnterpriseTableBody>
+          </table>
+        )}
+
+        {/* TAB 3: BRANCHES & UNITS */}
+        {activeTab === 'branches' && (
+          <table className="w-full text-left border-collapse text-xs">
+            <EnterpriseTableHeader>
+              <EnterpriseTableTh>Unit Code</EnterpriseTableTh>
+              <EnterpriseTableTh>Branch / Unit Name</EnterpriseTableTh>
+              <EnterpriseTableTh>Facility Type</EnterpriseTableTh>
+              <EnterpriseTableTh>Location</EnterpriseTableTh>
+              <EnterpriseTableTh>Address</EnterpriseTableTh>
+              <EnterpriseTableTh align="center">Workforce</EnterpriseTableTh>
+              <EnterpriseTableTh align="center">Status</EnterpriseTableTh>
+            </EnterpriseTableHeader>
+            <EnterpriseTableBody>
+              {paginatedBranches.map((b) => (
+                <EnterpriseTableRow key={b.id}>
+                  <EnterpriseTableTd className="font-mono font-bold text-slate-800">{b.code}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="font-semibold text-slate-800">{b.name}</EnterpriseTableTd>
+                  <EnterpriseTableTd>
+                    <EnterpriseBadge
+                      variant={
+                        b.type === 'FACTORY_UNIT'
+                          ? 'warning'
+                          : b.type === 'HEAD_OFFICE'
+                          ? 'info'
+                          : 'neutral'
+                      }
+                    >
+                      {b.type.replace('_', ' ')}
+                    </EnterpriseBadge>
+                  </EnterpriseTableTd>
+                  <EnterpriseTableTd className="font-medium text-slate-700">
+                    {b.city ? `${b.city}, ${b.state || ''}` : '—'}
+                  </EnterpriseTableTd>
+                  <EnterpriseTableTd className="text-slate-500 text-[11px]">{b.address || '—'}</EnterpriseTableTd>
+                  <EnterpriseTableTd align="center">
+                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold font-mono">
+                      {b.employeeCount || 0} employees
+                    </span>
+                  </EnterpriseTableTd>
+                  <EnterpriseTableTd align="center">
+                    <EnterpriseBadge variant="success">Active</EnterpriseBadge>
+                  </EnterpriseTableTd>
+                </EnterpriseTableRow>
+              ))}
+            </EnterpriseTableBody>
+          </table>
+        )}
+
+        {/* TAB 4: SHIFTS */}
+        {activeTab === 'shifts' && (
+          <table className="w-full text-left border-collapse text-xs">
+            <EnterpriseTableHeader>
+              <EnterpriseTableTh>Shift Code</EnterpriseTableTh>
+              <EnterpriseTableTh>Shift Name</EnterpriseTableTh>
+              <EnterpriseTableTh>Working Hours</EnterpriseTableTh>
+              <EnterpriseTableTh>Break</EnterpriseTableTh>
+              <EnterpriseTableTh align="center">Assigned Employees</EnterpriseTableTh>
+              <EnterpriseTableTh align="center">Status</EnterpriseTableTh>
+            </EnterpriseTableHeader>
+            <EnterpriseTableBody>
+              {paginatedShifts.map((s) => (
+                <EnterpriseTableRow key={s.id}>
+                  <EnterpriseTableTd className="font-mono font-bold text-slate-800">{s.code}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="font-semibold text-slate-800">{s.name}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="font-mono font-semibold text-slate-700">
+                    {s.startTime} — {s.endTime}
+                  </EnterpriseTableTd>
+                  <EnterpriseTableTd className="text-slate-500">{s.breakMinutes} mins</EnterpriseTableTd>
+                  <EnterpriseTableTd align="center">
+                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold font-mono">
+                      {s.employeeCount || 0} employees
+                    </span>
+                  </EnterpriseTableTd>
+                  <EnterpriseTableTd align="center">
+                    <EnterpriseBadge variant="success">Active</EnterpriseBadge>
+                  </EnterpriseTableTd>
+                </EnterpriseTableRow>
+              ))}
+            </EnterpriseTableBody>
+          </table>
+        )}
+
+        {/* TAB 5: EMPLOYMENT TYPES */}
+        {activeTab === 'employmentTypes' && (
+          <table className="w-full text-left border-collapse text-xs">
+            <EnterpriseTableHeader>
+              <EnterpriseTableTh>Category Code</EnterpriseTableTh>
+              <EnterpriseTableTh>Employment Category</EnterpriseTableTh>
+              <EnterpriseTableTh>Description</EnterpriseTableTh>
+              <EnterpriseTableTh align="center">Assigned Workforce</EnterpriseTableTh>
+              <EnterpriseTableTh align="center">Status</EnterpriseTableTh>
+            </EnterpriseTableHeader>
+            <EnterpriseTableBody>
+              {paginatedEmploymentTypes.map((et) => (
+                <EnterpriseTableRow key={et.id}>
+                  <EnterpriseTableTd className="font-mono font-bold text-slate-800">{et.code}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="font-semibold text-slate-800">{et.name}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="text-slate-500 text-[11px]">{et.description || '—'}</EnterpriseTableTd>
+                  <EnterpriseTableTd align="center">
+                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold font-mono">
+                      {et.employeeCount || 0} employees
+                    </span>
+                  </EnterpriseTableTd>
+                  <EnterpriseTableTd align="center">
+                    <EnterpriseBadge variant="success">Active</EnterpriseBadge>
+                  </EnterpriseTableTd>
+                </EnterpriseTableRow>
+              ))}
+            </EnterpriseTableBody>
+          </table>
+        )}
+      </EnterpriseTable>
 
       {/* CREATE MASTER MODAL */}
       {modalOpen && (

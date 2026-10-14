@@ -44,17 +44,27 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F4F7FE]">
         <div className="flex flex-col items-center gap-4 text-center p-8 bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200 max-w-sm w-full mx-4">
-          <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-md">
-            <Building2 className="w-6 h-6 text-white" />
+          <div className="h-12 px-3 py-1.5 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-xs">
+            <img 
+              src="/noltrion-logo.png" 
+              alt="Noltrion Innovations" 
+              className="h-8 w-auto object-contain mix-blend-multiply" 
+            />
           </div>
-          <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin mt-2"></div>
-          <p className="text-slate-800 font-extrabold text-sm">Loading PeopleHub...</p>
+          <div className="w-7 h-7 border-3 border-slate-900 border-t-transparent rounded-full animate-spin mt-1"></div>
+          <div>
+            <p className="text-slate-900 font-extrabold text-sm">PeopleHub Enterprise Suite</p>
+            <p className="text-slate-500 font-semibold text-xs mt-0.5">Noltrion Innovations</p>
+          </div>
           <a
             href="/login"
             className="text-xs font-bold text-slate-600 hover:text-slate-900 hover:underline"
           >
             Click here if not redirected automatically
           </a>
+          <p className="text-[10px] text-slate-400 border-t border-slate-100 pt-3 w-full">
+            © 2026 Noltrion Innovations. All rights reserved.
+          </p>
         </div>
       </div>
     );
@@ -101,10 +111,14 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Brand Header */}
-        <div className="flex h-16 items-center justify-between px-5 border-b border-slate-100">
-          <Link href="/dashboard" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-white shadow-xs">
-              <Building2 className="w-4 h-4 text-white" />
+        <div className="flex h-16 items-center justify-between px-4 border-b border-slate-100">
+          <Link href="/dashboard" className="flex items-center gap-2.5 group">
+            <div className="h-9 px-1.5 py-1 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-2xs group-hover:border-slate-300 transition">
+              <img 
+                src="/noltrion-logo.png" 
+                alt="Noltrion Innovations" 
+                className="h-6 w-auto object-contain mix-blend-multiply" 
+              />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
@@ -113,7 +127,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                   HRMS
                 </span>
               </div>
-              <p className="text-[10px] font-semibold text-slate-400">Enterprise Suite</p>
+              <p className="text-[10px] font-semibold text-slate-400">by Noltrion Innovations</p>
             </div>
           </Link>
           <button className="lg:hidden text-slate-400 hover:text-slate-600" onClick={() => setSidebarOpen(false)}>
@@ -232,6 +246,24 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             </div>
           )}
         </nav>
+
+        {/* Noltrion Enterprise Branding & Copyright in Sidebar */}
+        <div className="px-3.5 py-2.5 border-t border-slate-100 bg-slate-50/70">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <img 
+                src="/noltrion-logo.png" 
+                alt="Noltrion Innovations" 
+                className="h-3.5 w-auto object-contain mix-blend-multiply" 
+              />
+              <span className="text-[11px] font-bold text-slate-700">Noltrion Innovations</span>
+            </div>
+            <span className="text-[9px] font-mono text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200">v2.4</span>
+          </div>
+          <p className="text-[9px] text-slate-400 mt-1">
+            © 2026 Noltrion Innovations. All rights reserved.
+          </p>
+        </div>
 
         {/* Footer: User profile + Logout */}
         <div className="p-3 border-t border-slate-100 bg-white flex items-center justify-between">
@@ -381,8 +413,27 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Dynamic Content Container */}
-        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 lg:p-6">
-          {children}
+        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 lg:p-6 flex flex-col justify-between">
+          <div className="flex-1">
+            {children}
+          </div>
+
+          {/* Corporate Footer */}
+          <footer className="mt-8 pt-4 pb-2 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-500">
+            <div className="flex items-center gap-2">
+              <img 
+                src="/noltrion-logo.png" 
+                alt="Noltrion Innovations" 
+                className="h-3.5 w-auto object-contain mix-blend-multiply opacity-80" 
+              />
+              <span className="font-semibold text-slate-700">Noltrion Innovations</span>
+              <span className="text-slate-300">•</span>
+              <span>PeopleHub Enterprise HRMS Suite</span>
+            </div>
+            <div className="flex items-center gap-3 text-slate-400 text-[10px]">
+              <span>© 2026 Noltrion Innovations. All rights reserved.</span>
+            </div>
+          </footer>
         </main>
       </div>
     </div>

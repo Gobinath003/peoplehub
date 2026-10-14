@@ -11,6 +11,17 @@ import {
   Pencil, Trash2, Lock
 } from 'lucide-react';
 import { EmployeeDto, MasterBundleDto } from '@people-hub/shared-types';
+import {
+  EnterpriseToolbar,
+  EnterpriseTable,
+  EnterpriseTableHeader,
+  EnterpriseTableTh,
+  EnterpriseTableBody,
+  EnterpriseTableRow,
+  EnterpriseTableTd,
+  EnterprisePagination,
+  EnterpriseBadge,
+} from '../../../components/enterprise';
 
 const DEFAULT_GARMENT_MASTERS: MasterBundleDto = {
   departments: [
@@ -529,59 +540,34 @@ export default function EmployeesPage() {
 
   return (
     <div className="space-y-3">
-      {/* Compact Action Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2">
-          <h1 className="text-base font-bold text-slate-900 tracking-tight">Employee Directory</h1>
-          <span className="bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded text-[11px] border border-slate-200 font-mono">
-            {filteredEmployees.length}
-          </span>
-          {activeTenant?.name && (
-            <span className="bg-emerald-50 text-emerald-700 font-medium px-2 py-0.5 rounded text-[11px] border border-emerald-200">
-              {activeTenant.name}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
-            <input
-              type="text"
-              placeholder="Search code, name, phone..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 w-44 sm:w-56"
-            />
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <select
-              value={selectedDept}
-              onChange={(e) => {
-                setSelectedDept(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="py-1.5 px-2.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-slate-400"
-            >
-              {departments.map(d => (
-                <option key={d} value={d}>{d === 'ALL' ? 'All Depts' : d}</option>
-              ))}
-            </select>
-
-            <button
-              onClick={handleOpenAddModal}
-              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition shadow-2xs flex items-center gap-1.5 shrink-0"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Employee</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Enterprise Toolbar */}
+      <EnterpriseToolbar
+        title="Employee Directory"
+        totalCount={filteredEmployees.length}
+        tenantName={activeTenant?.name}
+        searchPlaceholder="Search code, name, phone..."
+        searchValue={searchQuery}
+        onSearchChange={(val) => {
+          setSearchQuery(val);
+          setCurrentPage(1);
+        }}
+        filters={
+          <select
+            value={selectedDept}
+            onChange={(e) => {
+              setSelectedDept(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="py-1.5 px-2.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-slate-400"
+          >
+            {departments.map(d => (
+              <option key={d} value={d}>{d === 'ALL' ? 'All Depts' : d}</option>
+            ))}
+          </select>
+        }
+        primaryActionLabel="Add Employee"
+        onPrimaryAction={handleOpenAddModal}
+      />
 
       {/* Success Banner */}
       {successMsg && (
@@ -596,159 +582,128 @@ export default function EmployeesPage() {
         </div>
       )}
 
-      {/* Employee List Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-        {loading ? (
-          <div className="p-8 flex justify-center">
-            <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        ) : filteredEmployees.length === 0 ? (
-          <div className="p-8 text-center text-slate-400 text-xs">
-            No employees found matching criteria.
-          </div>
-        ) : (
-          <div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    <th className="py-2.5 px-3.5">Employee</th>
-                    <th className="py-2.5 px-3.5">Department & Role</th>
-                    <th className="py-2.5 px-3.5">Branch Scope</th>
-                    <th className="py-2.5 px-3.5">Compensation Profile</th>
-                    <th className="py-2.5 px-3.5">Status</th>
-                    <th className="py-2.5 px-3.5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {paginatedEmployees.map(emp => (
-                    <tr key={emp.id} className="hover:bg-slate-50/60 transition">
-                      {/* Employee Info - Email omitted in default visible mode */}
-                      <td className="py-2 px-3.5">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-md bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-[10px] shrink-0 border border-slate-200">
-                            {emp.firstName[0]}{emp.lastName[0]}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-semibold text-slate-900 text-xs truncate">
-                              {emp.firstName} {emp.lastName}
-                            </div>
-                            <div className="flex items-center gap-1.5 text-slate-500 text-[10px]">
-                              <span className="font-mono bg-slate-100 px-1 py-0.2 rounded font-semibold text-slate-700">{emp.employeeCode}</span>
-                              <span>•</span>
-                              <span className="flex items-center gap-0.5">
-                                <Phone className="w-2.5 h-2.5 text-slate-400" />
-                                <span>{emp.phone || 'No mobile'}</span>
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Department & Role */}
-                      <td className="py-2 px-3.5">
-                        <div className="font-medium text-slate-800 text-xs">{emp.designation}</div>
-                        <div className="text-slate-400 text-[10px]">{emp.department}</div>
-                      </td>
-
-                      {/* Branch */}
-                      <td className="py-2 px-3.5">
-                        <span className="inline-flex items-center gap-1 bg-slate-50 text-slate-700 font-medium px-2 py-0.5 rounded text-[11px] border border-slate-200">
-                          <Building2 className="w-3 h-3 text-slate-400" />
-                          <span>{emp.branch || 'Global Branch'}</span>
+      {/* Enterprise Employee Table */}
+      <EnterpriseTable
+        loading={loading}
+        isEmpty={filteredEmployees.length === 0}
+        emptyMessage="No employees found matching criteria."
+        footer={
+          filteredEmployees.length > 0 && (
+            <EnterprisePagination
+              currentPage={currentPage}
+              totalItems={filteredEmployees.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              itemLabel="employees"
+            />
+          )
+        }
+      >
+        <table className="w-full text-left border-collapse text-xs">
+          <EnterpriseTableHeader>
+            <EnterpriseTableTh>Employee</EnterpriseTableTh>
+            <EnterpriseTableTh>Department & Role</EnterpriseTableTh>
+            <EnterpriseTableTh>Branch Scope</EnterpriseTableTh>
+            <EnterpriseTableTh>Compensation Profile</EnterpriseTableTh>
+            <EnterpriseTableTh>Status</EnterpriseTableTh>
+            <EnterpriseTableTh align="right">Actions</EnterpriseTableTh>
+          </EnterpriseTableHeader>
+          <EnterpriseTableBody>
+            {paginatedEmployees.map(emp => (
+              <EnterpriseTableRow key={emp.id}>
+                {/* Employee Info - Email omitted in default visible mode */}
+                <EnterpriseTableTd>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-md bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-[10px] shrink-0 border border-slate-200">
+                      {emp.firstName[0]}{emp.lastName[0]}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-slate-900 text-xs truncate">
+                        {emp.firstName} {emp.lastName}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-slate-500 text-[10px]">
+                        <span className="font-mono bg-slate-100 px-1 py-0.2 rounded font-semibold text-slate-700">{emp.employeeCode}</span>
+                        <span>•</span>
+                        <span className="flex items-center gap-0.5">
+                          <Phone className="w-2.5 h-2.5 text-slate-400" />
+                          <span>{emp.phone || 'No mobile'}</span>
                         </span>
-                      </td>
+                      </div>
+                    </div>
+                  </div>
+                </EnterpriseTableTd>
 
-                      {/* Compensation */}
-                      <td className="py-2 px-3.5">
-                        <div className="flex items-center gap-1.5">
-                          {emp.salaryType === 'PIECE_RATE' ? (
-                            <span className="bg-amber-50 text-amber-800 font-semibold px-2 py-0.5 rounded text-[10px] border border-amber-200 inline-flex items-center gap-1">
-                              <Scissors className="w-2.5 h-2.5 text-amber-600" />
-                              <span>Piece-Rate Output</span>
-                            </span>
-                          ) : (
-                            <div className="flex items-center gap-1.5">
-                              <span className="bg-blue-50 text-blue-700 font-semibold px-1.5 py-0.5 rounded text-[10px] border border-blue-200">
-                                Fixed
-                              </span>
-                              {emp.salaryStructure && (
-                                <span className="font-bold text-slate-900 text-xs font-mono">
-                                  ₹{emp.salaryStructure.grossSalary.toLocaleString()}
-                                  <span className="text-[10px] text-slate-400 font-normal">/mo</span>
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </td>
+                {/* Department & Role */}
+                <EnterpriseTableTd>
+                  <div className="font-medium text-slate-800 text-xs">{emp.designation}</div>
+                  <div className="text-slate-400 text-[10px]">{emp.department}</div>
+                </EnterpriseTableTd>
 
-                      {/* Status */}
-                      <td className="py-2 px-3.5">
-                        <span className="bg-emerald-50 text-emerald-700 font-semibold px-1.5 py-0.5 rounded text-[10px] border border-emerald-200">
-                          {emp.status}
-                        </span>
-                      </td>
+                {/* Branch */}
+                <EnterpriseTableTd>
+                  <span className="inline-flex items-center gap-1 bg-slate-50 text-slate-700 font-medium px-2 py-0.5 rounded text-[11px] border border-slate-200">
+                    <Building2 className="w-3 h-3 text-slate-400" />
+                    <span>{emp.branch || 'Global Branch'}</span>
+                  </span>
+                </EnterpriseTableTd>
 
-                      {/* Action Buttons: Edit and Delete */}
-                      <td className="py-2 px-3.5 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditModal(emp)}
-                            title="Edit Employee"
-                            className="p-1 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded transition"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteEmployee(emp)}
-                            title="Delete Employee"
-                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                {/* Compensation */}
+                <EnterpriseTableTd>
+                  <div className="flex items-center gap-1.5">
+                    {emp.salaryType === 'PIECE_RATE' ? (
+                      <EnterpriseBadge variant="warning">
+                        <Scissors className="w-2.5 h-2.5 text-amber-600 inline mr-1" />
+                        Piece-Rate Output
+                      </EnterpriseBadge>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <EnterpriseBadge variant="info">Fixed</EnterpriseBadge>
+                        {emp.salaryStructure && (
+                          <span className="font-bold text-slate-900 text-xs font-mono">
+                            ₹{emp.salaryStructure.grossSalary.toLocaleString()}
+                            <span className="text-[10px] text-slate-400 font-normal">/mo</span>
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </EnterpriseTableTd>
 
-            {/* Pagination Controls */}
-            <div className="px-3.5 py-2 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between text-xs text-slate-500">
-              <div>
-                Showing <span className="font-semibold text-slate-800">{filteredEmployees.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}</span> to <span className="font-semibold text-slate-800">{Math.min(currentPage * pageSize, filteredEmployees.length)}</span> of <span className="font-semibold text-slate-800">{filteredEmployees.length}</span> records
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  disabled={currentPage <= 1}
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  className="px-2 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                  <span>Prev</span>
-                </button>
-                <span className="px-2 py-1 font-mono text-xs text-slate-700 font-semibold">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button
-                  type="button"
-                  disabled={currentPage >= totalPages}
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  className="px-2 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1"
-                >
-                  <span>Next</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+                {/* Status */}
+                <EnterpriseTableTd>
+                  {emp.status === 'ACTIVE' ? (
+                    <EnterpriseBadge variant="success">Active</EnterpriseBadge>
+                  ) : (
+                    <EnterpriseBadge variant="neutral">{emp.status || 'Active'}</EnterpriseBadge>
+                  )}
+                </EnterpriseTableTd>
+
+                {/* Action Buttons: Edit and Delete */}
+                <EnterpriseTableTd align="right">
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditModal(emp)}
+                      title="Edit Employee"
+                      className="p-1 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded transition"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteEmployee(emp)}
+                      title="Delete Employee"
+                      className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </EnterpriseTableTd>
+              </EnterpriseTableRow>
+            ))}
+          </EnterpriseTableBody>
+        </table>
+      </EnterpriseTable>
 
       {/* ======================================================== */}
       {/* MODAL: ADD NEW EMPLOYEE                                  */}

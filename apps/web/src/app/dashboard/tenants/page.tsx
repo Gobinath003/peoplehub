@@ -6,9 +6,20 @@ import { useApp } from '../../../context/AppContext';
 import { API_BASE_URL } from '../../../config/api';
 import { 
   Building, Landmark, Plus, Check, X, Users, 
-  ExternalLink, Sparkles, Shield, AlertCircle 
+  ExternalLink, Sparkles, Shield, AlertCircle, Search 
 } from 'lucide-react';
 import { IndustryType } from '@people-hub/shared-types';
+import {
+  EnterpriseToolbar,
+  EnterpriseTable,
+  EnterpriseTableHeader,
+  EnterpriseTableTh,
+  EnterpriseTableBody,
+  EnterpriseTableRow,
+  EnterpriseTableTd,
+  EnterprisePagination,
+  EnterpriseBadge,
+} from '../../../components/enterprise';
 
 interface CompanyTenant {
   id: string;
@@ -36,6 +47,9 @@ export default function TenantsManagementPage() {
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   useEffect(() => {
     if (!authLoading && !isSuperAdmin) {
@@ -207,118 +221,165 @@ export default function TenantsManagementPage() {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-slate-800">Company (Tenant) Management</h1>
-            <span className="bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded text-xs border border-purple-200">
-              Super Admin
-            </span>
-          </div>
-          <p className="text-slate-500 text-sm mt-1">
-            Provision new client organizations with strict data isolation, assign default HR managers, and configure industry extensions.
-          </p>
-        </div>
+  const filteredTenants = tenants.filter(t => {
+    const q = searchQuery.toLowerCase();
+    return (
+      t.name.toLowerCase().includes(q) ||
+      t.slug.toLowerCase().includes(q) ||
+      (t.industry || '').toLowerCase().includes(q) ||
+      (t.managers || []).some(m => `${m.firstName} ${m.lastName} ${m.email}`.toLowerCase().includes(q))
+    );
+  });
 
-        <button
-          onClick={() => setModalOpen(true)}
-          className="bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shadow flex items-center gap-2 self-start md:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Create New Company</span>
-        </button>
-      </div>
+  const totalPages = Math.max(1, Math.ceil(filteredTenants.length / pageSize));
+  const paginatedTenants = filteredTenants.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  return (
+    <div className="space-y-3">
+      {/* Enterprise Toolbar */}
+      <EnterpriseToolbar
+        title="Tenant Organizations"
+        totalCount={filteredTenants.length}
+        searchPlaceholder="Search company, slug, manager..."
+        searchValue={searchQuery}
+        onSearchChange={(val) => {
+          setSearchQuery(val);
+          setCurrentPage(1);
+        }}
+        primaryActionLabel="Create Company"
+        onPrimaryAction={() => setModalOpen(true)}
+      >
+        <EnterpriseBadge variant="purple">Super Admin</EnterpriseBadge>
+      </EnterpriseToolbar>
 
       {/* Success / Error Banners */}
       {successMsg && (
-        <div className="p-4 bg-emerald-50 border-l-4 border-emerald-500 text-emerald-800 rounded-lg text-xs flex items-center justify-between font-semibold">
+        <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs flex items-center justify-between font-medium">
           <div className="flex items-center gap-2">
             <Check className="w-4 h-4 text-emerald-600" />
             <span>{successMsg}</span>
           </div>
           <button onClick={() => setSuccessMsg(null)} className="text-emerald-600 hover:text-emerald-800">
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
-      {/* Companies Grid */}
-      {loading ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 flex items-center justify-center">
-          <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {tenants.map(t => {
-            const isCurrent = activeTenant?.id === t.id;
-            return (
-              <div 
-                key={t.id}
-                className={`bg-white rounded-2xl shadow-sm border transition p-6 flex flex-col justify-between space-y-4 ${
-                  isCurrent ? 'border-primary-500 ring-2 ring-primary-500/10' : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2.5 bg-primary-50 text-primary-600 rounded-xl">
-                        <Building className="w-5 h-5" />
+      {/* Enterprise Tenants Table */}
+      <EnterpriseTable
+        loading={loading}
+        isEmpty={filteredTenants.length === 0}
+        emptyMessage="No company tenants found matching criteria."
+        footer={
+          filteredTenants.length > 0 && (
+            <EnterprisePagination
+              currentPage={currentPage}
+              totalItems={filteredTenants.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              itemLabel="companies"
+            />
+          )
+        }
+      >
+        <table className="w-full text-left border-collapse text-xs">
+          <EnterpriseTableHeader>
+            <EnterpriseTableTh>Company Organization</EnterpriseTableTh>
+            <EnterpriseTableTh>Industry Domain</EnterpriseTableTh>
+            <EnterpriseTableTh>Workforce Headcount</EnterpriseTableTh>
+            <EnterpriseTableTh>Primary HR Administrator</EnterpriseTableTh>
+            <EnterpriseTableTh>Status</EnterpriseTableTh>
+            <EnterpriseTableTh align="right">Context Switch</EnterpriseTableTh>
+          </EnterpriseTableHeader>
+          <EnterpriseTableBody>
+            {paginatedTenants.map((t) => {
+              const isCurrent = activeTenant?.id === t.id;
+              const manager = t.managers?.[0];
+              return (
+                <EnterpriseTableRow key={t.id} className={isCurrent ? 'bg-slate-50/50' : ''}>
+                  <EnterpriseTableTd>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-md bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-[10px] shrink-0 border border-slate-200">
+                        <Building className="w-3.5 h-3.5 text-slate-500" />
                       </div>
-                      <div>
-                        <h3 className="font-bold text-slate-800 text-base">{t.name}</h3>
-                        <span className="text-xs text-slate-400 font-mono">/{t.slug}</span>
-                      </div>
-                    </div>
-                    <span className="bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded text-[10px] border border-emerald-200">
-                      {t.status}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-2 gap-3 text-xs">
-                    <div>
-                      <span className="text-slate-400 block text-[10px] uppercase font-semibold">Industry</span>
-                      <span className="font-semibold text-slate-700 capitalize mt-0.5 block">{t.industry?.toLowerCase()}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px] uppercase font-semibold">Staff Count</span>
-                      <span className="font-semibold text-slate-700 mt-0.5 block">{t.employeeCount || 0} Employees</span>
-                    </div>
-                  </div>
-
-                  {t.managers && t.managers.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-slate-100 text-xs">
-                      <span className="text-slate-400 text-[10px] uppercase font-semibold block">HR Manager</span>
-                      <div className="text-slate-700 font-medium mt-0.5">
-                        {t.managers[0].firstName} {t.managers[0].lastName}
-                        <span className="text-slate-400 text-[11px] block">{t.managers[0].email}</span>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-slate-900 text-xs truncate">
+                          {t.name}
+                        </div>
+                        <div className="text-slate-400 font-mono text-[10px]">
+                          /{t.slug}
+                        </div>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </EnterpriseTableTd>
 
-                <div className="pt-2 flex items-center justify-between border-t border-slate-100">
-                  {isCurrent ? (
-                    <span className="text-xs font-bold text-primary-700 bg-primary-50 px-3 py-1.5 rounded-lg">
-                      ✓ Current Active Context
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => switchTenant(t.id)}
-                      className="text-xs font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1.5 hover:underline"
+                  <EnterpriseTableTd>
+                    <EnterpriseBadge
+                      variant={
+                        t.industry === IndustryType.GARMENTS
+                          ? 'warning'
+                          : t.industry === IndustryType.LOGISTICS
+                          ? 'info'
+                          : 'neutral'
+                      }
                     >
-                      <span>Switch to Company</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                      {t.industry?.toLowerCase()}
+                    </EnterpriseBadge>
+                  </EnterpriseTableTd>
+
+                  <EnterpriseTableTd>
+                    <span className="font-mono font-semibold text-slate-800 text-xs">
+                      {t.employeeCount || 0}
+                    </span>
+                    <span className="text-[11px] text-slate-400 ml-1">staff</span>
+                  </EnterpriseTableTd>
+
+                  <EnterpriseTableTd>
+                    {manager ? (
+                      <div>
+                        <span className="font-medium text-slate-800 block text-xs">
+                          {manager.firstName} {manager.lastName}
+                        </span>
+                        <span className="text-slate-400 text-[10px] font-mono block">
+                          {manager.email}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 italic text-[11px]">Unassigned</span>
+                    )}
+                  </EnterpriseTableTd>
+
+                  <EnterpriseTableTd>
+                    {t.status === 'ACTIVE' ? (
+                      <EnterpriseBadge variant="success">Active</EnterpriseBadge>
+                    ) : (
+                      <EnterpriseBadge variant="neutral">{t.status}</EnterpriseBadge>
+                    )}
+                  </EnterpriseTableTd>
+
+                  <EnterpriseTableTd align="right">
+                    {isCurrent ? (
+                      <span className="inline-flex items-center gap-1 font-semibold text-[11px] text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                        <Check className="w-3 h-3 text-emerald-600" />
+                        <span>Active Context</span>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => switchTenant(t.id)}
+                        className="text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 transition inline-flex items-center gap-1.5 shadow-2xs"
+                      >
+                        <span>Switch</span>
+                        <ExternalLink className="w-3 h-3 text-slate-400" />
+                      </button>
+                    )}
+                  </EnterpriseTableTd>
+                </EnterpriseTableRow>
+              );
+            })}
+          </EnterpriseTableBody>
+        </table>
+      </EnterpriseTable>
 
       {/* Modal: Create Company */}
       {modalOpen && (

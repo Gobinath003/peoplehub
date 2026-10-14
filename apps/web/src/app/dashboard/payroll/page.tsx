@@ -10,6 +10,19 @@ import {
   ChevronRight, ChevronLeft, Edit3, Scissors, AlertCircle 
 } from 'lucide-react';
 import { PayslipDto, SalaryStructureDto } from '@people-hub/shared-types';
+import {
+  EnterpriseToolbar,
+  EnterpriseTable,
+  EnterpriseTableHeader,
+  EnterpriseTableTh,
+  EnterpriseTableBody,
+  EnterpriseTableRow,
+  EnterpriseTableTd,
+  EnterprisePagination,
+  EnterpriseBadge,
+  EnterpriseTabs,
+  EnterpriseTabItem,
+} from '../../../components/enterprise';
 
 interface EmployeeSalaryRow {
   employeeId: string;
@@ -359,48 +372,27 @@ export default function PayrollPage() {
   const totalHistoryPages = Math.max(1, Math.ceil(payslips.length / pageSize));
   const paginatedPayslips = payslips.slice((historyPage - 1) * pageSize, historyPage * pageSize);
 
+  const payrollTabs: EnterpriseTabItem<'structures' | 'generate' | 'history'>[] = [
+    { key: 'structures', label: 'Salary Structures', count: structures.length, icon: DollarSign },
+    { key: 'generate', label: 'Run Payroll', icon: Play },
+    { key: 'history', label: 'Payslips', count: payslips.length, icon: FileText },
+  ];
+
   return (
     <div className="space-y-3">
-      {/* Compact Header & Tab Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2">
-          <h1 className="text-base font-bold text-slate-900 tracking-tight">Payroll & Compensation</h1>
-          {activeTenant?.name && (
-            <span className="bg-emerald-50 text-emerald-700 font-medium px-2 py-0.5 rounded text-[11px] border border-emerald-200">
-              {activeTenant.name}
-            </span>
-          )}
-        </div>
+      {/* Enterprise Toolbar */}
+      <EnterpriseToolbar
+        title="Payroll & Compensation"
+        tenantName={activeTenant?.name}
+        totalCount={activeTab === 'structures' ? structures.length : activeTab === 'history' ? payslips.length : undefined}
+      />
 
-        {/* Compact Tab Switcher */}
-        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
-          <button
-            onClick={() => setActiveTab('structures')}
-            className={`px-3 py-1 rounded-md font-semibold transition ${
-              activeTab === 'structures' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Salary Structures ({structures.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('generate')}
-            className={`px-3 py-1 rounded-md font-semibold transition flex items-center gap-1 ${
-              activeTab === 'generate' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Play className="w-3 h-3 text-emerald-600" />
-            <span>Run Payroll</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`px-3 py-1 rounded-md font-semibold transition ${
-              activeTab === 'history' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Payslips ({payslips.length})
-          </button>
-        </div>
-      </div>
+      {/* Enterprise Tabs */}
+      <EnterpriseTabs
+        tabs={payrollTabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
 
       {/* Success / Error alerts */}
       {successMsg && (
@@ -429,118 +421,99 @@ export default function PayrollPage() {
 
       {/* TAB 1: SALARY STRUCTURES */}
       {activeTab === 'structures' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                  <th className="py-2.5 px-3.5">Employee</th>
-                  <th className="py-2.5 px-3.5">Basic Salary</th>
-                  <th className="py-2.5 px-3.5">Allowances (HRA + Special)</th>
-                  <th className="py-2.5 px-3.5">Deductions (PF + Tax)</th>
-                  <th className="py-2.5 px-3.5">Gross / Net Monthly</th>
-                  <th className="py-2.5 px-3.5 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {paginatedStructures.map(emp => {
-                  const st = emp.salaryStructure;
-                  return (
-                    <tr key={emp.employeeId} className="hover:bg-slate-50/60 transition">
-                      <td className="py-2 px-3.5">
-                        <div className="font-semibold text-slate-900 text-xs">{emp.employeeName}</div>
-                        <div className="text-slate-500 text-[10px] flex items-center gap-1.5">
-                          <span className="font-mono bg-slate-100 px-1 py-0.2 rounded font-semibold text-slate-700">{emp.employeeCode}</span>
-                          <span>•</span>
-                          <span>{emp.designation}</span>
+        <EnterpriseTable
+          loading={loading}
+          isEmpty={structures.length === 0}
+          emptyMessage="No employee salary structures found."
+          footer={
+            structures.length > 0 && (
+              <EnterprisePagination
+                currentPage={structPage}
+                totalItems={structures.length}
+                pageSize={pageSize}
+                onPageChange={setStructPage}
+                itemLabel="staff"
+              />
+            )
+          }
+        >
+          <table className="w-full text-left border-collapse text-xs">
+            <EnterpriseTableHeader>
+              <EnterpriseTableTh>Employee</EnterpriseTableTh>
+              <EnterpriseTableTh>Basic Salary</EnterpriseTableTh>
+              <EnterpriseTableTh>Allowances (HRA + Special)</EnterpriseTableTh>
+              <EnterpriseTableTh>Deductions (PF + Tax)</EnterpriseTableTh>
+              <EnterpriseTableTh>Gross / Net Monthly</EnterpriseTableTh>
+              <EnterpriseTableTh align="right">Action</EnterpriseTableTh>
+            </EnterpriseTableHeader>
+            <EnterpriseTableBody>
+              {paginatedStructures.map(emp => {
+                const st = emp.salaryStructure;
+                return (
+                  <EnterpriseTableRow key={emp.employeeId}>
+                    <EnterpriseTableTd>
+                      <div className="font-semibold text-slate-900 text-xs">{emp.employeeName}</div>
+                      <div className="text-slate-500 text-[10px] flex items-center gap-1.5">
+                        <span className="font-mono bg-slate-100 px-1 py-0.2 rounded font-semibold text-slate-700">{emp.employeeCode}</span>
+                        <span>•</span>
+                        <span>{emp.designation}</span>
+                      </div>
+                    </EnterpriseTableTd>
+
+                    <EnterpriseTableTd className="font-mono font-medium text-slate-800">
+                      {st ? `₹${st.basicSalary.toLocaleString()}` : '—'}
+                    </EnterpriseTableTd>
+
+                    <EnterpriseTableTd className="text-slate-700">
+                      {st ? (
+                        <div>
+                          <span className="font-mono font-medium">₹{(st.hra + st.specialAllowance + st.conveyanceAllowance).toLocaleString()}</span>
+                          <span className="text-[10px] text-slate-400 block">HRA: ₹{st.hra.toLocaleString()}</span>
                         </div>
-                      </td>
+                      ) : '—'}
+                    </EnterpriseTableTd>
 
-                      <td className="py-2 px-3.5 font-mono font-medium text-slate-800">
-                        {st ? `₹${st.basicSalary.toLocaleString()}` : '—'}
-                      </td>
+                    <EnterpriseTableTd className="text-rose-600 font-mono">
+                      {st ? (
+                        <div>
+                          <span className="font-medium">-₹{(st.pfDeduction + st.taxDeduction).toLocaleString()}</span>
+                          <span className="text-[10px] text-slate-400 block">PF: ₹{st.pfDeduction.toLocaleString()}</span>
+                        </div>
+                      ) : '—'}
+                    </EnterpriseTableTd>
 
-                      <td className="py-2 px-3.5 text-slate-700">
-                        {st ? (
-                          <div>
-                            <span className="font-mono font-medium">₹{(st.hra + st.specialAllowance + st.conveyanceAllowance).toLocaleString()}</span>
-                            <span className="text-[10px] text-slate-400 block">HRA: ₹{st.hra.toLocaleString()}</span>
+                    <EnterpriseTableTd>
+                      {st ? (
+                        <div>
+                          <div className="font-bold text-emerald-700 text-xs font-mono">
+                            ₹{st.netSalary.toLocaleString()} <span className="text-[10px] font-normal text-slate-500">Net</span>
                           </div>
-                        ) : '—'}
-                      </td>
-
-                      <td className="py-2 px-3.5 text-rose-600 font-mono">
-                        {st ? (
-                          <div>
-                            <span className="font-medium">-₹{(st.pfDeduction + st.taxDeduction).toLocaleString()}</span>
-                            <span className="text-[10px] text-slate-400 block">PF: ₹{st.pfDeduction.toLocaleString()}</span>
+                          <div className="text-[10px] text-slate-400 font-mono">
+                            Gross: ₹{st.grossSalary.toLocaleString()}
                           </div>
-                        ) : '—'}
-                      </td>
+                        </div>
+                      ) : (
+                        <EnterpriseBadge variant="warning">
+                          Not Configured
+                        </EnterpriseBadge>
+                      )}
+                    </EnterpriseTableTd>
 
-                      <td className="py-2 px-3.5">
-                        {st ? (
-                          <div>
-                            <div className="font-bold text-emerald-700 text-xs font-mono">
-                              ₹{st.netSalary.toLocaleString()} <span className="text-[10px] font-normal text-slate-500">Net</span>
-                            </div>
-                            <div className="text-[10px] text-slate-400 font-mono">
-                              Gross: ₹{st.grossSalary.toLocaleString()}
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded text-[10px] font-semibold border border-amber-200">
-                            Not Configured
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="py-2 px-3.5 text-right">
-                        <button
-                          onClick={() => openEditSalary(emp)}
-                          className="text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 transition inline-flex items-center gap-1 shadow-2xs"
-                        >
-                          <Edit3 className="w-3 h-3 text-slate-500" />
-                          <span>{st ? 'Edit' : 'Setup'}</span>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Controls */}
-          <div className="px-3.5 py-2 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between text-xs text-slate-500">
-            <div>
-              Showing <span className="font-semibold text-slate-800">{structures.length === 0 ? 0 : (structPage - 1) * pageSize + 1}</span> to <span className="font-semibold text-slate-800">{Math.min(structPage * pageSize, structures.length)}</span> of <span className="font-semibold text-slate-800">{structures.length}</span> staff
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                disabled={structPage <= 1}
-                onClick={() => setStructPage(p => Math.max(1, p - 1))}
-                className="px-2 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                <span>Prev</span>
-              </button>
-              <span className="px-2 py-1 font-mono text-xs text-slate-700 font-semibold">
-                Page {structPage} of {totalStructPages}
-              </span>
-              <button
-                type="button"
-                disabled={structPage >= totalStructPages}
-                onClick={() => setStructPage(p => Math.min(totalStructPages, p + 1))}
-                className="px-2 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1"
-              >
-                <span>Next</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        </div>
+                    <EnterpriseTableTd align="right">
+                      <button
+                        onClick={() => openEditSalary(emp)}
+                        className="text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 transition inline-flex items-center gap-1 shadow-2xs"
+                      >
+                        <Edit3 className="w-3 h-3 text-slate-500" />
+                        <span>{st ? 'Edit' : 'Setup'}</span>
+                      </button>
+                    </EnterpriseTableTd>
+                  </EnterpriseTableRow>
+                );
+              })}
+            </EnterpriseTableBody>
+          </table>
+        </EnterpriseTable>
       )}
 
       {/* TAB 2: RUN MONTHLY PAYROLL */}
@@ -629,122 +602,93 @@ export default function PayrollPage() {
 
       {/* TAB 3: GENERATED PAYSLIPS */}
       {activeTab === 'history' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-          {payslips.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-xs">
-              No payslips generated yet. Go to &quot;Run Payroll&quot; tab to issue payslips.
-            </div>
-          ) : (
-            <div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                      <th className="py-2.5 px-3.5">Employee</th>
-                      <th className="py-2.5 px-3.5">Pay Period</th>
-                      <th className="py-2.5 px-3.5">Gross Earnings</th>
-                      <th className="py-2.5 px-3.5">Total Deductions</th>
-                      <th className="py-2.5 px-3.5">Net Payout</th>
-                      <th className="py-2.5 px-3.5">Status</th>
-                      <th className="py-2.5 px-3.5 text-right">Document</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {paginatedPayslips.map(ps => (
-                      <tr key={ps.id} className="hover:bg-slate-50/60 transition">
-                        <td className="py-2 px-3.5">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-semibold text-slate-900 text-xs">{ps.employeeName}</span>
-                            {ps.salaryType === 'PIECE_RATE' ? (
-                              <span className="bg-amber-50 text-amber-800 font-semibold px-1.5 py-0.2 rounded text-[9px] border border-amber-200 inline-flex items-center gap-0.5">
-                                <Scissors className="w-2.5 h-2.5 text-amber-600" />
-                                <span>Piece-Rate</span>
-                              </span>
-                            ) : (
-                              <span className="bg-blue-50 text-blue-700 font-semibold px-1.5 py-0.2 rounded text-[9px] border border-blue-200">
-                                Fixed
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-slate-500 text-[10px] flex items-center gap-1.5">
-                            <span className="font-mono bg-slate-100 px-1 py-0.2 rounded font-semibold text-slate-700">{ps.employeeCode}</span>
-                            <span>•</span>
-                            <span>{ps.department}</span>
-                            {ps.pieceRateUnits ? (
-                              <span className="text-amber-800 font-mono font-semibold">({ps.pieceRateUnits} units)</span>
-                            ) : null}
-                          </div>
-                        </td>
+        <EnterpriseTable
+          loading={loading}
+          isEmpty={payslips.length === 0}
+          emptyMessage="No payslips generated yet. Go to 'Run Payroll' tab to issue payslips."
+          footer={
+            payslips.length > 0 && (
+              <EnterprisePagination
+                currentPage={historyPage}
+                totalItems={payslips.length}
+                pageSize={pageSize}
+                onPageChange={setHistoryPage}
+                itemLabel="payslips"
+              />
+            )
+          }
+        >
+          <table className="w-full text-left border-collapse text-xs">
+            <EnterpriseTableHeader>
+              <EnterpriseTableTh>Employee</EnterpriseTableTh>
+              <EnterpriseTableTh>Pay Period</EnterpriseTableTh>
+              <EnterpriseTableTh>Gross Earnings</EnterpriseTableTh>
+              <EnterpriseTableTh>Total Deductions</EnterpriseTableTh>
+              <EnterpriseTableTh>Net Payout</EnterpriseTableTh>
+              <EnterpriseTableTh>Status</EnterpriseTableTh>
+              <EnterpriseTableTh align="right">Document</EnterpriseTableTh>
+            </EnterpriseTableHeader>
+            <EnterpriseTableBody>
+              {paginatedPayslips.map(ps => (
+                <EnterpriseTableRow key={ps.id}>
+                  <EnterpriseTableTd>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-slate-900 text-xs">{ps.employeeName}</span>
+                      {ps.salaryType === 'PIECE_RATE' ? (
+                        <EnterpriseBadge variant="warning">
+                          <Scissors className="w-2.5 h-2.5 text-amber-600 inline mr-0.5" />
+                          Piece-Rate
+                        </EnterpriseBadge>
+                      ) : (
+                        <EnterpriseBadge variant="info">Fixed</EnterpriseBadge>
+                      )}
+                    </div>
+                    <div className="text-slate-500 text-[10px] flex items-center gap-1.5 mt-0.5">
+                      <span className="font-mono bg-slate-100 px-1 py-0.2 rounded font-semibold text-slate-700">{ps.employeeCode}</span>
+                      <span>•</span>
+                      <span>{ps.department}</span>
+                      {ps.pieceRateUnits ? (
+                        <span className="text-amber-800 font-mono font-semibold">({ps.pieceRateUnits} units)</span>
+                      ) : null}
+                    </div>
+                  </EnterpriseTableTd>
 
-                        <td className="py-2 px-3.5 font-medium text-slate-700">
-                          {ps.payPeriod}
-                        </td>
+                  <EnterpriseTableTd className="font-medium text-slate-700">
+                    {ps.payPeriod}
+                  </EnterpriseTableTd>
 
-                        <td className="py-2 px-3.5 font-mono font-medium text-slate-800">
-                          ₹{ps.grossEarnings.toLocaleString()}
-                        </td>
+                  <EnterpriseTableTd className="font-mono font-medium text-slate-800">
+                    ₹{ps.grossEarnings.toLocaleString()}
+                  </EnterpriseTableTd>
 
-                        <td className="py-2 px-3.5 font-mono text-rose-600 font-medium">
-                          -₹{ps.totalDeductions.toLocaleString()}
-                        </td>
+                  <EnterpriseTableTd className="font-mono text-rose-600 font-medium">
+                    -₹{ps.totalDeductions.toLocaleString()}
+                  </EnterpriseTableTd>
 
-                        <td className="py-2 px-3.5 font-mono font-bold text-emerald-700 text-xs">
-                          ₹{ps.netPayable.toLocaleString()}
-                        </td>
+                  <EnterpriseTableTd className="font-mono font-bold text-emerald-700 text-xs">
+                    ₹{ps.netPayable.toLocaleString()}
+                  </EnterpriseTableTd>
 
-                        <td className="py-2 px-3.5">
-                          <span className="bg-emerald-50 text-emerald-700 font-semibold px-1.5 py-0.2 rounded text-[10px] border border-emerald-200">
-                            {ps.status}
-                          </span>
-                        </td>
+                  <EnterpriseTableTd>
+                    <EnterpriseBadge variant="success">
+                      {ps.status}
+                    </EnterpriseBadge>
+                  </EnterpriseTableTd>
 
-                        <td className="py-2 px-3.5 text-right">
-                          <button
-                            onClick={() => setViewPayslip(ps)}
-                            className="text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 transition inline-flex items-center gap-1 shadow-2xs"
-                          >
-                            <Printer className="w-3 h-3 text-slate-500" />
-                            <span>Print</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination Controls */}
-              <div className="px-3.5 py-2 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between text-xs text-slate-500">
-                <div>
-                  Showing <span className="font-semibold text-slate-800">{payslips.length === 0 ? 0 : (historyPage - 1) * pageSize + 1}</span> to <span className="font-semibold text-slate-800">{Math.min(historyPage * pageSize, payslips.length)}</span> of <span className="font-semibold text-slate-800">{payslips.length}</span> payslips
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    disabled={historyPage <= 1}
-                    onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
-                    className="px-2 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                    <span>Prev</span>
-                  </button>
-                  <span className="px-2 py-1 font-mono text-xs text-slate-700 font-semibold">
-                    Page {historyPage} of {totalHistoryPages}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={historyPage >= totalHistoryPages}
-                    onClick={() => setHistoryPage(p => Math.min(totalHistoryPages, p + 1))}
-                    className="px-2 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs flex items-center gap-1"
-                  >
-                    <span>Next</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+                  <EnterpriseTableTd align="right">
+                    <button
+                      onClick={() => setViewPayslip(ps)}
+                      className="text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 transition inline-flex items-center gap-1 shadow-2xs"
+                    >
+                      <Printer className="w-3 h-3 text-slate-500" />
+                      <span>Print</span>
+                    </button>
+                  </EnterpriseTableTd>
+                </EnterpriseTableRow>
+              ))}
+            </EnterpriseTableBody>
+          </table>
+        </EnterpriseTable>
       )}
 
       {/* MODAL 1: EDIT SALARY */}

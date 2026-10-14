@@ -61,24 +61,21 @@ function LoginContent() {
           
           {/* Brand Header Inside Widget */}
           <div className="flex flex-col items-center text-center mb-8">
-            <div className="h-14 px-4 py-1.5 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-center mb-4">
+            <div className="mb-4 flex items-center justify-center">
               <img 
                 src="/noltrion-logo.png" 
                 alt="Noltrion Innovations" 
-                className="h-10 w-auto object-contain mix-blend-multiply" 
+                className="h-12 w-auto object-contain" 
               />
             </div>
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2">
               <span className="text-xl font-black text-slate-900 tracking-tight">PeopleHub</span>
               <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
                 Enterprise
               </span>
             </div>
-            <p className="text-xs font-semibold text-slate-500">
-              Human Capital & Workforce Management Suite
-            </p>
-            <p className="text-[11px] font-medium text-slate-400 mt-0.5">
-              by <strong className="text-slate-600">Noltrion Innovations</strong>
+            <p className="text-xs text-slate-500 font-medium mt-1">
+              Sign in to your enterprise workspace
             </p>
           </div>
 
@@ -191,15 +188,7 @@ function LoginContent() {
 
       {/* Page Footer */}
       <div className="relative z-10 max-w-md w-full mx-auto text-center mt-6 text-[11px] text-slate-400 space-y-2">
-        <div className="flex items-center justify-center gap-2 mb-1">
-          <img 
-            src="/noltrion-logo.png" 
-            alt="Noltrion Innovations" 
-            className="h-4 w-auto object-contain mix-blend-multiply opacity-80" 
-          />
-          <span className="font-bold text-slate-700">Noltrion Innovations</span>
-        </div>
-        <p className="font-semibold text-slate-600">
+        <p className="font-semibold text-slate-500">
           © 2026 Noltrion Innovations. All rights reserved.
         </p>
         <p className="text-[10px] text-slate-400">

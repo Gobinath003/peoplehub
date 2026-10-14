@@ -37,7 +37,7 @@ export const EnterprisePagination: React.FC<EnterprisePaginationProps> = ({
           <ChevronLeft className="w-3.5 h-3.5" />
           <span>Prev</span>
         </button>
-        <span className="px-2 py-1 font-mono text-xs text-slate-700 font-semibold">
+        <span className="px-2 py-1 text-xs text-slate-700 font-medium">
           Page {currentPage} of {totalPages}
         </span>
         <button

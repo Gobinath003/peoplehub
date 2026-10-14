@@ -34,12 +34,12 @@ export const EnterpriseToolbar: React.FC<EnterpriseToolbarProps> = ({
       <div className="flex items-center gap-2">
         <h1 className="text-base font-bold text-slate-900 tracking-tight">{title}</h1>
         {typeof totalCount === 'number' && (
-          <span className="bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded text-[11px] border border-slate-200 font-mono">
-            {totalCount}
+          <span className="text-xs text-slate-400 font-medium">
+            ({totalCount})
           </span>
         )}
         {tenantName && (
-          <span className="bg-emerald-50 text-emerald-700 font-medium px-2 py-0.5 rounded text-[11px] border border-emerald-200">
+          <span className="text-[11px] text-slate-500 font-medium px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200/60">
             {tenantName}
           </span>
         )}

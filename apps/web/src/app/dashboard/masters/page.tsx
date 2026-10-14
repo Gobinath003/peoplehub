@@ -383,11 +383,11 @@ export default function MastersPage() {
             <EnterpriseTableBody>
               {paginatedDepartments.map((dept) => (
                 <EnterpriseTableRow key={dept.id}>
-                  <EnterpriseTableTd className="font-mono font-bold text-slate-800">{dept.code}</EnterpriseTableTd>
-                  <EnterpriseTableTd className="font-semibold text-slate-800">{dept.name}</EnterpriseTableTd>
-                  <EnterpriseTableTd className="text-slate-500 text-[11px]">{dept.description || '—'}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="font-semibold text-slate-900">{dept.code}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="font-medium text-slate-900">{dept.name}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="text-slate-500 text-xs">{dept.description || '—'}</EnterpriseTableTd>
                   <EnterpriseTableTd align="center">
-                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold font-mono">
+                    <span className="text-slate-600 font-medium text-xs">
                       {dept.employeeCount || 0} employees
                     </span>
                   </EnterpriseTableTd>
@@ -414,16 +414,16 @@ export default function MastersPage() {
             <EnterpriseTableBody>
               {paginatedDesignations.map((desig) => (
                 <EnterpriseTableRow key={desig.id}>
-                  <EnterpriseTableTd className="font-mono font-bold text-slate-800">{desig.code}</EnterpriseTableTd>
-                  <EnterpriseTableTd className="font-semibold text-slate-800">{desig.name}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="font-semibold text-slate-900">{desig.code}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="font-medium text-slate-900">{desig.name}</EnterpriseTableTd>
                   <EnterpriseTableTd>
-                    <span className="bg-slate-100 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                    <span className="text-slate-600 font-medium text-xs">
                       {desig.departmentName || 'All Departments'}
                     </span>
                   </EnterpriseTableTd>
-                  <EnterpriseTableTd className="text-slate-500 text-[11px]">{desig.description || '—'}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="text-slate-500 text-xs">{desig.description || '—'}</EnterpriseTableTd>
                   <EnterpriseTableTd align="center">
-                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold font-mono">
+                    <span className="text-slate-600 font-medium text-xs">
                       {desig.employeeCount || 0} employees
                     </span>
                   </EnterpriseTableTd>
@@ -451,8 +451,8 @@ export default function MastersPage() {
             <EnterpriseTableBody>
               {paginatedBranches.map((b) => (
                 <EnterpriseTableRow key={b.id}>
-                  <EnterpriseTableTd className="font-mono font-bold text-slate-800">{b.code}</EnterpriseTableTd>
-                  <EnterpriseTableTd className="font-semibold text-slate-800">{b.name}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="font-semibold text-slate-900">{b.code}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="font-medium text-slate-900">{b.name}</EnterpriseTableTd>
                   <EnterpriseTableTd>
                     <EnterpriseBadge
                       variant={
@@ -469,9 +469,9 @@ export default function MastersPage() {
                   <EnterpriseTableTd className="font-medium text-slate-700">
                     {b.city ? `${b.city}, ${b.state || ''}` : '—'}
                   </EnterpriseTableTd>
-                  <EnterpriseTableTd className="text-slate-500 text-[11px]">{b.address || '—'}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="text-slate-500 text-xs">{b.address || '—'}</EnterpriseTableTd>
                   <EnterpriseTableTd align="center">
-                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold font-mono">
+                    <span className="text-slate-600 font-medium text-xs">
                       {b.employeeCount || 0} employees
                     </span>
                   </EnterpriseTableTd>
@@ -498,14 +498,14 @@ export default function MastersPage() {
             <EnterpriseTableBody>
               {paginatedShifts.map((s) => (
                 <EnterpriseTableRow key={s.id}>
-                  <EnterpriseTableTd className="font-mono font-bold text-slate-800">{s.code}</EnterpriseTableTd>
-                  <EnterpriseTableTd className="font-semibold text-slate-800">{s.name}</EnterpriseTableTd>
-                  <EnterpriseTableTd className="font-mono font-semibold text-slate-700">
+                  <EnterpriseTableTd className="font-semibold text-slate-900">{s.code}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="font-medium text-slate-900">{s.name}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="font-medium text-slate-700">
                     {s.startTime} — {s.endTime}
                   </EnterpriseTableTd>
-                  <EnterpriseTableTd className="text-slate-500">{s.breakMinutes} mins</EnterpriseTableTd>
+                  <EnterpriseTableTd className="text-slate-500 text-xs">{s.breakMinutes} mins</EnterpriseTableTd>
                   <EnterpriseTableTd align="center">
-                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold font-mono">
+                    <span className="text-slate-600 font-medium text-xs">
                       {s.employeeCount || 0} employees
                     </span>
                   </EnterpriseTableTd>
@@ -531,11 +531,11 @@ export default function MastersPage() {
             <EnterpriseTableBody>
               {paginatedEmploymentTypes.map((et) => (
                 <EnterpriseTableRow key={et.id}>
-                  <EnterpriseTableTd className="font-mono font-bold text-slate-800">{et.code}</EnterpriseTableTd>
-                  <EnterpriseTableTd className="font-semibold text-slate-800">{et.name}</EnterpriseTableTd>
-                  <EnterpriseTableTd className="text-slate-500 text-[11px]">{et.description || '—'}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="font-semibold text-slate-900">{et.code}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="font-medium text-slate-900">{et.name}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="text-slate-500 text-xs">{et.description || '—'}</EnterpriseTableTd>
                   <EnterpriseTableTd align="center">
-                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold font-mono">
+                    <span className="text-slate-600 font-medium text-xs">
                       {et.employeeCount || 0} employees
                     </span>
                   </EnterpriseTableTd>
@@ -581,7 +581,7 @@ export default function MastersPage() {
                       value={deptCode}
                       onChange={(e) => setDeptCode(e.target.value)}
                       placeholder="e.g. DEPT-CUT"
-                      className="w-full border border-slate-300 rounded-lg p-2 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      className="w-full border border-slate-300 rounded-lg p-2 text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                   </div>
                   <div>
@@ -619,7 +619,7 @@ export default function MastersPage() {
                       value={desigCode}
                       onChange={(e) => setDesigCode(e.target.value)}
                       placeholder="e.g. DESIG-CM"
-                      className="w-full border border-slate-300 rounded-lg p-2 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      className="w-full border border-slate-300 rounded-lg p-2 text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                   </div>
                   <div>
@@ -672,7 +672,7 @@ export default function MastersPage() {
                       value={branchCode}
                       onChange={(e) => setBranchCode(e.target.value)}
                       placeholder="e.g. BR-TPR-UNIT1"
-                      className="w-full border border-slate-300 rounded-lg p-2 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      className="w-full border border-slate-300 rounded-lg p-2 text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                   </div>
                   <div>
@@ -745,7 +745,7 @@ export default function MastersPage() {
                       value={shiftCode}
                       onChange={(e) => setShiftCode(e.target.value)}
                       placeholder="e.g. SH-MORN"
-                      className="w-full border border-slate-300 rounded-lg p-2 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      className="w-full border border-slate-300 rounded-lg p-2 text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                   </div>
                   <div>
@@ -805,7 +805,7 @@ export default function MastersPage() {
                       value={empTypeCode}
                       onChange={(e) => setEmpTypeCode(e.target.value)}
                       placeholder="e.g. ET-CONT"
-                      className="w-full border border-slate-300 rounded-lg p-2 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      className="w-full border border-slate-300 rounded-lg p-2 text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                   </div>
                   <div>

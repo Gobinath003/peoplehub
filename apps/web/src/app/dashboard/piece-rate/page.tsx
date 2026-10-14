@@ -654,15 +654,15 @@ export default function PieceRatePage() {
               <EnterpriseTableBody>
                 {activities.map(act => (
                   <EnterpriseTableRow key={act.id}>
-                    <EnterpriseTableTd className="font-mono font-bold text-slate-800">{act.code}</EnterpriseTableTd>
-                    <EnterpriseTableTd className="font-semibold text-slate-900">{act.name}</EnterpriseTableTd>
-                    <EnterpriseTableTd className="text-slate-500 text-[11px]">{act.description || '—'}</EnterpriseTableTd>
+                    <EnterpriseTableTd className="font-semibold text-slate-900">{act.code}</EnterpriseTableTd>
+                    <EnterpriseTableTd className="font-medium text-slate-900">{act.name}</EnterpriseTableTd>
+                    <EnterpriseTableTd className="text-slate-500 text-xs">{act.description || '—'}</EnterpriseTableTd>
                     <EnterpriseTableTd>
-                      <span className="font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-mono">
+                      <span className="font-medium text-slate-600 text-xs">
                         {act.unit}
                       </span>
                     </EnterpriseTableTd>
-                    <EnterpriseTableTd align="right" className="font-mono font-bold text-slate-900 text-xs">
+                    <EnterpriseTableTd align="right" className="font-semibold text-slate-900 text-xs">
                       ₹{act.ratePerUnit} <span className="text-[10px] text-slate-400 font-normal">/ {act.unit}</span>
                     </EnterpriseTableTd>
                     <EnterpriseTableTd align="center">
@@ -708,12 +708,12 @@ export default function PieceRatePage() {
                 <EnterpriseTableRow key={log.id}>
                   <EnterpriseTableTd>
                     <div className="font-semibold text-slate-900 text-xs">{log.employeeName}</div>
-                    <div className="text-[10px] font-mono text-slate-400">{log.employeeCode}</div>
+                    <div className="text-[10px] text-slate-400">{log.employeeCode}</div>
                   </EnterpriseTableTd>
                   <EnterpriseTableTd className="font-medium text-slate-800">{log.activityName}</EnterpriseTableTd>
-                  <EnterpriseTableTd className="text-slate-500 font-mono">{new Date(log.logDate).toLocaleDateString()}</EnterpriseTableTd>
-                  <EnterpriseTableTd align="right" className="font-mono font-bold text-slate-900">{log.quantity}</EnterpriseTableTd>
-                  <EnterpriseTableTd align="right" className="font-mono font-bold text-emerald-700">₹{log.totalAmount.toLocaleString()}</EnterpriseTableTd>
+                  <EnterpriseTableTd className="text-slate-500">{new Date(log.logDate).toLocaleDateString()}</EnterpriseTableTd>
+                  <EnterpriseTableTd align="right" className="font-semibold text-slate-900">{log.quantity}</EnterpriseTableTd>
+                  <EnterpriseTableTd align="right" className="font-bold text-emerald-700">₹{log.totalAmount.toLocaleString()}</EnterpriseTableTd>
                   <EnterpriseTableTd className="text-slate-400">{log.remarks || '—'}</EnterpriseTableTd>
                 </EnterpriseTableRow>
               ))}

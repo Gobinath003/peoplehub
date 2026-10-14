@@ -44,16 +44,16 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F4F7FE]">
         <div className="flex flex-col items-center gap-4 text-center p-8 bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200 max-w-sm w-full mx-4">
-          <div className="h-12 px-3 py-1.5 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-xs">
+          <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-xs p-2">
             <img 
-              src="/noltrion-logo.png" 
+              src="/noltrion-icon.png" 
               alt="Noltrion Innovations" 
-              className="h-8 w-auto object-contain mix-blend-multiply" 
+              className="w-full h-full object-contain" 
             />
           </div>
           <div className="w-7 h-7 border-3 border-slate-900 border-t-transparent rounded-full animate-spin mt-1"></div>
           <div>
-            <p className="text-slate-900 font-extrabold text-sm">PeopleHub Enterprise Suite</p>
+            <p className="text-slate-900 font-extrabold text-sm">PeopleHub Enterprise</p>
             <p className="text-slate-500 font-semibold text-xs mt-0.5">Noltrion Innovations</p>
           </div>
           <a
@@ -113,11 +113,11 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         {/* Brand Header */}
         <div className="flex h-16 items-center justify-between px-4 border-b border-slate-100">
           <Link href="/dashboard" className="flex items-center gap-2.5 group">
-            <div className="h-9 px-1.5 py-1 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-2xs group-hover:border-slate-300 transition">
+            <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-2xs p-1.5 group-hover:border-slate-300 transition">
               <img 
-                src="/noltrion-logo.png" 
+                src="/noltrion-icon.png" 
                 alt="Noltrion Innovations" 
-                className="h-6 w-auto object-contain mix-blend-multiply" 
+                className="w-full h-full object-contain" 
               />
             </div>
             <div>
@@ -247,45 +247,17 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           )}
         </nav>
 
-        {/* Noltrion Enterprise Branding & Copyright in Sidebar */}
-        <div className="px-3.5 py-2.5 border-t border-slate-100 bg-slate-50/70">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <img 
-                src="/noltrion-logo.png" 
-                alt="Noltrion Innovations" 
-                className="h-3.5 w-auto object-contain mix-blend-multiply" 
-              />
-              <span className="text-[11px] font-bold text-slate-700">Noltrion Innovations</span>
-            </div>
-            <span className="text-[9px] font-mono text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200">v2.4</span>
+        {/* Footer: User profile (Logout is accessed via top-right profile menu) */}
+        <div className="p-3 border-t border-slate-100 bg-white flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-slate-900 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs">
+            {user.firstName[0]}{user.lastName[0]}
           </div>
-          <p className="text-[9px] text-slate-400 mt-1">
-            © 2026 Noltrion Innovations. All rights reserved.
-          </p>
-        </div>
-
-        {/* Footer: User profile + Logout */}
-        <div className="p-3 border-t border-slate-100 bg-white flex items-center justify-between">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-slate-900 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs">
-              {user.firstName[0]}{user.lastName[0]}
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs font-bold text-slate-900 truncate">{user.firstName} {user.lastName}</div>
-              <div className="text-[10px] text-slate-400 font-medium truncate capitalize">
-                {isSuperAdmin ? 'Platform Admin' : (activeTenant?.name || 'Administrator')}
-              </div>
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-slate-900 truncate">{user.firstName} {user.lastName}</div>
+            <div className="text-[10px] text-slate-400 font-medium truncate capitalize">
+              {isSuperAdmin ? 'Platform Admin' : (activeTenant?.name || 'Administrator')}
             </div>
           </div>
-
-          <button
-            onClick={logout}
-            title="Log Out"
-            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-          </button>
         </div>
       </aside>
 
@@ -419,18 +391,18 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Corporate Footer */}
-          <footer className="mt-8 pt-4 pb-2 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-500">
+          <footer className="mt-8 pt-4 pb-2 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-400">
             <div className="flex items-center gap-2">
               <img 
-                src="/noltrion-logo.png" 
-                alt="Noltrion Innovations" 
-                className="h-3.5 w-auto object-contain mix-blend-multiply opacity-80" 
+                src="/noltrion-icon.png" 
+                alt="Noltrion" 
+                className="h-3.5 w-auto object-contain opacity-75" 
               />
-              <span className="font-semibold text-slate-700">Noltrion Innovations</span>
+              <span className="font-semibold text-slate-600">PeopleHub Enterprise Suite</span>
               <span className="text-slate-300">•</span>
-              <span>PeopleHub Enterprise HRMS Suite</span>
+              <span>Powered by Noltrion Innovations</span>
             </div>
-            <div className="flex items-center gap-3 text-slate-400 text-[10px]">
+            <div>
               <span>© 2026 Noltrion Innovations. All rights reserved.</span>
             </div>
           </footer>

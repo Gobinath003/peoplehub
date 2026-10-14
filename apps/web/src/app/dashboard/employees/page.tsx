@@ -622,7 +622,7 @@ export default function EmployeesPage() {
                         {emp.firstName} {emp.lastName}
                       </div>
                       <div className="flex items-center gap-1.5 text-slate-500 text-[10px]">
-                        <span className="font-mono bg-slate-100 px-1 py-0.2 rounded font-semibold text-slate-700">{emp.employeeCode}</span>
+                        <span className="font-medium text-slate-600">{emp.employeeCode}</span>
                         <span>•</span>
                         <span className="flex items-center gap-0.5">
                           <Phone className="w-2.5 h-2.5 text-slate-400" />
@@ -641,7 +641,7 @@ export default function EmployeesPage() {
 
                 {/* Branch */}
                 <EnterpriseTableTd>
-                  <span className="inline-flex items-center gap-1 bg-slate-50 text-slate-700 font-medium px-2 py-0.5 rounded text-[11px] border border-slate-200">
+                  <span className="inline-flex items-center gap-1 text-slate-700 font-medium text-xs">
                     <Building2 className="w-3 h-3 text-slate-400" />
                     <span>{emp.branch || 'Global Branch'}</span>
                   </span>
@@ -659,7 +659,7 @@ export default function EmployeesPage() {
                       <div className="flex items-center gap-1.5">
                         <EnterpriseBadge variant="info">Fixed</EnterpriseBadge>
                         {emp.salaryStructure && (
-                          <span className="font-bold text-slate-900 text-xs font-mono">
+                          <span className="font-semibold text-slate-900 text-xs">
                             ₹{emp.salaryStructure.grossSalary.toLocaleString()}
                             <span className="text-[10px] text-slate-400 font-normal">/mo</span>
                           </span>
@@ -760,7 +760,7 @@ export default function EmployeesPage() {
                       type="text"
                       readOnly
                       value={employeeCode}
-                      className="w-full border border-slate-200 rounded-xl p-2.5 font-mono text-slate-700 text-xs font-bold bg-slate-100 cursor-not-allowed"
+                      className="w-full border border-slate-200 rounded-xl p-2.5 text-slate-700 text-xs font-semibold bg-slate-50 cursor-not-allowed"
                     />
                   </div>
                   <div>
@@ -1002,7 +1002,7 @@ export default function EmployeesPage() {
                           required
                           value={basicSalary}
                           onChange={(e) => setBasicSalary(e.target.value)}
-                          className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                          className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -1011,7 +1011,7 @@ export default function EmployeesPage() {
                           type="number"
                           value={hra}
                           onChange={(e) => setHra(e.target.value)}
-                          className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                          className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -1020,7 +1020,7 @@ export default function EmployeesPage() {
                           type="number"
                           value={specialAllowance}
                           onChange={(e) => setSpecialAllowance(e.target.value)}
-                          className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                          className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -1029,7 +1029,7 @@ export default function EmployeesPage() {
                           type="number"
                           value={conveyanceAllowance}
                           onChange={(e) => setConveyanceAllowance(e.target.value)}
-                          className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                          className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
                         />
                       </div>
                     </div>
@@ -1041,7 +1041,7 @@ export default function EmployeesPage() {
                           type="number"
                           value={pfDeduction}
                           onChange={(e) => setPfDeduction(e.target.value)}
-                          className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                          className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -1050,7 +1050,7 @@ export default function EmployeesPage() {
                           type="number"
                           value={taxDeduction}
                           onChange={(e) => setTaxDeduction(e.target.value)}
-                          className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                          className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
                         />
                       </div>
                     </div>
@@ -1093,7 +1093,7 @@ export default function EmployeesPage() {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-slate-800 text-base">Edit Employee Details</h3>
-                  <p className="text-xs text-slate-500">Employee Code: <strong className="font-mono">{editEmpCode}</strong></p>
+                  <p className="text-xs text-slate-500">Employee Code: <strong className="font-semibold text-slate-800">{editEmpCode}</strong></p>
                 </div>
               </div>
               <button 
@@ -1246,7 +1246,7 @@ export default function EmployeesPage() {
                         type="number"
                         value={editBasicSalary}
                         onChange={(e) => setEditBasicSalary(e.target.value)}
-                        className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs"
+                        className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs"
                       />
                     </div>
                     <div>
@@ -1255,7 +1255,7 @@ export default function EmployeesPage() {
                         type="number"
                         value={editHra}
                         onChange={(e) => setEditHra(e.target.value)}
-                        className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 text-xs"
+                        className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs"
                       />
                     </div>
                   </div>

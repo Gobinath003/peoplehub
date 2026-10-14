@@ -306,7 +306,7 @@ export default function TenantsManagementPage() {
                         <div className="font-semibold text-slate-900 text-xs truncate">
                           {t.name}
                         </div>
-                        <div className="text-slate-400 font-mono text-[10px]">
+                        <div className="text-slate-400 text-[10px]">
                           /{t.slug}
                         </div>
                       </div>
@@ -328,7 +328,7 @@ export default function TenantsManagementPage() {
                   </EnterpriseTableTd>
 
                   <EnterpriseTableTd>
-                    <span className="font-mono font-semibold text-slate-800 text-xs">
+                    <span className="font-semibold text-slate-800 text-xs">
                       {t.employeeCount || 0}
                     </span>
                     <span className="text-[11px] text-slate-400 ml-1">staff</span>
@@ -340,7 +340,7 @@ export default function TenantsManagementPage() {
                         <span className="font-medium text-slate-800 block text-xs">
                           {manager.firstName} {manager.lastName}
                         </span>
-                        <span className="text-slate-400 text-[10px] font-mono block">
+                        <span className="text-slate-400 text-[10px] block">
                           {manager.email}
                         </span>
                       </div>

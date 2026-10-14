@@ -43,7 +43,7 @@ export function EnterpriseTabs<T extends string = string>({
               {Icon && <Icon className="w-3.5 h-3.5" />}
               <span>{tab.label}</span>
               {typeof tab.count === 'number' && (
-                <span className="text-[10px] text-slate-400 font-mono">({tab.count})</span>
+                <span className="text-[10px] text-slate-400">({tab.count})</span>
               )}
             </button>
           );
@@ -72,7 +72,7 @@ export function EnterpriseTabs<T extends string = string>({
             <span>{tab.label}</span>
             {typeof tab.count === 'number' && (
               <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-semibold ${
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-semibold ${
                   isActive ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
                 }`}
               >

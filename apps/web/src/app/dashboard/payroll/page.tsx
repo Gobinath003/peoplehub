@@ -454,26 +454,26 @@ export default function PayrollPage() {
                     <EnterpriseTableTd>
                       <div className="font-semibold text-slate-900 text-xs">{emp.employeeName}</div>
                       <div className="text-slate-500 text-[10px] flex items-center gap-1.5">
-                        <span className="font-mono bg-slate-100 px-1 py-0.2 rounded font-semibold text-slate-700">{emp.employeeCode}</span>
+                        <span className="font-medium text-slate-600">{emp.employeeCode}</span>
                         <span>•</span>
                         <span>{emp.designation}</span>
                       </div>
                     </EnterpriseTableTd>
 
-                    <EnterpriseTableTd className="font-mono font-medium text-slate-800">
+                    <EnterpriseTableTd className="font-semibold text-slate-800">
                       {st ? `₹${st.basicSalary.toLocaleString()}` : '—'}
                     </EnterpriseTableTd>
 
                     <EnterpriseTableTd className="text-slate-700">
                       {st ? (
                         <div>
-                          <span className="font-mono font-medium">₹{(st.hra + st.specialAllowance + st.conveyanceAllowance).toLocaleString()}</span>
+                          <span className="font-medium text-slate-800">₹{(st.hra + st.specialAllowance + st.conveyanceAllowance).toLocaleString()}</span>
                           <span className="text-[10px] text-slate-400 block">HRA: ₹{st.hra.toLocaleString()}</span>
                         </div>
                       ) : '—'}
                     </EnterpriseTableTd>
 
-                    <EnterpriseTableTd className="text-rose-600 font-mono">
+                    <EnterpriseTableTd className="text-rose-600">
                       {st ? (
                         <div>
                           <span className="font-medium">-₹{(st.pfDeduction + st.taxDeduction).toLocaleString()}</span>
@@ -485,10 +485,10 @@ export default function PayrollPage() {
                     <EnterpriseTableTd>
                       {st ? (
                         <div>
-                          <div className="font-bold text-emerald-700 text-xs font-mono">
+                          <div className="font-bold text-emerald-700 text-xs">
                             ₹{st.netSalary.toLocaleString()} <span className="text-[10px] font-normal text-slate-500">Net</span>
                           </div>
-                          <div className="text-[10px] text-slate-400 font-mono">
+                          <div className="text-[10px] text-slate-400">
                             Gross: ₹{st.grossSalary.toLocaleString()}
                           </div>
                         </div>
@@ -644,11 +644,11 @@ export default function PayrollPage() {
                       )}
                     </div>
                     <div className="text-slate-500 text-[10px] flex items-center gap-1.5 mt-0.5">
-                      <span className="font-mono bg-slate-100 px-1 py-0.2 rounded font-semibold text-slate-700">{ps.employeeCode}</span>
+                      <span className="font-medium text-slate-600">{ps.employeeCode}</span>
                       <span>•</span>
                       <span>{ps.department}</span>
                       {ps.pieceRateUnits ? (
-                        <span className="text-amber-800 font-mono font-semibold">({ps.pieceRateUnits} units)</span>
+                        <span className="text-amber-800 font-medium">({ps.pieceRateUnits} units)</span>
                       ) : null}
                     </div>
                   </EnterpriseTableTd>
@@ -657,15 +657,15 @@ export default function PayrollPage() {
                     {ps.payPeriod}
                   </EnterpriseTableTd>
 
-                  <EnterpriseTableTd className="font-mono font-medium text-slate-800">
+                  <EnterpriseTableTd className="font-semibold text-slate-800">
                     ₹{ps.grossEarnings.toLocaleString()}
                   </EnterpriseTableTd>
 
-                  <EnterpriseTableTd className="font-mono text-rose-600 font-medium">
+                  <EnterpriseTableTd className="text-rose-600 font-medium">
                     -₹{ps.totalDeductions.toLocaleString()}
                   </EnterpriseTableTd>
 
-                  <EnterpriseTableTd className="font-mono font-bold text-emerald-700 text-xs">
+                  <EnterpriseTableTd className="font-bold text-emerald-700 text-xs">
                     ₹{ps.netPayable.toLocaleString()}
                   </EnterpriseTableTd>
 

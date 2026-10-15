@@ -246,19 +246,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             </div>
           )}
         </nav>
-
-        {/* Footer: User profile (Logout is accessed via top-right profile menu) */}
-        <div className="p-3 border-t border-slate-100 bg-white flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-slate-900 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs">
-            {user.firstName[0]}{user.lastName[0]}
-          </div>
-          <div className="min-w-0">
-            <div className="text-xs font-bold text-slate-900 truncate">{user.firstName} {user.lastName}</div>
-            <div className="text-[10px] text-slate-400 font-medium truncate capitalize">
-              {isSuperAdmin ? 'Platform Admin' : (activeTenant?.name || 'Administrator')}
-            </div>
-          </div>
-        </div>
       </aside>
 
       {/* Main Content Area */}
@@ -391,20 +378,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Corporate Footer */}
-          <footer className="mt-8 pt-4 pb-2 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-400">
-            <div className="flex items-center gap-2">
-              <img 
-                src="/noltrion-icon.png" 
-                alt="Noltrion" 
-                className="h-3.5 w-auto object-contain opacity-75" 
-              />
-              <span className="font-semibold text-slate-600">PeopleHub Enterprise Suite</span>
-              <span className="text-slate-300">•</span>
-              <span>Powered by Noltrion Innovations</span>
-            </div>
-            <div>
-              <span>© 2026 Noltrion Innovations. All rights reserved.</span>
-            </div>
+          <footer className="mt-8 pt-4 pb-2 border-t border-slate-200/80 text-center text-[11px] text-slate-400">
+            <span>© 2026 Noltrion Innovations. All rights reserved.</span>
           </footer>
         </main>
       </div>

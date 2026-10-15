@@ -9,7 +9,8 @@ import {
   Settings, MessageSquare, Mail, LogOut, 
   Search, RotateCcw, Building, ChevronRight, ChevronDown,
   Menu, X, BadgeCheck, FileText, Landmark, 
-  Scissors, SlidersHorizontal, UserCheck, Bell, Building2
+  Scissors, SlidersHorizontal, UserCheck, Bell, Building2,
+  Wallet
 } from 'lucide-react';
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
@@ -77,6 +78,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     { name: 'Executive Overview', path: '/dashboard', icon: LayoutGrid, show: true },
     { name: 'Attendance & Production', path: '/dashboard/piece-rate', icon: Scissors, show: isGarments },
     { name: 'Payroll & Compensation', path: '/dashboard/payroll', icon: FileText, show: true },
+    { name: 'Accounts', path: '/dashboard/accounts', icon: Wallet, show: true },
   ].filter(item => item.show);
 
   // Masters Sub-Items

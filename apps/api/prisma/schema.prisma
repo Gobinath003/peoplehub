@@ -31,6 +31,7 @@ model Tenant {
   payslips             Payslip[]
   pieceRateActivities  PieceRateActivity[]
   pieceRateLogs        PieceRateLog[]
+  accountTransactions  AccountTransaction[]
 
   @@map("tenants")
 }
@@ -224,6 +225,7 @@ model Employee {
   salaryStructure   SalaryStructure?
   payslips          Payslip[]
   pieceRateLogs     PieceRateLog[]
+  accountTransactions AccountTransaction[]
 
   @@unique([tenantId, employeeCode])
   @@index([tenantId])
@@ -435,3 +437,37 @@ model EmploymentType {
   @@index([tenantId])
   @@map("employment_types")
 }
+
+model AccountTransaction {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  type            String    // INCOME, EXPENSE, EMPLOYEE_ADVANCE
+  category        String    // e.g. SALES, CLIENT_PAYMENT, RENT, UTILITIES, SALARY_ADVANCE, TEA_SNACKS, TRAVEL, EQUIPMENT, OTHER
+  amount          Float
+  transactionDate DateTime  @map("transaction_date")
+  paymentMode     String    @default("CASH") @map("payment_mode") // CASH, BANK_TRANSFER, UPI, CHEQUE
+  referenceNo     String?   @map("reference_no")
+  payeePayer      String?   @map("payee_payer")
+  description     String?
+  status          String    @default("COMPLETED") // COMPLETED, PENDING, CANCELLED
+
+  // Employee Advance specific tracking
+  employeeId      String?   @map("employee_id") @db.Uuid
+  recoveryStatus  String?   @default("OUTSTANDING") @map("recovery_status") // OUTSTANDING, PARTIAL, SETTLED
+  recoveredAmount Float     @default(0) @map("recovered_amount")
+  settlementDate  DateTime? @map("settlement_date")
+
+  recordedBy      String?   @map("recorded_by") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([tenantId, type])
+  @@index([tenantId, transactionDate])
+  @@index([tenantId, employeeId])
+  @@map("account_transactions")
+}
+

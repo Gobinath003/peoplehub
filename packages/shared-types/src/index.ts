@@ -20,6 +20,7 @@ export enum ModuleCode {
   EXPENSES = 'EXPENSES',
   REPORTS = 'REPORTS',
   AUDIT = 'AUDIT',
+  ACCOUNTS = 'ACCOUNTS',
   // Industry-specific extension modules
   PIECE_RATE = 'PIECE_RATE',          // Garments
   MUSTER_ROLL = 'MUSTER_ROLL',        // Manufacturing/Labour
@@ -74,7 +75,13 @@ export enum PermissionCode {
   MODULE_MANAGE = 'MODULE_MANAGE',
 
   // System Audit
-  AUDIT_LOG_VIEW = 'AUDIT_LOG_VIEW'
+  AUDIT_LOG_VIEW = 'AUDIT_LOG_VIEW',
+
+  // Accounts permissions
+  ACCOUNTS_VIEW = 'ACCOUNTS_VIEW',
+  ACCOUNTS_CREATE = 'ACCOUNTS_CREATE',
+  ACCOUNTS_EDIT = 'ACCOUNTS_EDIT',
+  ACCOUNTS_DELETE = 'ACCOUNTS_DELETE'
 }
 
 // Auth API DTO Contracts
@@ -545,6 +552,91 @@ export interface MasterBundleDto {
   branches: BranchDto[];
   shifts: ShiftDto[];
   employmentTypes: EmploymentTypeDto[];
+}
+
+// ==========================================
+// Accounts & Cash Flow Contracts
+// ==========================================
+
+export enum AccountTransactionType {
+  INCOME = 'INCOME',
+  EXPENSE = 'EXPENSE',
+  EMPLOYEE_ADVANCE = 'EMPLOYEE_ADVANCE'
+}
+
+export enum PaymentMode {
+  CASH = 'CASH',
+  BANK_TRANSFER = 'BANK_TRANSFER',
+  UPI = 'UPI',
+  CHEQUE = 'CHEQUE'
+}
+
+export enum AdvanceRecoveryStatus {
+  OUTSTANDING = 'OUTSTANDING',
+  PARTIAL = 'PARTIAL',
+  SETTLED = 'SETTLED'
+}
+
+export interface AccountTransactionDto {
+  id: string;
+  tenantId: string;
+  type: AccountTransactionType | string;
+  category: string;
+  amount: number;
+  transactionDate: string;
+  paymentMode: PaymentMode | string;
+  referenceNo?: string | null;
+  payeePayer?: string | null;
+  description?: string | null;
+  status: string;
+  // Employee advance fields
+  employeeId?: string | null;
+  employeeCode?: string | null;
+  employeeName?: string | null;
+  employeeDepartment?: string | null;
+  recoveryStatus?: AdvanceRecoveryStatus | string | null;
+  recoveredAmount?: number;
+  settlementDate?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateAccountTransactionRequest {
+  type: AccountTransactionType | string;
+  category: string;
+  amount: number;
+  transactionDate: string;
+  paymentMode: PaymentMode | string;
+  referenceNo?: string;
+  payeePayer?: string;
+  description?: string;
+  employeeId?: string;
+}
+
+export interface UpdateAccountTransactionRequest {
+  category?: string;
+  amount?: number;
+  transactionDate?: string;
+  paymentMode?: PaymentMode | string;
+  referenceNo?: string;
+  payeePayer?: string;
+  description?: string;
+  status?: string;
+}
+
+export interface RecordAdvanceRecoveryRequest {
+  recoveredAmount: number;
+  recoveryStatus: AdvanceRecoveryStatus | string;
+  notes?: string;
+}
+
+export interface AccountsSummaryDto {
+  totalIncome: number;
+  totalExpense: number;
+  totalAdvance: number;
+  totalAdvanceOutstanding: number;
+  netCashflow: number;
+  transactionCount: number;
 }
 
 

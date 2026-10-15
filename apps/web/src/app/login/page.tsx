@@ -61,12 +61,14 @@ function LoginContent() {
           
           {/* Brand Header Inside Widget */}
           <div className="flex flex-col items-center text-center mb-8">
-            <div className="mb-4 flex items-center justify-center">
-              <img 
-                src="/noltrion-logo.png" 
-                alt="Noltrion Innovations" 
-                className="h-12 w-auto object-contain" 
-              />
+            <div className="mb-3.5 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-center p-2.5">
+                <img 
+                  src="/noltrion-icon.png" 
+                  alt="Noltrion Innovations" 
+                  className="w-full h-full object-contain" 
+                />
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xl font-black text-slate-900 tracking-tight">PeopleHub</span>

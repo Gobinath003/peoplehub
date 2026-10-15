@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   title: "PeopleHub | Noltrion Innovations - Enterprise HRMS Suite",
   description: "Enterprise multi-tenant, multi-industry Human Resource Management System by Noltrion Innovations",
   icons: {
-    icon: "/noltrion-logo.png",
+    icon: "/noltrion-icon.png",
   },
 };
 

@@ -6,9 +6,10 @@ import { useApp } from '../../../context/AppContext';
 import { API_BASE_URL } from '../../../config/api';
 import { 
   Building, Landmark, Plus, Check, X, Users, 
-  ExternalLink, Sparkles, Shield, AlertCircle, Search 
+  ExternalLink, Sparkles, Shield, AlertCircle, Search, Download 
 } from 'lucide-react';
 import { IndustryType } from '@people-hub/shared-types';
+import { exportToExcel } from '../../../utils/excelExport';
 import {
   EnterpriseToolbar,
   EnterpriseTable,
@@ -234,6 +235,23 @@ export default function TenantsManagementPage() {
   const totalPages = Math.max(1, Math.ceil(filteredTenants.length / pageSize));
   const paginatedTenants = filteredTenants.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
+  const handleExportExcel = () => {
+    if (filteredTenants.length === 0) return;
+    exportToExcel({
+      filename: `Tenants_List_${new Date().toISOString().split('T')[0]}`,
+      sheetName: 'Tenants',
+      columns: [
+        { header: 'Organization Name', accessor: 'name' },
+        { header: 'Tenant Slug', accessor: 'slug' },
+        { header: 'Industry Vertical', accessor: 'industry' },
+        { header: 'Primary Managers', accessor: (r) => (r.managers || []).map((m: any) => `${m.firstName} ${m.lastName} (${m.email})`).join('; ') || '-' },
+        { header: 'Status', accessor: 'status' },
+        { header: 'Created At', accessor: (r) => r.createdAt ? r.createdAt.split('T')[0] : '-' },
+      ],
+      data: filteredTenants,
+    });
+  };
+
   return (
     <div className="space-y-3">
       {/* Enterprise Toolbar */}
@@ -246,6 +264,17 @@ export default function TenantsManagementPage() {
           setSearchQuery(val);
           setCurrentPage(1);
         }}
+        filters={
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            title="Download Excel (.xlsx)"
+            className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-700 transition flex items-center gap-1.5 text-xs font-medium shadow-2xs"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export Excel</span>
+          </button>
+        }
         primaryActionLabel="Create Company"
         onPrimaryAction={() => setModalOpen(true)}
       >

@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { API_BASE_URL } from '../../../config/api';
-import { Shield, Clock, Terminal, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, Clock, Terminal, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import { AuditLogResponse } from '@people-hub/shared-types';
+import { exportToExcel } from '../../../utils/excelExport';
 
 export default function AuditLogsPage() {
   const { activeTenant, accessToken } = useApp();
@@ -90,12 +91,41 @@ export default function AuditLogsPage() {
     setExpandedId(expandedId === id ? null : id);
   };
 
+  const handleExportExcel = () => {
+    if (logs.length === 0) return;
+    exportToExcel({
+      filename: `Audit_Logs_${activeTenant?.slug || 'export'}_${new Date().toISOString().split('T')[0]}`,
+      sheetName: 'Audit Logs',
+      columns: [
+        { header: 'Timestamp', accessor: (r) => new Date(r.createdAt).toLocaleString() },
+        { header: 'Action', accessor: 'action' },
+        { header: 'Target Entity', accessor: 'entityName' },
+        { header: 'Entity ID', accessor: (r) => r.entityId || '-' },
+        { header: 'User Email', accessor: (r) => r.userEmail || 'Anonymous' },
+        { header: 'IP Address', accessor: (r) => r.ipAddress || '-' },
+        { header: 'User Agent', accessor: (r) => r.userAgent || '-' },
+      ],
+      data: logs,
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-black text-slate-800">System Audit Trail</h1>
-        <p className="text-slate-500 text-sm mt-1">Immutable system event records for monitoring user actions, tenant isolation and authentication contexts.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">System Audit Trail</h1>
+          <p className="text-slate-500 text-xs mt-0.5">Immutable system event records for monitoring user actions, tenant isolation and authentication contexts.</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleExportExcel}
+          title="Download Excel (.xlsx)"
+          className="px-3 py-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-700 transition flex items-center gap-1.5 text-xs font-medium shadow-2xs self-start sm:self-auto"
+        >
+          <Download className="w-3.5 h-3.5 text-slate-500" />
+          <span>Export Excel</span>
+        </button>
       </div>
 
       {loading ? (

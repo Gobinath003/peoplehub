@@ -43,129 +43,12 @@ export class AccountsService {
   }
 
   /**
-   * Auto-seed initial demo transactions for a new tenant so the accounts view isn't completely empty
-   */
-  private async autoSeedIfEmpty(tenantId: string): Promise<void> {
-    const count = await this.prisma.tenantClient.accountTransaction.count({
-      where: { tenantId }
-    });
-
-    if (count > 0) return;
-
-    // Fetch existing active employees for realistic advance attachment
-    const employees = await this.prisma.tenantClient.employee.findMany({
-      where: { tenantId },
-      take: 2,
-      orderBy: { createdAt: 'asc' }
-    });
-
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const fiveDaysAgo = new Date(now.getTime() - 5 * 86400000).toISOString().split('T')[0];
-    const tenDaysAgo = new Date(now.getTime() - 10 * 86400000).toISOString().split('T')[0];
-
-    const initialTransactions: any[] = [
-      {
-        tenantId,
-        type: AccountTransactionType.INCOME,
-        category: 'Client Project Billing',
-        amount: 85000,
-        transactionDate: new Date(tenDaysAgo),
-        paymentMode: 'BANK_TRANSFER',
-        referenceNo: 'INV-2026-081',
-        payeePayer: 'AcroTex Global Corp',
-        description: 'Milestone 2 export shipment invoice settlement',
-        status: 'COMPLETED'
-      },
-      {
-        tenantId,
-        type: AccountTransactionType.INCOME,
-        category: 'Services & Consulting',
-        amount: 25000,
-        transactionDate: new Date(fiveDaysAgo),
-        paymentMode: 'UPI',
-        referenceNo: 'UPI-994827104',
-        payeePayer: 'Apex Logistics Ltd',
-        description: 'Contractual technical advisory retainer fee',
-        status: 'COMPLETED'
-      },
-      {
-        tenantId,
-        type: AccountTransactionType.EXPENSE,
-        category: 'Facility Rent & Utilities',
-        amount: 32000,
-        transactionDate: new Date(tenDaysAgo),
-        paymentMode: 'BANK_TRANSFER',
-        referenceNo: 'RENT-OCT-2026',
-        payeePayer: 'Commercial Plaza Realty',
-        description: 'Monthly plant unit office space lease payment',
-        status: 'COMPLETED'
-      },
-      {
-        tenantId,
-        type: AccountTransactionType.EXPENSE,
-        category: 'Pantry & Daily Refreshments',
-        amount: 3500,
-        transactionDate: new Date(today),
-        paymentMode: 'CASH',
-        referenceNo: 'PETTY-014',
-        payeePayer: 'Annapoorna Caterers',
-        description: 'Weekly tea, coffee, and refreshments for factory floor',
-        status: 'COMPLETED'
-      }
-    ];
-
-    if (employees.length > 0) {
-      initialTransactions.push({
-        tenantId,
-        type: AccountTransactionType.EMPLOYEE_ADVANCE,
-        category: 'Salary Advance',
-        amount: 8000,
-        transactionDate: new Date(fiveDaysAgo),
-        paymentMode: 'CASH',
-        referenceNo: 'ADV-2026-001',
-        payeePayer: `${employees[0].firstName} ${employees[0].lastName}`,
-        description: 'Urgent medical assistance salary advance',
-        status: 'COMPLETED',
-        employeeId: employees[0].id,
-        recoveryStatus: AdvanceRecoveryStatus.PARTIAL,
-        recoveredAmount: 3000,
-      });
-
-      if (employees.length > 1) {
-        initialTransactions.push({
-          tenantId,
-          type: AccountTransactionType.EMPLOYEE_ADVANCE,
-          category: 'Festival Advance',
-          amount: 5000,
-          transactionDate: new Date(today),
-          paymentMode: 'UPI',
-          referenceNo: 'ADV-2026-002',
-          payeePayer: `${employees[1].firstName} ${employees[1].lastName}`,
-          description: 'Festival season advance repayment over two salary cycles',
-          status: 'COMPLETED',
-          employeeId: employees[1].id,
-          recoveryStatus: AdvanceRecoveryStatus.OUTSTANDING,
-          recoveredAmount: 0,
-        });
-      }
-    }
-
-    for (const item of initialTransactions) {
-      await this.prisma.tenantClient.accountTransaction.create({
-        data: item
-      });
-    }
-  }
-
-  /**
-   * Retrieve list of transactions with optional filtering
+   * Retrieve list of transactions with optional filtering directly from DB
    */
   async getTransactions(
     tenantId: string, 
     query: { type?: string; employeeId?: string; startDate?: string; endDate?: string; search?: string }
   ): Promise<AccountTransactionDto[]> {
-    await this.autoSeedIfEmpty(tenantId);
 
     const where: any = { tenantId };
 
@@ -217,11 +100,9 @@ export class AccountsService {
   }
 
   /**
-   * Retrieve accounts financial summary metrics
+   * Retrieve accounts financial summary metrics directly from DB
    */
   async getSummary(tenantId: string): Promise<AccountsSummaryDto> {
-    await this.autoSeedIfEmpty(tenantId);
-
     const transactions = await this.prisma.tenantClient.accountTransaction.findMany({
       where: { 
         tenantId,
@@ -263,11 +144,9 @@ export class AccountsService {
   }
 
   /**
-   * Retrieve list of employee advances specifically
+   * Retrieve list of employee advances specifically directly from DB
    */
   async getEmployeeAdvances(tenantId: string): Promise<AccountTransactionDto[]> {
-    await this.autoSeedIfEmpty(tenantId);
-
     const records = await this.prisma.tenantClient.accountTransaction.findMany({
       where: {
         tenantId,

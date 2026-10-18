@@ -18,6 +18,7 @@ import {
   AdvanceRecoveryStatus,
   EmployeeDto
 } from '@people-hub/shared-types';
+import { exportToExcel } from '../../../utils/excelExport';
 import {
   EnterpriseToolbar,
   EnterpriseTable,
@@ -103,7 +104,7 @@ export default function AccountsPage() {
   const [recoveryNotes, setRecoveryNotes] = useState('');
   const [submittingRecovery, setSubmittingRecovery] = useState(false);
 
-  // Fetch Data
+  // Fetch Data strictly from DB
   const fetchData = async () => {
     if (!activeTenant || !accessToken) return;
     setLoading(true);
@@ -134,142 +135,48 @@ export default function AccountsPage() {
       if (txRes.ok && sumRes.ok) {
         const txData = await txRes.json();
         const sumData = await sumRes.json();
-        setTransactions(txData);
-        setSummary(sumData);
+        setTransactions(Array.isArray(txData) ? txData : []);
+        setSummary(sumData || {
+          totalIncome: 0,
+          totalExpense: 0,
+          totalAdvance: 0,
+          totalAdvanceOutstanding: 0,
+          netCashflow: 0,
+          transactionCount: 0
+        });
 
         if (empRes.ok) {
           const empData = await empRes.json();
-          setEmployees(empData);
+          setEmployees(Array.isArray(empData) ? empData : []);
         }
-        setLoading(false);
-        return;
+      } else {
+        const err = await txRes.json().catch(() => ({}));
+        setErrorMsg(err.message || 'Failed to load account transactions from database.');
+        setTransactions([]);
+        setSummary({
+          totalIncome: 0,
+          totalExpense: 0,
+          totalAdvance: 0,
+          totalAdvanceOutstanding: 0,
+          netCashflow: 0,
+          transactionCount: 0
+        });
       }
-    } catch (err) {
-      console.warn('API fetch error for Accounts, falling back to mock seed', err);
+    } catch (err: any) {
+      console.error('Error fetching accounts from DB:', err);
+      setErrorMsg('Could not connect to database to fetch accounts records.');
+      setTransactions([]);
+      setSummary({
+        totalIncome: 0,
+        totalExpense: 0,
+        totalAdvance: 0,
+        totalAdvanceOutstanding: 0,
+        netCashflow: 0,
+        transactionCount: 0
+      });
+    } finally {
+      setLoading(false);
     }
-
-    // Resilient fallback sample data if API is loading or network disconnects
-    const mockTx: AccountTransactionDto[] = [
-      {
-        id: 'tx-1',
-        tenantId: activeTenant.id,
-        type: AccountTransactionType.INCOME,
-        category: 'Client Project Billing',
-        amount: 85000,
-        transactionDate: new Date(Date.now() - 5 * 86400000).toISOString().split('T')[0],
-        paymentMode: 'BANK_TRANSFER',
-        referenceNo: 'INV-2026-081',
-        payeePayer: 'AcroTex Global Corp',
-        description: 'Milestone 2 export garment shipment billing settlement',
-        status: 'COMPLETED',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      {
-        id: 'tx-2',
-        tenantId: activeTenant.id,
-        type: AccountTransactionType.INCOME,
-        category: 'Services & Consulting',
-        amount: 25000,
-        transactionDate: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0],
-        paymentMode: 'UPI',
-        referenceNo: 'UPI-994827104',
-        payeePayer: 'Apex Logistics Ltd',
-        description: 'Contractual technical advisory retainer fee',
-        status: 'COMPLETED',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      {
-        id: 'tx-3',
-        tenantId: activeTenant.id,
-        type: AccountTransactionType.EXPENSE,
-        category: 'Facility Rent & Utilities',
-        amount: 32000,
-        transactionDate: new Date(Date.now() - 10 * 86400000).toISOString().split('T')[0],
-        paymentMode: 'BANK_TRANSFER',
-        referenceNo: 'RENT-OCT-2026',
-        payeePayer: 'Commercial Plaza Realty',
-        description: 'Monthly plant unit office space lease payment',
-        status: 'COMPLETED',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      {
-        id: 'tx-4',
-        tenantId: activeTenant.id,
-        type: AccountTransactionType.EXPENSE,
-        category: 'Pantry & Daily Refreshments',
-        amount: 3500,
-        transactionDate: new Date().toISOString().split('T')[0],
-        paymentMode: 'CASH',
-        referenceNo: 'PETTY-014',
-        payeePayer: 'Annapoorna Caterers',
-        description: 'Weekly tea, coffee, and refreshments for factory floor',
-        status: 'COMPLETED',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      {
-        id: 'tx-5',
-        tenantId: activeTenant.id,
-        type: AccountTransactionType.EMPLOYEE_ADVANCE,
-        category: 'Salary Advance',
-        amount: 8000,
-        transactionDate: new Date(Date.now() - 4 * 86400000).toISOString().split('T')[0],
-        paymentMode: 'CASH',
-        referenceNo: 'ADV-2026-001',
-        payeePayer: 'Kavitha Ramesh',
-        description: 'Urgent medical assistance salary advance',
-        status: 'COMPLETED',
-        employeeId: 'emp-1',
-        employeeCode: 'EMP-0001',
-        employeeName: 'Kavitha Ramesh',
-        employeeDepartment: 'Sewing & Stitching',
-        recoveryStatus: AdvanceRecoveryStatus.PARTIAL,
-        recoveredAmount: 3000,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      {
-        id: 'tx-6',
-        tenantId: activeTenant.id,
-        type: AccountTransactionType.EMPLOYEE_ADVANCE,
-        category: 'Festival Advance',
-        amount: 5000,
-        transactionDate: new Date().toISOString().split('T')[0],
-        paymentMode: 'UPI',
-        referenceNo: 'ADV-2026-002',
-        payeePayer: 'Muthu Vel',
-        description: 'Festival season advance repayment over two salary cycles',
-        status: 'COMPLETED',
-        employeeId: 'emp-2',
-        employeeCode: 'EMP-0002',
-        employeeName: 'Muthu Vel',
-        employeeDepartment: 'Sewing & Stitching',
-        recoveryStatus: AdvanceRecoveryStatus.OUTSTANDING,
-        recoveredAmount: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-    ];
-
-    const mockEmps: EmployeeDto[] = [
-      { id: 'emp-1', tenantId: activeTenant.id, userId: null, employeeCode: 'EMP-0001', firstName: 'Kavitha', lastName: 'Ramesh', email: 'kavitha@example.com', phone: '+91 98401 23456', department: 'Sewing & Stitching', designation: 'Senior Tailor Master', branch: 'Main Branch', salaryType: 'MONTHLY_FIXED', joiningDate: '2025-06-01', status: 'ACTIVE', createdAt: '' },
-      { id: 'emp-2', tenantId: activeTenant.id, userId: null, employeeCode: 'EMP-0002', firstName: 'Muthu', lastName: 'Vel', email: 'muthu@example.com', phone: '+91 98402 34567', department: 'Sewing & Stitching', designation: 'Senior Tailor Master', branch: 'Main Branch', salaryType: 'MONTHLY_FIXED', joiningDate: '2026-01-10', status: 'ACTIVE', createdAt: '' },
-    ];
-
-    setTransactions(mockTx);
-    setEmployees(mockEmps);
-    setSummary({
-      totalIncome: 110000,
-      totalExpense: 35500,
-      totalAdvance: 13000,
-      totalAdvanceOutstanding: 10000,
-      netCashflow: 64500,
-      transactionCount: mockTx.length
-    });
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -408,72 +315,19 @@ export default function AccountsPage() {
 
       if (res.ok) {
         setIsModalOpen(false);
-        setSuccessMsg('Transaction recorded successfully.');
+        setSuccessMsg('Transaction recorded successfully in database.');
         setTimeout(() => setSuccessMsg(null), 3500);
         await fetchData();
-        setSubmitting(false);
-        return;
       } else {
         const errData = await res.json().catch(() => ({}));
-        setErrorMsg(errData.message || 'Failed to record transaction.');
+        setErrorMsg(errData.message || 'Failed to record transaction in database.');
       }
     } catch (err) {
-      console.warn('Backend offline, applying local transaction update', err);
+      console.error('Database connection error while saving transaction:', err);
+      setErrorMsg('Could not save transaction to database. Please check your network connection.');
+    } finally {
+      setSubmitting(false);
     }
-
-    // Local fallback creation
-    const emp = employees.find(e => e.id === txnEmployeeId);
-    const newTx: AccountTransactionDto = {
-      id: `tx-${Date.now()}`,
-      tenantId: activeTenant?.id || 'mock',
-      type: txnType,
-      category: finalCategory,
-      amount: Number(txnAmount),
-      transactionDate: txnDate,
-      paymentMode: txnPaymentMode,
-      referenceNo: txnReferenceNo.trim() || `TXN-${Date.now().toString().slice(-5)}`,
-      payeePayer: txnType === AccountTransactionType.EMPLOYEE_ADVANCE && emp ? `${emp.firstName} ${emp.lastName}` : (txnPayeePayer.trim() || null),
-      description: txnDescription.trim() || null,
-      status: 'COMPLETED',
-      employeeId: txnType === AccountTransactionType.EMPLOYEE_ADVANCE ? txnEmployeeId : null,
-      employeeCode: emp?.employeeCode || null,
-      employeeName: emp ? `${emp.firstName} ${emp.lastName}` : null,
-      employeeDepartment: emp?.department || null,
-      recoveryStatus: txnType === AccountTransactionType.EMPLOYEE_ADVANCE ? AdvanceRecoveryStatus.OUTSTANDING : null,
-      recoveredAmount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    const updatedList = [newTx, ...transactions];
-    setTransactions(updatedList);
-
-    // Recalculate summary
-    let inc = 0, exp = 0, adv = 0, advOut = 0;
-    updatedList.forEach(t => {
-      const a = Number(t.amount);
-      const r = Number(t.recoveredAmount || 0);
-      if (t.type === AccountTransactionType.INCOME) inc += a;
-      else if (t.type === AccountTransactionType.EXPENSE) exp += a;
-      else if (t.type === AccountTransactionType.EMPLOYEE_ADVANCE) {
-        adv += a;
-        advOut += Math.max(0, a - r);
-      }
-    });
-
-    setSummary({
-      totalIncome: inc,
-      totalExpense: exp,
-      totalAdvance: adv,
-      totalAdvanceOutstanding: advOut,
-      netCashflow: inc - exp - advOut,
-      transactionCount: updatedList.length
-    });
-
-    setIsModalOpen(false);
-    setSubmitting(false);
-    setSuccessMsg('Transaction recorded successfully.');
-    setTimeout(() => setSuccessMsg(null), 3500);
   };
 
   // Open Recovery Modal for an Advance
@@ -485,7 +339,7 @@ export default function AccountsPage() {
     setRecoveryModalOpen(true);
   };
 
-  // Submit Advance Recovery
+  // Submit Advance Recovery strictly to DB
   const handleSubmitRecovery = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedAdvance) return;
@@ -527,61 +381,22 @@ export default function AccountsPage() {
 
       if (res.ok) {
         setRecoveryModalOpen(false);
-        setSuccessMsg(`₹${amt.toLocaleString()} recovery recorded for ${selectedAdvance.employeeName}.`);
+        setSuccessMsg(`₹${amt.toLocaleString()} recovery recorded for ${selectedAdvance.employeeName || selectedAdvance.payeePayer} in database.`);
         setTimeout(() => setSuccessMsg(null), 3500);
         await fetchData();
-        setSubmittingRecovery(false);
-        return;
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setErrorMsg(err.message || 'Failed to save advance recovery in database.');
       }
     } catch (err) {
-      console.warn('API error, applying recovery locally', err);
+      console.error('Database error while recording recovery:', err);
+      setErrorMsg('Could not record advance recovery in database.');
+    } finally {
+      setSubmittingRecovery(false);
     }
-
-    // Local update fallback
-    const updatedList = transactions.map(t => {
-      if (t.id === selectedAdvance.id) {
-        return {
-          ...t,
-          recoveredAmount: newRecovered,
-          recoveryStatus: status,
-          settlementDate: isSettled ? new Date().toISOString().split('T')[0] : t.settlementDate,
-          description: recoveryNotes ? `${t.description || ''} | Recovered ₹${amt}: ${recoveryNotes}` : t.description
-        };
-      }
-      return t;
-    });
-
-    setTransactions(updatedList);
-
-    // Recalculate summary
-    let inc = 0, exp = 0, adv = 0, advOut = 0;
-    updatedList.forEach(t => {
-      const a = Number(t.amount);
-      const r = Number(t.recoveredAmount || 0);
-      if (t.type === AccountTransactionType.INCOME) inc += a;
-      else if (t.type === AccountTransactionType.EXPENSE) exp += a;
-      else if (t.type === AccountTransactionType.EMPLOYEE_ADVANCE) {
-        adv += a;
-        advOut += Math.max(0, a - r);
-      }
-    });
-
-    setSummary({
-      totalIncome: inc,
-      totalExpense: exp,
-      totalAdvance: adv,
-      totalAdvanceOutstanding: advOut,
-      netCashflow: inc - exp - advOut,
-      transactionCount: updatedList.length
-    });
-
-    setRecoveryModalOpen(false);
-    setSubmittingRecovery(false);
-    setSuccessMsg(`₹${amt.toLocaleString()} recovery recorded successfully.`);
-    setTimeout(() => setSuccessMsg(null), 3500);
   };
 
-  // Delete Transaction
+  // Delete Transaction strictly from DB
   const handleDeleteTransaction = async (id: string) => {
     if (!confirm('Are you sure you want to delete this transaction record?')) return;
 
@@ -594,42 +409,62 @@ export default function AccountsPage() {
         }
       });
       if (res.ok) {
+        setSuccessMsg('Transaction deleted from database.');
+        setTimeout(() => setSuccessMsg(null), 3500);
         await fetchData();
-        return;
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setErrorMsg(err.message || 'Failed to delete transaction from database.');
       }
     } catch (err) {
-      console.warn('API error, deleting locally', err);
+      console.error('Database error deleting transaction:', err);
+      setErrorMsg('Could not delete transaction from database.');
     }
-
-    const updated = transactions.filter(t => t.id !== id);
-    setTransactions(updated);
   };
 
-  // Export CSV
-  const handleExportCSV = () => {
+  // Export to native Excel (.xlsx)
+  const handleExportExcel = () => {
     if (filteredTransactions.length === 0) return;
 
-    const headers = ['Date', 'Type', 'Category', 'Payee/Employee', 'Ref No', 'Payment Mode', 'Amount', 'Status', 'Description'];
-    const rows = filteredTransactions.map(t => [
-      t.transactionDate,
-      t.type,
-      `"${t.category}"`,
-      `"${t.employeeName || t.payeePayer || '-'}"`,
-      `"${t.referenceNo || '-'}"`,
-      t.paymentMode,
-      t.amount,
-      t.status,
-      `"${t.description || ''}"`
-    ]);
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Accounts_Ledger_${activeTenant?.slug || 'export'}_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (activeTab === 'advances') {
+      exportToExcel({
+        filename: `Employee_Advances_${activeTenant?.slug || 'export'}_${new Date().toISOString().split('T')[0]}`,
+        sheetName: 'Staff Advances',
+        columns: [
+          { header: 'Date', accessor: 'transactionDate' },
+          { header: 'Employee Name', accessor: (r) => r.employeeName || r.payeePayer || '-' },
+          { header: 'Employee Code', accessor: (r) => r.employeeCode || '-' },
+          { header: 'Department', accessor: (r) => r.employeeDepartment || '-' },
+          { header: 'Purpose / Category', accessor: 'category' },
+          { header: 'Payment Mode', accessor: 'paymentMode' },
+          { header: 'Voucher / Ref No', accessor: (r) => r.referenceNo || '-' },
+          { header: 'Advance Amount (₹)', accessor: 'amount' },
+          { header: 'Recovered Amount (₹)', accessor: (r) => r.recoveredAmount || 0 },
+          { header: 'Outstanding Due (₹)', accessor: (r) => Math.max(0, Number(r.amount) - Number(r.recoveredAmount || 0)) },
+          { header: 'Recovery Status', accessor: (r) => r.recoveryStatus || 'OUTSTANDING' },
+          { header: 'Settlement Date', accessor: (r) => r.settlementDate || '-' },
+          { header: 'Notes', accessor: (r) => r.description || '' },
+        ],
+        data: filteredTransactions,
+      });
+    } else {
+      exportToExcel({
+        filename: `Accounts_Ledger_${activeTenant?.slug || 'export'}_${new Date().toISOString().split('T')[0]}`,
+        sheetName: 'Accounts Ledger',
+        columns: [
+          { header: 'Date', accessor: 'transactionDate' },
+          { header: 'Type', accessor: 'type' },
+          { header: 'Category', accessor: 'category' },
+          { header: 'Party / Payee / Employee', accessor: (r) => r.employeeName || r.payeePayer || '-' },
+          { header: 'Payment Mode', accessor: 'paymentMode' },
+          { header: 'Reference No', accessor: (r) => r.referenceNo || '-' },
+          { header: 'Amount (₹)', accessor: 'amount' },
+          { header: 'Status', accessor: 'status' },
+          { header: 'Description / Notes', accessor: (r) => r.description || '' },
+        ],
+        data: filteredTransactions,
+      });
+    }
   };
 
   return (
@@ -801,14 +636,15 @@ export default function AccountsPage() {
                 <option value="LAST_30_DAYS">Last 30 Days</option>
               </select>
 
-              {/* Export CSV Button */}
+              {/* Export Excel (.xlsx) Button */}
               <button
                 type="button"
-                onClick={handleExportCSV}
-                title="Export Ledger CSV"
-                className="p-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-600 transition"
+                onClick={handleExportExcel}
+                title="Download Excel (.xlsx)"
+                className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-700 transition flex items-center gap-1.5 text-xs font-medium shadow-2xs"
               >
-                <Download className="w-3.5 h-3.5" />
+                <Download className="w-3.5 h-3.5 text-slate-500" />
+                <span>Export Excel</span>
               </button>
             </div>
           }

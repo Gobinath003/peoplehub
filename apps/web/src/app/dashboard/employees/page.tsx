@@ -8,9 +8,10 @@ import {
   Users, Plus, Search, Filter, Check, X, 
   Building2, Briefcase, Calendar, Phone, 
   BadgeCheck, DollarSign, ChevronRight, ChevronLeft, AlertCircle, Scissors, Layers,
-  Pencil, Trash2, Lock
+  Pencil, Trash2, Lock, Download
 } from 'lucide-react';
 import { EmployeeDto, MasterBundleDto } from '@people-hub/shared-types';
+import { exportToExcel } from '../../../utils/excelExport';
 import {
   EnterpriseToolbar,
   EnterpriseTable,
@@ -538,6 +539,28 @@ export default function EmployeesPage() {
     ...employees.map(e => e.department)
   ]))];
 
+  const handleExportExcel = () => {
+    if (filteredEmployees.length === 0) return;
+    exportToExcel({
+      filename: `Employees_${activeTenant?.slug || 'export'}_${new Date().toISOString().split('T')[0]}`,
+      sheetName: 'Employees',
+      columns: [
+        { header: 'Employee Code', accessor: 'employeeCode' },
+        { header: 'First Name', accessor: 'firstName' },
+        { header: 'Last Name', accessor: 'lastName' },
+        { header: 'Department', accessor: 'department' },
+        { header: 'Designation', accessor: 'designation' },
+        { header: 'Branch', accessor: (r) => r.branch || '-' },
+        { header: 'Salary Type', accessor: 'salaryType' },
+        { header: 'Gross Salary', accessor: (r) => r.salaryStructure?.grossSalary ? `₹${r.salaryStructure.grossSalary.toLocaleString()}` : '-' },
+        { header: 'Phone', accessor: (r) => r.phone || '-' },
+        { header: 'Status', accessor: 'status' },
+        { header: 'Joining Date', accessor: (r) => r.joiningDate ? r.joiningDate.split('T')[0] : '-' },
+      ],
+      data: filteredEmployees,
+    });
+  };
+
   return (
     <div className="space-y-3">
       {/* Enterprise Toolbar */}
@@ -552,18 +575,29 @@ export default function EmployeesPage() {
           setCurrentPage(1);
         }}
         filters={
-          <select
-            value={selectedDept}
-            onChange={(e) => {
-              setSelectedDept(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="py-1.5 px-2.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-slate-400"
-          >
-            {departments.map(d => (
-              <option key={d} value={d}>{d === 'ALL' ? 'All Depts' : d}</option>
-            ))}
-          </select>
+          <div className="flex items-center gap-1.5">
+            <select
+              value={selectedDept}
+              onChange={(e) => {
+                setSelectedDept(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="py-1.5 px-2.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-slate-400"
+            >
+              {departments.map(d => (
+                <option key={d} value={d}>{d === 'ALL' ? 'All Depts' : d}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              title="Download Excel (.xlsx)"
+              className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-700 transition flex items-center gap-1.5 text-xs font-medium shadow-2xs"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span>Export Excel</span>
+            </button>
+          </div>
         }
         primaryActionLabel="Add Employee"
         onPrimaryAction={handleOpenAddModal}

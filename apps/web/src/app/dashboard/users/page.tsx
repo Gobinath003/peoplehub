@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { API_BASE_URL } from '../../../config/api';
-import { Users, Key, Plus, Trash2, Shield, X, AlertTriangle, Check } from 'lucide-react';
+import { Users, Key, Plus, Trash2, Shield, X, AlertTriangle, Check, Download } from 'lucide-react';
 import { ScopeType } from '@people-hub/shared-types';
+import { exportToExcel } from '../../../utils/excelExport';
 import {
   EnterpriseToolbar,
   EnterpriseTable,
@@ -275,6 +276,25 @@ export default function UserManagementPage() {
     }
   };
 
+  const handleExportExcel = () => {
+    if (filteredUsers.length === 0) return;
+    exportToExcel({
+      filename: `Users_Roles_${activeTenant?.slug || 'export'}_${new Date().toISOString().split('T')[0]}`,
+      sheetName: 'Users & Roles',
+      columns: [
+        { header: 'First Name', accessor: 'firstName' },
+        { header: 'Last Name', accessor: 'lastName' },
+        { header: 'Email Address', accessor: 'email' },
+        { 
+          header: 'Assigned Roles', 
+          accessor: (r) => (r.roles || []).map((role: any) => `${role.roleName || role.roleCode}${role.scopeType && role.scopeType !== 'TENANT' ? ` (${role.scopeType}: ${role.scopeId || 'All'})` : ''}`).join('; ') || 'No Assigned Roles'
+        },
+        { header: 'Status', accessor: 'status' },
+      ],
+      data: filteredUsers,
+    });
+  };
+
   return (
     <div className="space-y-3">
       {/* Enterprise Toolbar */}
@@ -289,20 +309,31 @@ export default function UserManagementPage() {
           setCurrentPage(1);
         }}
         filters={
-          <select
-            value={selectedRole}
-            onChange={(e) => {
-              setSelectedRole(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="py-1.5 px-2.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-slate-400"
-          >
-            <option value="ALL">All Roles</option>
-            <option value="TENANT_ADMIN">Tenant Admin</option>
-            <option value="HR_MANAGER">HR Manager</option>
-            <option value="PAYROLL_MANAGER">Payroll Manager</option>
-            <option value="EMPLOYEE">Employee</option>
-          </select>
+          <div className="flex items-center gap-1.5">
+            <select
+              value={selectedRole}
+              onChange={(e) => {
+                setSelectedRole(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="py-1.5 px-2.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-slate-400"
+            >
+              <option value="ALL">All Roles</option>
+              <option value="TENANT_ADMIN">Tenant Admin</option>
+              <option value="HR_MANAGER">HR Manager</option>
+              <option value="PAYROLL_MANAGER">Payroll Manager</option>
+              <option value="EMPLOYEE">Employee</option>
+            </select>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              title="Download Excel (.xlsx)"
+              className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-700 transition flex items-center gap-1.5 text-xs font-medium shadow-2xs"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span>Export Excel</span>
+            </button>
+          </div>
         }
       />
 

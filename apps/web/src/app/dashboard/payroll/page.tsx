@@ -7,9 +7,10 @@ import {
   FileText, DollarSign, Calendar, Check, X, 
   Printer, Play, Search, Filter, Building2, 
   Briefcase, ArrowUpRight, Award, ShieldCheck, 
-  ChevronRight, ChevronLeft, Edit3, Scissors, AlertCircle 
+  ChevronRight, ChevronLeft, Edit3, Scissors, AlertCircle, Download
 } from 'lucide-react';
 import { PayslipDto, SalaryStructureDto } from '@people-hub/shared-types';
+import { exportToExcel } from '../../../utils/excelExport';
 import {
   EnterpriseToolbar,
   EnterpriseTable,
@@ -378,6 +379,49 @@ export default function PayrollPage() {
     { key: 'history', label: 'Payslips', count: payslips.length, icon: FileText },
   ];
 
+  const handleExportExcel = () => {
+    const dateStr = new Date().toISOString().split('T')[0];
+    const tenantSlug = activeTenant?.slug || 'export';
+
+    if (activeTab === 'history') {
+      if (payslips.length === 0) return;
+      exportToExcel({
+        filename: `Payslips_History_${tenantSlug}_${dateStr}`,
+        sheetName: 'Payslips',
+        columns: [
+          { header: 'Employee Code', accessor: 'employeeCode' },
+          { header: 'Employee Name', accessor: 'employeeName' },
+          { header: 'Pay Period', accessor: (r) => `${r.month}/${r.year}` },
+          { header: 'Gross Salary (₹)', accessor: 'grossEarnings' },
+          { header: 'Total Deductions (₹)', accessor: 'totalDeductions' },
+          { header: 'Net Salary (₹)', accessor: 'netPayable' },
+          { header: 'Status', accessor: 'status' },
+          { header: 'Payment Date', accessor: (r) => r.paymentDate ? r.paymentDate.split('T')[0] : '-' },
+        ],
+        data: payslips,
+      });
+    } else {
+      if (structures.length === 0) return;
+      exportToExcel({
+        filename: `Salary_Structures_${tenantSlug}_${dateStr}`,
+        sheetName: 'Salary Structures',
+        columns: [
+          { header: 'Employee Code', accessor: 'employeeCode' },
+          { header: 'Employee Name', accessor: 'employeeName' },
+          { header: 'Department', accessor: 'department' },
+          { header: 'Designation', accessor: 'designation' },
+          { header: 'Salary Type', accessor: 'salaryType' },
+          { header: 'Basic Salary (₹)', accessor: (r) => r.salaryStructure?.basicSalary ?? 0 },
+          { header: 'HRA (₹)', accessor: (r) => r.salaryStructure?.hra ?? 0 },
+          { header: 'Gross Salary (₹)', accessor: (r) => r.salaryStructure?.grossSalary ?? 0 },
+          { header: 'PF Deduction (₹)', accessor: (r) => r.salaryStructure?.pfDeduction ?? 0 },
+          { header: 'Net Salary (₹)', accessor: (r) => r.salaryStructure?.netSalary ?? 0 },
+        ],
+        data: structures,
+      });
+    }
+  };
+
   return (
     <div className="space-y-3">
       {/* Enterprise Toolbar */}
@@ -385,6 +429,19 @@ export default function PayrollPage() {
         title="Payroll & Compensation"
         tenantName={activeTenant?.name}
         totalCount={activeTab === 'structures' ? structures.length : activeTab === 'history' ? payslips.length : undefined}
+        filters={
+          activeTab !== 'generate' && (
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              title="Download Excel (.xlsx)"
+              className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-700 transition flex items-center gap-1.5 text-xs font-medium shadow-2xs"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span>Export Excel</span>
+            </button>
+          )
+        }
       />
 
       {/* Enterprise Tabs */}

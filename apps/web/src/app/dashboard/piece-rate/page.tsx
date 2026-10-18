@@ -7,8 +7,9 @@ import {
   Scissors, Plus, Calendar, Check, X, 
   Trash2, Filter, Search, UserCheck, UserX,
   Layers, TrendingUp, AlertCircle, Sparkles, Tag,
-  Clock, CheckCircle2, ChevronRight, Save, RotateCcw
+  Clock, CheckCircle2, ChevronRight, Save, RotateCcw, Download
 } from 'lucide-react';
+import { exportToExcel } from '../../../utils/excelExport';
 import { 
   PieceRateActivityDto, 
   PieceRateLogDto, 
@@ -375,12 +376,81 @@ export default function PieceRatePage() {
     { key: 'history', label: 'Production History', count: logs.length, icon: Clock },
   ];
 
+  const handleExportExcel = () => {
+    const dateStr = new Date().toISOString().split('T')[0];
+    const tenantSlug = activeTenant?.slug || 'export';
+
+    if (activeTab === 'activities') {
+      if (activities.length === 0) return;
+      exportToExcel({
+        filename: `Production_Operations_${tenantSlug}_${dateStr}`,
+        sheetName: 'Operations',
+        columns: [
+          { header: 'Operation Code', accessor: 'code' },
+          { header: 'Operation Name', accessor: 'name' },
+          { header: 'Billing Unit', accessor: 'unit' },
+          { header: 'Rate Per Unit (₹)', accessor: 'ratePerUnit' },
+          { header: 'Status', accessor: (r) => r.isActive ? 'Active' : 'Inactive' },
+          { header: 'Description', accessor: (r) => r.description || '-' },
+        ],
+        data: activities,
+      });
+    } else if (activeTab === 'history') {
+      if (logs.length === 0) return;
+      exportToExcel({
+        filename: `Production_Logs_${tenantSlug}_${dateStr}`,
+        sheetName: 'Production Logs',
+        columns: [
+          { header: 'Date', accessor: (r) => r.logDate ? r.logDate.split('T')[0] : '-' },
+          { header: 'Employee Code', accessor: 'employeeCode' },
+          { header: 'Employee Name', accessor: 'employeeName' },
+          { header: 'Operation', accessor: 'activityName' },
+          { header: 'Quantity Produced', accessor: 'quantity' },
+          { header: 'Unit Rate (₹)', accessor: 'unitRate' },
+          { header: 'Total Wage (₹)', accessor: 'totalAmount' },
+          { header: 'Remarks', accessor: (r) => r.remarks || '-' },
+        ],
+        data: logs,
+      });
+    } else {
+      if (sheetRows.length === 0) return;
+      exportToExcel({
+        filename: `Floor_Production_Sheet_${selectedDate}_${tenantSlug}`,
+        sheetName: 'Floor Sheet',
+        columns: [
+          { header: 'Date', accessor: () => selectedDate },
+          { header: 'Employee Code', accessor: 'employeeCode' },
+          { header: 'Employee Name', accessor: 'employeeName' },
+          { header: 'Department', accessor: 'department' },
+          { header: 'Attendance', accessor: 'attendance' },
+          { header: 'Operation', accessor: 'activityName' },
+          { header: 'Unit Rate (₹)', accessor: 'unitRate' },
+          { header: 'Pieces Produced', accessor: 'quantity' },
+          { header: 'Total Amount (₹)', accessor: 'totalAmount' },
+          { header: 'Remarks', accessor: (r) => r.remarks || '-' },
+        ],
+        data: sheetRows,
+      });
+    }
+  };
+
   return (
     <div className="space-y-3 pb-6">
       {/* Enterprise Toolbar */}
       <EnterpriseToolbar
         title="Garment Floor Production & Attendance"
         tenantName={activeTenant?.name}
+        filters={
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            title="Download Excel (.xlsx)"
+            className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-700 transition flex items-center gap-1.5 text-xs font-medium shadow-2xs"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export Excel</span>
+          </button>
+        }
       />
 
       {/* Enterprise Tabs */}

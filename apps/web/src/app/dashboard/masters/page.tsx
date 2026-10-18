@@ -30,7 +30,9 @@ import {
   ArrowUpRight,
   ShieldCheck,
   SlidersHorizontal,
+  Download,
 } from 'lucide-react';
+import { exportToExcel } from '../../../utils/excelExport';
 import {
   EnterpriseToolbar,
   EnterpriseTable,
@@ -301,6 +303,90 @@ export default function MastersPage() {
     }
   };
 
+  const handleExportExcel = () => {
+    const dateStr = new Date().toISOString().split('T')[0];
+    const tenantSlug = activeTenant?.slug || 'export';
+
+    switch (activeTab) {
+      case 'departments':
+        exportToExcel({
+          filename: `Departments_${tenantSlug}_${dateStr}`,
+          sheetName: 'Departments',
+          columns: [
+            { header: 'Code', accessor: 'code' },
+            { header: 'Name', accessor: 'name' },
+            { header: 'Description', accessor: (r) => r.description || '-' },
+            { header: 'Headcount', accessor: (r) => r.employeeCount ?? 0 },
+            { header: 'Status', accessor: (r) => r.isActive ? 'Active' : 'Inactive' },
+          ],
+          data: filteredDepartments,
+        });
+        break;
+      case 'designations':
+        exportToExcel({
+          filename: `Designations_${tenantSlug}_${dateStr}`,
+          sheetName: 'Designations',
+          columns: [
+            { header: 'Code', accessor: 'code' },
+            { header: 'Name', accessor: 'name' },
+            { header: 'Department', accessor: (r) => r.departmentName || '-' },
+            { header: 'Description', accessor: (r) => r.description || '-' },
+            { header: 'Headcount', accessor: (r) => r.employeeCount ?? 0 },
+            { header: 'Status', accessor: (r) => r.isActive ? 'Active' : 'Inactive' },
+          ],
+          data: filteredDesignations,
+        });
+        break;
+      case 'branches':
+        exportToExcel({
+          filename: `Branches_${tenantSlug}_${dateStr}`,
+          sheetName: 'Branches',
+          columns: [
+            { header: 'Code', accessor: 'code' },
+            { header: 'Name', accessor: 'name' },
+            { header: 'Type', accessor: (r) => r.type?.replace('_', ' ') || '-' },
+            { header: 'City', accessor: (r) => r.city || '-' },
+            { header: 'State', accessor: (r) => r.state || '-' },
+            { header: 'Address', accessor: (r) => r.address || '-' },
+            { header: 'Headcount', accessor: (r) => r.employeeCount ?? 0 },
+            { header: 'Status', accessor: (r) => r.isActive ? 'Active' : 'Inactive' },
+          ],
+          data: filteredBranches,
+        });
+        break;
+      case 'shifts':
+        exportToExcel({
+          filename: `Shifts_${tenantSlug}_${dateStr}`,
+          sheetName: 'Shifts',
+          columns: [
+            { header: 'Code', accessor: 'code' },
+            { header: 'Name', accessor: 'name' },
+            { header: 'Start Time', accessor: 'startTime' },
+            { header: 'End Time', accessor: 'endTime' },
+            { header: 'Break (mins)', accessor: 'breakMinutes' },
+            { header: 'Headcount', accessor: (r) => r.employeeCount ?? 0 },
+            { header: 'Status', accessor: (r) => r.isActive ? 'Active' : 'Inactive' },
+          ],
+          data: filteredShifts,
+        });
+        break;
+      case 'employmentTypes':
+        exportToExcel({
+          filename: `Employment_Types_${tenantSlug}_${dateStr}`,
+          sheetName: 'Employment Types',
+          columns: [
+            { header: 'Code', accessor: 'code' },
+            { header: 'Name', accessor: 'name' },
+            { header: 'Description', accessor: (r) => r.description || '-' },
+            { header: 'Headcount', accessor: (r) => r.employeeCount ?? 0 },
+            { header: 'Status', accessor: (r) => r.isActive ? 'Active' : 'Inactive' },
+          ],
+          data: filteredEmploymentTypes,
+        });
+        break;
+    }
+  };
+
   return (
     <div className="space-y-3">
       {/* Enterprise Toolbar */}
@@ -314,6 +400,17 @@ export default function MastersPage() {
           setSearchQuery(val);
           setCurrentPage(1);
         }}
+        filters={
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            title="Download Excel (.xlsx)"
+            className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-700 transition flex items-center gap-1.5 text-xs font-medium shadow-2xs"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export Excel</span>
+          </button>
+        }
         primaryActionLabel={getActionLabel()}
         onPrimaryAction={() => openCreateModal(activeTab)}
       />

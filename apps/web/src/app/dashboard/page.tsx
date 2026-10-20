@@ -173,169 +173,38 @@ export default function DashboardHome() {
     <div className="space-y-6 max-w-[1400px] mx-auto pb-12">
       
       {/* ======================================================== */}
-      {/* 1. EXECUTIVE HEADER & BRANCH CONTEXT                     */}
+      {/* 1. DASHBOARD HEADER                                      */}
       {/* ======================================================== */}
-      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              {activeTenant?.name || 'Company Dashboard'}
-            </h1>
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-              {activeTenant?.industry || 'MANUFACTURING & GARMENTS'}
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 font-medium">
-            Daily business operations summary for <strong className="text-slate-800">{user?.firstName} {user?.lastName}</strong>.
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            Dashboard
+          </h1>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
+            Operational analytics and visual floor intelligence for <strong className="text-slate-800">{activeTenant?.name || 'Company'}</strong>.
           </p>
-          <div className="text-xs font-semibold text-slate-400 flex items-center gap-2 pt-0.5">
-            <Calendar className="w-3.5 h-3.5 text-slate-400" />
-            <span>{todayFormatted}</span>
-            {activeBranchScope && (
-              <>
-                <span>•</span>
-                <span>Branch: <strong className="text-slate-700">{activeBranchScope}</strong></span>
-              </>
-            )}
-            <span>•</span>
-            <span className="text-emerald-600 font-bold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Live Floor Operations
-            </span>
-          </div>
         </div>
 
-        {/* Quick Launch Widgets (Compact Buttons) */}
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <Link
-            href={isGarments ? '/dashboard/piece-rate' : '/dashboard/employees'}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 text-xs font-bold transition shadow-2xs hover:shadow-xs"
-            title="Open Attendance & Production Floor Sheet"
-          >
-            <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Attendance & Floor</span>
-            <ArrowRight className="w-3 h-3 text-slate-400" />
-          </Link>
-
-          <Link
-            href="/dashboard/payroll"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 text-xs font-bold transition shadow-2xs hover:shadow-xs"
-            title="Open Payroll Compensation Processor"
-          >
-            <Coins className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Payroll</span>
-            <ArrowRight className="w-3 h-3 text-slate-400" />
-          </Link>
-
-          <Link
-            href="/dashboard/accounts"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-2xs"
-            title="Open Accounts & Ledgers"
-          >
-            <Wallet className="w-3.5 h-3.5 text-slate-300" />
-            <span>Accounts & Ledger</span>
-            <ArrowRight className="w-3 h-3 text-slate-400" />
-          </Link>
-
-          <Link
-            href="/dashboard/employees"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 text-xs font-bold transition shadow-2xs hover:shadow-xs"
-            title="Open Staff Directory"
-          >
-            <Users className="w-3.5 h-3.5 text-blue-600" />
-            <span>Staff Roster</span>
-            <ArrowRight className="w-3 h-3 text-slate-400" />
-          </Link>
+        {/* Date & Shift Context */}
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 shadow-2xs self-start sm:self-auto">
+          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+          <span>{todayFormatted}</span>
+          {activeBranchScope && (
+            <>
+              <span className="text-slate-300">•</span>
+              <span className="text-slate-700 font-bold">{activeBranchScope}</span>
+            </>
+          )}
+          <span className="text-slate-300">•</span>
+          <span className="text-emerald-600 font-bold flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Live Operations
+          </span>
         </div>
       </div>
 
       {/* ======================================================== */}
-      {/* 2. EXECUTIVE OPERATIONAL KPI STATS (4 COMPACT CARDS)     */}
-      {/* ======================================================== */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        
-        {/* Attendance Rate */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Attendance Rate</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <UserCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl font-black text-slate-900 flex items-baseline gap-1.5">
-              <span>{attendanceRate}%</span>
-              <span className="text-xs font-semibold text-emerald-600">On Duty</span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-slate-500 font-medium mt-1">
-              <span>{presentCount} Present / {totalStaffCount} Total</span>
-              <span className="text-rose-600 font-bold">{absentCount} Absent</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Daily Production Units */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Production Output</span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              <Scissors className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl font-black text-slate-900 flex items-baseline gap-1.5">
-              <span>{totalProductionUnits.toLocaleString()}</span>
-              <span className="text-xs font-semibold text-indigo-600">Units</span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-slate-500 font-medium mt-1">
-              <span>{activeFloorOperators} Active Operators</span>
-              <span className="text-slate-700 font-bold">₹{totalEarnings > 0 ? totalEarnings.toLocaleString() : '18,450'}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Operating Inflows */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Revenue Inflows</span>
-            <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl font-black text-slate-900 flex items-baseline gap-1.5">
-              <span>₹{totalInflow.toLocaleString()}</span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-slate-500 font-medium mt-1">
-              <span>Outflows: ₹{totalOutflow.toLocaleString()}</span>
-              <span className="text-teal-700 font-bold">+ Inflow</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Net Operating Balance */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Net Cash Balance</span>
-            <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center">
-              <Wallet className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className={`text-2xl font-black ${netCashflow >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>
-              ₹{netCashflow.toLocaleString()}
-            </div>
-            <div className="flex items-center justify-between text-xs text-slate-500 font-medium mt-1">
-              <span>Active General Ledger</span>
-              <span className="text-emerald-600 font-bold">Audited</span>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      {/* ======================================================== */}
-      {/* 3. VISUAL CHARTS: ATTENDANCE & FLOOR PRODUCTION TRENDS   */}
+      {/* 2. VISUAL CHARTS: ATTENDANCE & FLOOR PRODUCTION TRENDS   */}
       {/* ======================================================== */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         

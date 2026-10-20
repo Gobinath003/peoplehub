@@ -13,7 +13,8 @@ import {
   PieceRateEmployeeSummaryDto 
 } from '@people-hub/shared-types';
 
-import { IsString, IsNumber, IsOptional } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 
 class CreateActivityDto implements CreatePieceRateActivityRequest {
   @IsString()
@@ -54,6 +55,35 @@ class CreateLogDto implements CreatePieceRateLogRequest {
   @IsOptional()
   @IsString()
   remarks?: string;
+}
+
+class EmployeeDayLogItemDto {
+  @IsString()
+  activityId!: string;
+
+  @IsNumber()
+  quantity!: number;
+
+  @IsOptional()
+  @IsNumber()
+  unitRate?: number;
+
+  @IsOptional()
+  @IsString()
+  remarks?: string;
+}
+
+class SaveEmployeeDayLogsDto {
+  @IsString()
+  employeeId!: string;
+
+  @IsString()
+  logDate!: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => EmployeeDayLogItemDto)
+  items!: EmployeeDayLogItemDto[];
 }
 
 @ApiTags('Piece-Rate Production (Garments)')
@@ -106,6 +136,19 @@ export class PieceRateController {
   ): Promise<PieceRateLogDto> {
     const recordedBy = req.user?.id;
     return this.pieceRateService.createLog(tenantId, dto, recordedBy);
+  }
+
+  @Post('employee-day-logs')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Save multiple activity logs for an employee on a specific date' })
+  @ApiResponse({ status: 200, description: 'Employee day logs saved successfully' })
+  async saveEmployeeDayLogs(
+    @CurrentTenantId() tenantId: string,
+    @Request() req: any,
+    @Body() dto: SaveEmployeeDayLogsDto
+  ): Promise<PieceRateLogDto[]> {
+    const recordedBy = req.user?.id;
+    return this.pieceRateService.saveEmployeeDayLogs(tenantId, dto, recordedBy);
   }
 
   @Delete('logs/:id')

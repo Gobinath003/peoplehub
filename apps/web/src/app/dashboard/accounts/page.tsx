@@ -58,8 +58,8 @@ const EXPENSE_CATEGORIES = [
 export default function AccountsPage() {
   const { activeTenant, accessToken } = useApp();
 
-  // Active Tab: 'all' | 'incomes' | 'expenses' | 'advances'
-  const [activeTab, setActiveTab] = useState<'all' | 'incomes' | 'expenses' | 'advances'>('all');
+  // Active Tab: 'all' | 'incomes' | 'expenses'
+  const [activeTab, setActiveTab] = useState<'all' | 'incomes' | 'expenses'>('all');
 
   // Data states
   const [transactions, setTransactions] = useState<AccountTransactionDto[]>([]);
@@ -76,10 +76,11 @@ export default function AccountsPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Filters & Search
+  // Date Range Filters & Search
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<string>('ALL');
-  const [filterPeriod, setFilterPeriod] = useState<'ALL' | 'THIS_MONTH' | 'LAST_30_DAYS'>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
@@ -184,7 +185,7 @@ export default function AccountsPage() {
   }, [activeTenant?.id, accessToken]);
 
   // Tab definitions
-  const tabs: EnterpriseTabItem<'all' | 'incomes' | 'expenses' | 'advances'>[] = useMemo(() => [
+  const tabs: EnterpriseTabItem<'all' | 'incomes' | 'expenses'>[] = useMemo(() => [
     { key: 'all', label: 'All Transactions', count: transactions.length },
     { 
       key: 'incomes', 
@@ -193,13 +194,8 @@ export default function AccountsPage() {
     },
     { 
       key: 'expenses', 
-      label: 'Expenses & Overheads', 
-      count: transactions.filter(t => t.type === AccountTransactionType.EXPENSE).length 
-    },
-    { 
-      key: 'advances', 
-      label: 'Employee Advances', 
-      count: transactions.filter(t => t.type === AccountTransactionType.EMPLOYEE_ADVANCE).length 
+      label: 'Expenses & Advances', 
+      count: transactions.filter(t => t.type === AccountTransactionType.EXPENSE || t.type === AccountTransactionType.EMPLOYEE_ADVANCE).length 
     },
   ], [transactions]);
 
@@ -208,22 +204,14 @@ export default function AccountsPage() {
     return transactions.filter(t => {
       // Tab filter
       if (activeTab === 'incomes' && t.type !== AccountTransactionType.INCOME) return false;
-      if (activeTab === 'expenses' && t.type !== AccountTransactionType.EXPENSE) return false;
-      if (activeTab === 'advances' && t.type !== AccountTransactionType.EMPLOYEE_ADVANCE) return false;
+      if (activeTab === 'expenses' && t.type !== AccountTransactionType.EXPENSE && t.type !== AccountTransactionType.EMPLOYEE_ADVANCE) return false;
+
+      // Date Range filter
+      if (startDate && t.transactionDate < startDate) return false;
+      if (endDate && t.transactionDate > endDate) return false;
 
       // Payment mode filter
       if (filterMode !== 'ALL' && t.paymentMode !== filterMode) return false;
-
-      // Period filter
-      if (filterPeriod === 'THIS_MONTH') {
-        const d = new Date(t.transactionDate);
-        const now = new Date();
-        if (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return false;
-      } else if (filterPeriod === 'LAST_30_DAYS') {
-        const d = new Date(t.transactionDate);
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
-        if (d < thirtyDaysAgo) return false;
-      }
 
       // Search query filter
       if (searchQuery.trim()) {
@@ -240,7 +228,36 @@ export default function AccountsPage() {
 
       return true;
     });
-  }, [transactions, activeTab, filterMode, filterPeriod, searchQuery]);
+  }, [transactions, activeTab, startDate, endDate, filterMode, searchQuery]);
+
+  // Period-aware summary
+  const periodSummary = useMemo(() => {
+    let income = 0;
+    let expense = 0;
+    let advance = 0;
+    let advanceDue = 0;
+
+    for (const t of filteredTransactions) {
+      const amt = Number(t.amount || 0);
+      const rec = Number(t.recoveredAmount || 0);
+      if (t.type === AccountTransactionType.INCOME) {
+        income += amt;
+      } else if (t.type === AccountTransactionType.EXPENSE) {
+        expense += amt;
+      } else if (t.type === AccountTransactionType.EMPLOYEE_ADVANCE) {
+        advance += amt;
+        advanceDue += Math.max(0, amt - rec);
+      }
+    }
+
+    return {
+      totalIncome: income,
+      totalExpense: expense,
+      totalAdvance: advance,
+      totalAdvanceOutstanding: advanceDue,
+      netCashflow: income - (expense + advance)
+    };
+  }, [filteredTransactions]);
 
   // Pagination
   const totalPages = Math.ceil(filteredTransactions.length / pageSize) || 1;
@@ -251,7 +268,7 @@ export default function AccountsPage() {
 
   // Open Add Transaction Modal
   const handleOpenAddModal = (presetType?: AccountTransactionType) => {
-    const chosenType = presetType || (activeTab === 'incomes' ? AccountTransactionType.INCOME : activeTab === 'advances' ? AccountTransactionType.EMPLOYEE_ADVANCE : AccountTransactionType.EXPENSE);
+    const chosenType = presetType || (activeTab === 'incomes' ? AccountTransactionType.INCOME : AccountTransactionType.EXPENSE);
     setTxnType(chosenType);
     setTxnCategory('');
     setCustomCategory('');
@@ -425,50 +442,134 @@ export default function AccountsPage() {
   // Export to native Excel (.xlsx)
   const handleExportExcel = () => {
     if (filteredTransactions.length === 0) return;
+    const dateStr = new Date().toISOString().split('T')[0];
+    const tenantSlug = activeTenant?.slug || 'export';
 
-    if (activeTab === 'advances') {
-      exportToExcel({
-        filename: `Employee_Advances_${activeTenant?.slug || 'export'}_${new Date().toISOString().split('T')[0]}`,
-        sheetName: 'Staff Advances',
-        columns: [
-          { header: 'Date', accessor: 'transactionDate' },
-          { header: 'Employee Name', accessor: (r) => r.employeeName || r.payeePayer || '-' },
-          { header: 'Employee Code', accessor: (r) => r.employeeCode || '-' },
-          { header: 'Department', accessor: (r) => r.employeeDepartment || '-' },
-          { header: 'Purpose / Category', accessor: 'category' },
-          { header: 'Payment Mode', accessor: 'paymentMode' },
-          { header: 'Voucher / Ref No', accessor: (r) => r.referenceNo || '-' },
-          { header: 'Advance Amount (₹)', accessor: 'amount' },
-          { header: 'Recovered Amount (₹)', accessor: (r) => r.recoveredAmount || 0 },
-          { header: 'Outstanding Due (₹)', accessor: (r) => Math.max(0, Number(r.amount) - Number(r.recoveredAmount || 0)) },
-          { header: 'Recovery Status', accessor: (r) => r.recoveryStatus || 'OUTSTANDING' },
-          { header: 'Settlement Date', accessor: (r) => r.settlementDate || '-' },
-          { header: 'Notes', accessor: (r) => r.description || '' },
-        ],
-        data: filteredTransactions,
-      });
-    } else {
-      exportToExcel({
-        filename: `Accounts_Ledger_${activeTenant?.slug || 'export'}_${new Date().toISOString().split('T')[0]}`,
-        sheetName: 'Accounts Ledger',
-        columns: [
-          { header: 'Date', accessor: 'transactionDate' },
-          { header: 'Type', accessor: 'type' },
-          { header: 'Category', accessor: 'category' },
-          { header: 'Party / Payee / Employee', accessor: (r) => r.employeeName || r.payeePayer || '-' },
-          { header: 'Payment Mode', accessor: 'paymentMode' },
-          { header: 'Reference No', accessor: (r) => r.referenceNo || '-' },
-          { header: 'Amount (₹)', accessor: 'amount' },
-          { header: 'Status', accessor: 'status' },
-          { header: 'Description / Notes', accessor: (r) => r.description || '' },
-        ],
-        data: filteredTransactions,
-      });
-    }
+    exportToExcel({
+      filename: `Accounts_Ledger_${tenantSlug}_${dateStr}`,
+      sheetName: 'Accounts Ledger',
+      columns: [
+        { header: 'Date', accessor: 'transactionDate' },
+        { header: 'Type', accessor: 'type' },
+        { header: 'Category', accessor: 'category' },
+        { header: 'Party / Payee / Employee', accessor: (r) => r.employeeName || r.payeePayer || '-' },
+        { header: 'Payment Mode', accessor: 'paymentMode' },
+        { header: 'Reference No', accessor: (r) => r.referenceNo || '-' },
+        { header: 'Amount (₹)', accessor: 'amount' },
+        { header: 'Recovered (₹)', accessor: (r) => r.recoveredAmount || 0 },
+        { header: 'Status', accessor: 'status' },
+        { header: 'Description / Notes', accessor: (r) => r.description || '' },
+      ],
+      data: filteredTransactions,
+    });
   };
 
   return (
     <div className="space-y-4">
+      {/* Top Date Range Bar */}
+      <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 mr-1">
+            <Calendar className="w-4 h-4 text-slate-500" />
+            <span>Date Range:</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg">
+            <span className="text-[11px] text-slate-400 font-semibold">From:</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg">
+            <span className="text-[11px] text-slate-400 font-semibold">To:</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none"
+            />
+          </div>
+
+          {(startDate || endDate) && (
+            <button
+              type="button"
+              onClick={() => {
+                setStartDate('');
+                setEndDate('');
+                setCurrentPage(1);
+              }}
+              className="text-[11px] text-slate-500 hover:text-slate-800 font-semibold px-2 py-1 rounded-md hover:bg-slate-100 transition"
+            >
+              Clear Dates
+            </button>
+          )}
+        </div>
+
+        {/* Quick Date Range Presets */}
+        <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium">
+          <button
+            type="button"
+            onClick={() => {
+              setStartDate('');
+              setEndDate('');
+              setCurrentPage(1);
+            }}
+            className={`px-2.5 py-1 rounded-lg transition ${!startDate && !endDate ? 'bg-slate-900 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+          >
+            All Time
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const today = new Date().toISOString().split('T')[0];
+              setStartDate(today);
+              setEndDate(today);
+              setCurrentPage(1);
+            }}
+            className={`px-2.5 py-1 rounded-lg transition ${startDate && startDate === endDate ? 'bg-slate-900 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const now = new Date();
+              const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+              const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+              setStartDate(firstDay);
+              setEndDate(lastDay);
+              setCurrentPage(1);
+            }}
+            className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+          >
+            This Month
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const past = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+              const today = new Date().toISOString().split('T')[0];
+              setStartDate(past);
+              setEndDate(today);
+              setCurrentPage(1);
+            }}
+            className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+          >
+            Last 30 Days
+          </button>
+        </div>
+      </div>
+
       {/* Notifications */}
       {successMsg && (
         <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center justify-between">
@@ -494,7 +595,7 @@ export default function AccountsPage() {
         </div>
       )}
 
-      {/* Financial Overview KPI Cards */}
+      {/* Financial Overview KPI Cards (Reflects Filtered Date Range) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Total Income */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
@@ -506,7 +607,7 @@ export default function AccountsPage() {
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <div className="text-xl font-bold text-slate-900">
-              ₹{summary.totalIncome.toLocaleString()}
+              ₹{periodSummary.totalIncome.toLocaleString()}
             </div>
             <span className="text-[11px] font-medium text-emerald-600 flex items-center">
               Inflows
@@ -514,17 +615,17 @@ export default function AccountsPage() {
           </div>
         </div>
 
-        {/* Total Expenses */}
+        {/* Total Expenses & Advances */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Expenses</span>
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Expenses & Advances</span>
             <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
               <TrendingDown className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <div className="text-xl font-bold text-slate-900">
-              ₹{summary.totalExpense.toLocaleString()}
+              ₹{(periodSummary.totalExpense + periodSummary.totalAdvance).toLocaleString()}
             </div>
             <span className="text-[11px] font-medium text-rose-600 flex items-center">
               Outflows
@@ -532,20 +633,20 @@ export default function AccountsPage() {
           </div>
         </div>
 
-        {/* Employee Advances */}
+        {/* Employee Advances Outstanding */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Employee Advances</span>
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Advances Outstanding</span>
             <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
               <Users className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <div className="text-xl font-bold text-slate-900">
-              ₹{summary.totalAdvance.toLocaleString()}
+              ₹{periodSummary.totalAdvanceOutstanding.toLocaleString()}
             </div>
             <span className="text-[11px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60">
-              ₹{summary.totalAdvanceOutstanding.toLocaleString()} due
+              ₹{periodSummary.totalAdvance.toLocaleString()} total given
             </span>
           </div>
         </div>
@@ -559,11 +660,11 @@ export default function AccountsPage() {
             </div>
           </div>
           <div className="mt-2 flex items-baseline justify-between">
-            <div className={`text-xl font-bold ${summary.netCashflow >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>
-              ₹{summary.netCashflow.toLocaleString()}
+            <div className={`text-xl font-bold ${periodSummary.netCashflow >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>
+              ₹{periodSummary.netCashflow.toLocaleString()}
             </div>
             <span className="text-[11px] text-slate-400 font-medium">
-              Available
+              Net Balance
             </span>
           </div>
         </div>
@@ -585,9 +686,8 @@ export default function AccountsPage() {
         <EnterpriseToolbar
           title={
             activeTab === 'incomes' ? 'Income Ledger' :
-            activeTab === 'expenses' ? 'Expense Records' :
-            activeTab === 'advances' ? 'Employee Salary Advances' :
-            'Accounts & Cash Flow'
+            activeTab === 'expenses' ? 'Expenses & Staff Advances' :
+            'Accounts & General Ledger'
           }
           totalCount={filteredTransactions.length}
           tenantName={activeTenant?.name}
@@ -599,7 +699,7 @@ export default function AccountsPage() {
           }}
           primaryActionLabel={
             activeTab === 'incomes' ? 'Record Income' :
-            activeTab === 'advances' ? 'Record Advance' :
+            activeTab === 'expenses' ? 'Record Expense / Advance' :
             'Record Transaction'
           }
           primaryActionIcon={Plus}
@@ -622,20 +722,6 @@ export default function AccountsPage() {
                 <option value="CHEQUE">Cheque</option>
               </select>
 
-              {/* Period Filter */}
-              <select
-                value={filterPeriod}
-                onChange={(e) => {
-                  setFilterPeriod(e.target.value as any);
-                  setCurrentPage(1);
-                }}
-                className="py-1.5 px-2.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none"
-              >
-                <option value="ALL">All Time</option>
-                <option value="THIS_MONTH">This Month</option>
-                <option value="LAST_30_DAYS">Last 30 Days</option>
-              </select>
-
               {/* Export Excel (.xlsx) Button */}
               <button
                 type="button"
@@ -650,7 +736,7 @@ export default function AccountsPage() {
           }
         />
 
-        {/* Data Table */}
+        {/* Unified General Ledger Table */}
         <EnterpriseTable
           loading={loading}
           isEmpty={paginatedTransactions.length === 0}
@@ -667,207 +753,115 @@ export default function AccountsPage() {
             )
           }
         >
-          {activeTab === 'advances' ? (
-            /* Dedicated Employee Advances Table */
-            <table className="w-full text-left border-collapse">
-              <EnterpriseTableHeader>
-                <EnterpriseTableTh>Date</EnterpriseTableTh>
-                <EnterpriseTableTh>Employee</EnterpriseTableTh>
-                <EnterpriseTableTh>Purpose / Reason</EnterpriseTableTh>
-                <EnterpriseTableTh>Mode & Ref</EnterpriseTableTh>
-                <EnterpriseTableTh align="right">Advance Given</EnterpriseTableTh>
-                <EnterpriseTableTh align="right">Recovered</EnterpriseTableTh>
-                <EnterpriseTableTh align="right">Outstanding Due</EnterpriseTableTh>
-                <EnterpriseTableTh align="center">Recovery Status</EnterpriseTableTh>
-                <EnterpriseTableTh align="right">Action</EnterpriseTableTh>
-              </EnterpriseTableHeader>
-              <EnterpriseTableBody>
-                {paginatedTransactions.map((tx) => {
-                  const amount = Number(tx.amount);
-                  const recovered = Number(tx.recoveredAmount || 0);
-                  const outstanding = Math.max(0, amount - recovered);
-                  const isSettled = tx.recoveryStatus === AdvanceRecoveryStatus.SETTLED || outstanding <= 0;
+          <table className="w-full text-left border-collapse">
+            <EnterpriseTableHeader>
+              <EnterpriseTableTh>Date</EnterpriseTableTh>
+              <EnterpriseTableTh>Type</EnterpriseTableTh>
+              <EnterpriseTableTh>Category</EnterpriseTableTh>
+              <EnterpriseTableTh>Party / Payee / Employee</EnterpriseTableTh>
+              <EnterpriseTableTh>Payment Mode & Ref</EnterpriseTableTh>
+              <EnterpriseTableTh>Notes</EnterpriseTableTh>
+              <EnterpriseTableTh align="right">Amount</EnterpriseTableTh>
+              <EnterpriseTableTh align="right">Action</EnterpriseTableTh>
+            </EnterpriseTableHeader>
+            <EnterpriseTableBody>
+              {paginatedTransactions.map((tx) => {
+                const isIncome = tx.type === AccountTransactionType.INCOME;
+                const isAdvance = tx.type === AccountTransactionType.EMPLOYEE_ADVANCE;
+                const amount = Number(tx.amount);
+                const recovered = Number(tx.recoveredAmount || 0);
+                const outstanding = Math.max(0, amount - recovered);
+                const isSettled = tx.recoveryStatus === AdvanceRecoveryStatus.SETTLED || (isAdvance && outstanding <= 0);
 
-                  return (
-                    <EnterpriseTableRow key={tx.id}>
-                      <EnterpriseTableTd>
-                        <span className="text-slate-800 font-medium">{tx.transactionDate}</span>
-                      </EnterpriseTableTd>
+                return (
+                  <EnterpriseTableRow key={tx.id}>
+                    <EnterpriseTableTd>
+                      <span className="font-medium text-slate-800">{tx.transactionDate}</span>
+                    </EnterpriseTableTd>
 
-                      <EnterpriseTableTd>
-                        <div>
-                          <div className="font-semibold text-slate-900">
-                            {tx.employeeName || tx.payeePayer || 'Unknown Employee'}
-                          </div>
+                    <EnterpriseTableTd>
+                      <EnterpriseBadge
+                        variant={isIncome ? 'success' : isAdvance ? 'purple' : 'danger'}
+                      >
+                        {isIncome ? 'Income' : isAdvance ? 'Staff Advance' : 'Expense'}
+                      </EnterpriseBadge>
+                    </EnterpriseTableTd>
+
+                    <EnterpriseTableTd>
+                      <span className="font-semibold text-slate-800">{tx.category}</span>
+                    </EnterpriseTableTd>
+
+                    <EnterpriseTableTd>
+                      <div>
+                        <div className="text-slate-800 font-medium">
+                          {tx.employeeName || tx.payeePayer || '-'}
+                        </div>
+                        {tx.employeeCode && (
                           <div className="text-[11px] text-slate-400">
-                            {tx.employeeCode ? `${tx.employeeCode} • ` : ''}{tx.employeeDepartment || 'General Staff'}
+                            {tx.employeeCode} {tx.employeeDepartment ? `• ${tx.employeeDepartment}` : ''}
                           </div>
-                        </div>
-                      </EnterpriseTableTd>
+                        )}
+                      </div>
+                    </EnterpriseTableTd>
 
-                      <EnterpriseTableTd>
-                        <div>
-                          <span className="font-medium text-slate-700">{tx.category}</span>
-                          {tx.description && (
-                            <div className="text-[11px] text-slate-400 truncate max-w-xs">{tx.description}</div>
-                          )}
-                        </div>
-                      </EnterpriseTableTd>
+                    <EnterpriseTableTd>
+                      <div className="text-slate-600 text-[11px]">
+                        <span className="capitalize">{tx.paymentMode.toLowerCase().replace('_', ' ')}</span>
+                        {tx.referenceNo && (
+                          <span className="text-slate-400 block">{tx.referenceNo}</span>
+                        )}
+                      </div>
+                    </EnterpriseTableTd>
 
-                      <EnterpriseTableTd>
-                        <div className="text-[11px] text-slate-600">
-                          <span className="capitalize">{tx.paymentMode.toLowerCase().replace('_', ' ')}</span>
-                          {tx.referenceNo && (
-                            <span className="text-slate-400 block">{tx.referenceNo}</span>
-                          )}
-                        </div>
-                      </EnterpriseTableTd>
+                    <EnterpriseTableTd>
+                      <span className="text-slate-500 text-[11px] truncate max-w-xs block">
+                        {tx.description || '-'}
+                      </span>
+                    </EnterpriseTableTd>
 
-                      <EnterpriseTableTd align="right">
-                        <span className="font-semibold text-slate-900">₹{amount.toLocaleString()}</span>
-                      </EnterpriseTableTd>
-
-                      <EnterpriseTableTd align="right">
-                        <span className="text-emerald-700 font-medium">₹{recovered.toLocaleString()}</span>
-                      </EnterpriseTableTd>
-
-                      <EnterpriseTableTd align="right">
-                        <span className={`font-semibold ${outstanding > 0 ? 'text-amber-800' : 'text-slate-400'}`}>
-                          ₹{outstanding.toLocaleString()}
-                        </span>
-                      </EnterpriseTableTd>
-
-                      <EnterpriseTableTd align="center">
-                        <EnterpriseBadge
-                          variant={isSettled ? 'success' : tx.recoveryStatus === AdvanceRecoveryStatus.PARTIAL ? 'info' : 'warning'}
-                        >
-                          {isSettled ? 'Settled' : tx.recoveryStatus === AdvanceRecoveryStatus.PARTIAL ? 'Partially Paid' : 'Outstanding'}
-                        </EnterpriseBadge>
-                      </EnterpriseTableTd>
-
-                      <EnterpriseTableTd align="right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {!isSettled && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenRecoveryModal(tx)}
-                              className="px-2.5 py-1 text-xs font-semibold text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-md transition"
-                            >
-                              Recover
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteTransaction(tx.id)}
-                            className="p-1 text-slate-400 hover:text-rose-600 transition"
-                            title="Delete advance entry"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </EnterpriseTableTd>
-                    </EnterpriseTableRow>
-                  );
-                })}
-              </EnterpriseTableBody>
-            </table>
-          ) : (
-            /* General Ledger Table (All, Incomes, Expenses) */
-            <table className="w-full text-left border-collapse">
-              <EnterpriseTableHeader>
-                <EnterpriseTableTh>Date</EnterpriseTableTh>
-                <EnterpriseTableTh>Type</EnterpriseTableTh>
-                <EnterpriseTableTh>Category</EnterpriseTableTh>
-                <EnterpriseTableTh>Party / Payee / Employee</EnterpriseTableTh>
-                <EnterpriseTableTh>Payment Mode & Ref</EnterpriseTableTh>
-                <EnterpriseTableTh>Notes</EnterpriseTableTh>
-                <EnterpriseTableTh align="right">Amount</EnterpriseTableTh>
-                <EnterpriseTableTh align="right">Action</EnterpriseTableTh>
-              </EnterpriseTableHeader>
-              <EnterpriseTableBody>
-                {paginatedTransactions.map((tx) => {
-                  const isIncome = tx.type === AccountTransactionType.INCOME;
-                  const isAdvance = tx.type === AccountTransactionType.EMPLOYEE_ADVANCE;
-
-                  return (
-                    <EnterpriseTableRow key={tx.id}>
-                      <EnterpriseTableTd>
-                        <span className="font-medium text-slate-800">{tx.transactionDate}</span>
-                      </EnterpriseTableTd>
-
-                      <EnterpriseTableTd>
-                        <EnterpriseBadge
-                          variant={isIncome ? 'success' : isAdvance ? 'purple' : 'danger'}
-                        >
-                          {isIncome ? 'Income' : isAdvance ? 'Staff Advance' : 'Expense'}
-                        </EnterpriseBadge>
-                      </EnterpriseTableTd>
-
-                      <EnterpriseTableTd>
-                        <span className="font-semibold text-slate-800">{tx.category}</span>
-                      </EnterpriseTableTd>
-
-                      <EnterpriseTableTd>
-                        <div>
-                          <div className="text-slate-800 font-medium">
-                            {tx.employeeName || tx.payeePayer || '-'}
-                          </div>
-                          {tx.employeeCode && (
-                            <div className="text-[11px] text-slate-400">
-                              {tx.employeeCode} {tx.employeeDepartment ? `• ${tx.employeeDepartment}` : ''}
-                            </div>
-                          )}
-                        </div>
-                      </EnterpriseTableTd>
-
-                      <EnterpriseTableTd>
-                        <div className="text-slate-600 text-[11px]">
-                          <span className="capitalize">{tx.paymentMode.toLowerCase().replace('_', ' ')}</span>
-                          {tx.referenceNo && (
-                            <span className="text-slate-400 block">{tx.referenceNo}</span>
-                          )}
-                        </div>
-                      </EnterpriseTableTd>
-
-                      <EnterpriseTableTd>
-                        <span className="text-slate-500 text-[11px] truncate max-w-xs block">
-                          {tx.description || '-'}
-                        </span>
-                      </EnterpriseTableTd>
-
-                      <EnterpriseTableTd align="right">
+                    <EnterpriseTableTd align="right">
+                      <div>
                         <span className={`font-semibold ${isIncome ? 'text-emerald-700' : 'text-slate-900'}`}>
-                          {isIncome ? '+' : '-'}₹{Number(tx.amount).toLocaleString()}
+                          {isIncome ? '+' : '-'}₹{amount.toLocaleString()}
                         </span>
-                      </EnterpriseTableTd>
+                        {isAdvance && (
+                          <div className="text-[10px] font-medium mt-0.5">
+                            {isSettled ? (
+                              <span className="text-emerald-600">Settled</span>
+                            ) : (
+                              <span className="text-amber-700">₹{outstanding.toLocaleString()} due</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </EnterpriseTableTd>
 
-                      <EnterpriseTableTd align="right">
-                        <div className="flex items-center justify-end gap-1">
-                          {isAdvance && tx.recoveryStatus !== AdvanceRecoveryStatus.SETTLED && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenRecoveryModal(tx)}
-                              className="px-2 py-0.5 text-[11px] font-semibold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded transition mr-1"
-                            >
-                              Settle
-                            </button>
-                          )}
+                    <EnterpriseTableTd align="right">
+                      <div className="flex items-center justify-end gap-1">
+                        {isAdvance && !isSettled && (
                           <button
                             type="button"
-                            onClick={() => handleDeleteTransaction(tx.id)}
-                            className="p-1 text-slate-400 hover:text-rose-600 transition"
-                            title="Delete transaction"
+                            onClick={() => handleOpenRecoveryModal(tx)}
+                            className="px-2 py-0.5 text-[11px] font-semibold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded transition mr-1"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            Recover
                           </button>
-                        </div>
-                      </EnterpriseTableTd>
-                    </EnterpriseTableRow>
-                  );
-                })}
-              </EnterpriseTableBody>
-            </table>
-          )}
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTransaction(tx.id)}
+                          className="p-1 text-slate-400 hover:text-rose-600 transition"
+                          title="Delete transaction"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </EnterpriseTableTd>
+                  </EnterpriseTableRow>
+                );
+              })}
+            </EnterpriseTableBody>
+          </table>
         </EnterpriseTable>
       </div>
 

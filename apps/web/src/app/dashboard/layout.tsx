@@ -32,7 +32,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tenantDropdownOpen, setTenantDropdownOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [mastersMenuOpen, setMastersMenuOpen] = useState(true);
+  const [mastersMenuOpen, setMastersMenuOpen] = useState(false);
 
   // Immediately redirect to login if unauthenticated
   React.useEffect(() => {

@@ -222,6 +222,109 @@ export class PieceRateService {
     });
   }
 
+  async saveEmployeeDayLogs(
+    tenantId: string,
+    dto: {
+      employeeId: string;
+      logDate: string;
+      items: Array<{
+        activityId: string;
+        quantity: number;
+        unitRate?: number;
+        remarks?: string;
+      }>;
+    },
+    recordedBy?: string
+  ): Promise<PieceRateLogDto[]> {
+    const employee = await this.prisma.tenantClient.employee.findFirst({
+      where: { id: dto.employeeId, tenantId }
+    });
+    if (!employee) {
+      throw new NotFoundException(`Employee ${dto.employeeId} not found`);
+    }
+
+    const start = new Date(dto.logDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(dto.logDate);
+    end.setHours(23, 59, 59, 999);
+
+    // Delete existing logs for this employee on this date
+    await this.prisma.tenantClient.pieceRateLog.deleteMany({
+      where: {
+        tenantId,
+        employeeId: dto.employeeId,
+        logDate: {
+          gte: start,
+          lte: end
+        }
+      }
+    });
+
+    const createdLogs: any[] = [];
+    for (const item of dto.items) {
+      const qty = Number(item.quantity);
+      if (qty <= 0) continue;
+
+      const activity = await this.prisma.tenantClient.pieceRateActivity.findFirst({
+        where: { id: item.activityId, tenantId }
+      });
+      if (!activity) continue;
+
+      const rate = item.unitRate !== undefined ? Number(item.unitRate) : activity.ratePerUnit;
+      const totalAmount = qty * rate;
+
+      const log = await this.prisma.tenantClient.pieceRateLog.create({
+        data: {
+          tenantId,
+          employeeId: dto.employeeId,
+          activityId: item.activityId,
+          logDate: new Date(dto.logDate),
+          quantity: qty,
+          unitRate: rate,
+          totalAmount,
+          remarks: item.remarks || null,
+          recordedBy: recordedBy || null
+        },
+        include: {
+          employee: {
+            select: {
+              employeeCode: true,
+              firstName: true,
+              lastName: true
+            }
+          },
+          activity: {
+            select: {
+              code: true,
+              name: true,
+              unit: true
+            }
+          }
+        }
+      });
+      createdLogs.push(log);
+    }
+
+    return createdLogs.map((l: any) => ({
+      id: l.id,
+      tenantId: l.tenantId,
+      employeeId: l.employeeId,
+      employeeCode: l.employee?.employeeCode,
+      employeeName: `${l.employee?.firstName || ''} ${l.employee?.lastName || ''}`.trim(),
+      activityId: l.activityId,
+      activityCode: l.activity?.code,
+      activityName: l.activity?.name,
+      unit: l.activity?.unit,
+      logDate: l.logDate.toISOString(),
+      quantity: l.quantity,
+      unitRate: l.unitRate,
+      totalAmount: l.totalAmount,
+      remarks: l.remarks,
+      recordedBy: l.recordedBy,
+      createdAt: l.createdAt.toISOString()
+    }));
+  }
+
   async getMonthlyEmployeeSummary(
     tenantId: string,
     month: number,

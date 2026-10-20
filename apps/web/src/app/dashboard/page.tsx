@@ -186,7 +186,7 @@ export default function DashboardHome() {
             </span>
           </div>
           <p className="text-xs text-slate-500 font-medium">
-            Executive operations summary for <strong className="text-slate-800">{user?.firstName} {user?.lastName}</strong>.
+            Daily business operations summary for <strong className="text-slate-800">{user?.firstName} {user?.lastName}</strong>.
           </p>
           <div className="text-xs font-semibold text-slate-400 flex items-center gap-2 pt-0.5">
             <Calendar className="w-3.5 h-3.5 text-slate-400" />

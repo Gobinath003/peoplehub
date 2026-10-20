@@ -101,7 +101,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   // Top-level Navigation Items
   const topNavItems = [
-    { name: 'Executive Overview', path: '/dashboard', icon: LayoutGrid, show: true },
+    { name: 'Dashboard', path: '/dashboard', icon: LayoutGrid, show: true },
     { name: 'Attendance & Production', path: '/dashboard/piece-rate', icon: Scissors, show: isGarments },
     { name: 'Payroll & Compensation', path: '/dashboard/payroll', icon: FileText, show: true },
     { name: 'Accounts', path: '/dashboard/accounts', icon: Wallet, show: true },

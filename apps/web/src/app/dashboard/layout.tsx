@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { 
   LayoutGrid, ListTodo, UserCircle, Shield, 
   Settings, MessageSquare, Mail, LogOut, 
-  Search, RotateCcw, Building, ChevronRight, ChevronDown,
+  Search, Building, ChevronRight, ChevronDown,
   Menu, X, BadgeCheck, FileText, Landmark, 
   Scissors, SlidersHorizontal, UserCheck, Bell, Building2,
   Wallet
@@ -345,7 +345,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header Bar */}
-        <header className="flex h-11 items-center justify-between px-4 sm:px-6 bg-white border-b border-slate-200/80">
+        <header className={`items-center justify-between px-4 sm:px-6 bg-white border-b border-slate-200/80 ${isSuperAdmin ? 'flex h-11' : 'flex lg:hidden h-11'}`}>
           {/* Left: Mobile Toggle */}
           <div className="flex items-center gap-3">
             <button 
@@ -356,17 +356,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             </button>
           </div>
 
-          {/* Right Controls: Refresh Button & Tenant Switcher */}
+          {/* Right Controls: Tenant Switcher (Super Admin) */}
           <div className="flex items-center gap-2">
-            {/* Refresh Button */}
-            <button
-              onClick={() => window.location.reload()}
-              title="Refresh Page"
-              className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-50 flex items-center justify-center transition shadow-2xs"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-
             {/* Tenant Switcher Dropdown - Only for Super Admin managing multiple companies */}
             {isSuperAdmin && (
               <div className="relative" ref={tenantDropdownRef}>

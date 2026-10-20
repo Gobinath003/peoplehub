@@ -465,114 +465,10 @@ export default function AccountsPage() {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Top Date Range Bar */}
-      <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 mr-1">
-            <Calendar className="w-4 h-4 text-slate-500" />
-            <span>Date Range:</span>
-          </div>
-
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg">
-            <span className="text-[11px] text-slate-400 font-semibold">From:</span>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none"
-            />
-          </div>
-
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg">
-            <span className="text-[11px] text-slate-400 font-semibold">To:</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none"
-            />
-          </div>
-
-          {(startDate || endDate) && (
-            <button
-              type="button"
-              onClick={() => {
-                setStartDate('');
-                setEndDate('');
-                setCurrentPage(1);
-              }}
-              className="text-[11px] text-slate-500 hover:text-slate-800 font-semibold px-2 py-1 rounded-md hover:bg-slate-100 transition"
-            >
-              Clear Dates
-            </button>
-          )}
-        </div>
-
-        {/* Quick Date Range Presets */}
-        <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium">
-          <button
-            type="button"
-            onClick={() => {
-              setStartDate('');
-              setEndDate('');
-              setCurrentPage(1);
-            }}
-            className={`px-2.5 py-1 rounded-lg transition ${!startDate && !endDate ? 'bg-slate-900 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-          >
-            All Time
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const today = new Date().toISOString().split('T')[0];
-              setStartDate(today);
-              setEndDate(today);
-              setCurrentPage(1);
-            }}
-            className={`px-2.5 py-1 rounded-lg transition ${startDate && startDate === endDate ? 'bg-slate-900 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-          >
-            Today
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const now = new Date();
-              const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-              const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-              setStartDate(firstDay);
-              setEndDate(lastDay);
-              setCurrentPage(1);
-            }}
-            className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
-          >
-            This Month
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const past = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
-              const today = new Date().toISOString().split('T')[0];
-              setStartDate(past);
-              setEndDate(today);
-              setCurrentPage(1);
-            }}
-            className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
-          >
-            Last 30 Days
-          </button>
-        </div>
-      </div>
-
+    <div className="space-y-3">
       {/* Notifications */}
       {successMsg && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center justify-between">
+        <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span className="font-medium">{successMsg}</span>
@@ -584,7 +480,7 @@ export default function AccountsPage() {
       )}
 
       {errorMsg && (
-        <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center justify-between">
+        <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span className="font-medium">{errorMsg}</span>
@@ -595,149 +491,228 @@ export default function AccountsPage() {
         </div>
       )}
 
-      {/* Financial Overview KPI Cards (Reflects Filtered Date Range) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Total Income */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Income</span>
-            <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline justify-between">
-            <div className="text-xl font-bold text-slate-900">
-              ₹{periodSummary.totalIncome.toLocaleString()}
-            </div>
-            <span className="text-[11px] font-medium text-emerald-600 flex items-center">
-              Inflows
-            </span>
-          </div>
-        </div>
-
-        {/* Total Expenses & Advances */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Expenses & Advances</span>
-            <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
-              <TrendingDown className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline justify-between">
-            <div className="text-xl font-bold text-slate-900">
-              ₹{(periodSummary.totalExpense + periodSummary.totalAdvance).toLocaleString()}
-            </div>
-            <span className="text-[11px] font-medium text-rose-600 flex items-center">
-              Outflows
-            </span>
-          </div>
-        </div>
-
-        {/* Employee Advances Outstanding */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Advances Outstanding</span>
-            <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
-              <Users className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline justify-between">
-            <div className="text-xl font-bold text-slate-900">
-              ₹{periodSummary.totalAdvanceOutstanding.toLocaleString()}
-            </div>
-            <span className="text-[11px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60">
-              ₹{periodSummary.totalAdvance.toLocaleString()} total given
-            </span>
+      {/* Row 1: Header + Compact Tab Filter + Quick Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex items-center gap-3">
+          <h1 className="text-base font-bold text-slate-900 tracking-tight">
+            Accounts & Ledgers
+          </h1>
+          {/* Compact Pill Tabs */}
+          <div className="inline-flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(tab.key as any);
+                    setCurrentPage(1);
+                  }}
+                  className={`px-2.5 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
+                    isActive
+                      ? 'bg-white text-slate-900 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  {typeof tab.count === 'number' && (
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                      isActive ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-600'
+                    }`}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Net Cash Balance */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Net Cash Balance</span>
-            <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-800 flex items-center justify-center">
-              <Wallet className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline justify-between">
-            <div className={`text-xl font-bold ${periodSummary.netCashflow >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>
-              ₹{periodSummary.netCashflow.toLocaleString()}
-            </div>
-            <span className="text-[11px] text-slate-400 font-medium">
-              Net Balance
-            </span>
-          </div>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            title="Download Excel (.xlsx)"
+            className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-700 transition flex items-center gap-1.5 text-xs font-medium shadow-2xs shrink-0"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export Excel</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleOpenAddModal()}
+            className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition shadow-2xs flex items-center gap-1.5 shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Record Transaction</span>
+          </button>
         </div>
       </div>
 
-      {/* Main Content Card */}
-      <div className="space-y-3">
-        {/* Navigation Tabs */}
-        <EnterpriseTabs
-          tabs={tabs}
-          activeTab={activeTab}
-          onTabChange={(tabId) => {
-            setActiveTab(tabId as any);
-            setCurrentPage(1);
-          }}
-        />
+      {/* Row 2: Unified Ultra-Compact Filter & Live Financial Metric Bar */}
+      <div className="bg-white p-2 sm:px-3 sm:py-2 rounded-xl border border-slate-200 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+        
+        {/* Left: Search, Payment Mode, and Compact Date Range */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Search */}
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+            <input
+              type="text"
+              placeholder="Search category, payee, ref..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-8 pr-2.5 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-slate-400 w-44 sm:w-48"
+            />
+          </div>
 
-        {/* Toolbar */}
-        <EnterpriseToolbar
-          title={
-            activeTab === 'incomes' ? 'Income Ledger' :
-            activeTab === 'expenses' ? 'Expenses & Staff Advances' :
-            'Accounts & General Ledger'
-          }
-          totalCount={filteredTransactions.length}
-          tenantName={activeTenant?.name}
-          searchPlaceholder="Search category, payee, ref #, employee..."
-          searchValue={searchQuery}
-          onSearchChange={(val) => {
-            setSearchQuery(val);
-            setCurrentPage(1);
-          }}
-          primaryActionLabel={
-            activeTab === 'incomes' ? 'Record Income' :
-            activeTab === 'expenses' ? 'Record Expense / Advance' :
-            'Record Transaction'
-          }
-          primaryActionIcon={Plus}
-          onPrimaryAction={() => handleOpenAddModal()}
-          filters={
-            <div className="flex items-center gap-1.5">
-              {/* Payment Mode Filter */}
-              <select
-                value={filterMode}
-                onChange={(e) => {
-                  setFilterMode(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="py-1.5 px-2.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none"
-              >
-                <option value="ALL">All Modes</option>
-                <option value="CASH">Cash</option>
-                <option value="BANK_TRANSFER">Bank Transfer</option>
-                <option value="UPI">UPI</option>
-                <option value="CHEQUE">Cheque</option>
-              </select>
+          {/* Payment Mode */}
+          <select
+            value={filterMode}
+            onChange={(e) => {
+              setFilterMode(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="py-1 px-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:bg-white"
+          >
+            <option value="ALL">All Modes</option>
+            <option value="CASH">Cash</option>
+            <option value="BANK_TRANSFER">Bank Transfer</option>
+            <option value="UPI">UPI</option>
+            <option value="CHEQUE">Cheque</option>
+          </select>
 
-              {/* Export Excel (.xlsx) Button */}
+          {/* Divider */}
+          <div className="hidden sm:block h-4 w-px bg-slate-200" />
+
+          {/* Compact Date Range Pickers */}
+          <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
+            <span className="text-[11px] text-slate-400 font-medium">From:</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="bg-transparent text-xs text-slate-700 font-semibold focus:outline-none w-28"
+            />
+            <span className="text-slate-300 mx-0.5">|</span>
+            <span className="text-[11px] text-slate-400 font-medium">To:</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="bg-transparent text-xs text-slate-700 font-semibold focus:outline-none w-28"
+            />
+          </div>
+
+          {/* Quick Date Presets */}
+          <div className="flex items-center gap-1 text-[11px]">
+            <button
+              type="button"
+              onClick={() => {
+                setStartDate('');
+                setEndDate('');
+                setCurrentPage(1);
+              }}
+              className={`px-2 py-0.5 rounded-md font-semibold transition ${
+                !startDate && !endDate ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const today = new Date().toISOString().split('T')[0];
+                setStartDate(today);
+                setEndDate(today);
+                setCurrentPage(1);
+              }}
+              className={`px-2 py-0.5 rounded-md font-semibold transition ${
+                startDate && startDate === endDate ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const now = new Date();
+                const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+                const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+                setStartDate(firstDay);
+                setEndDate(lastDay);
+                setCurrentPage(1);
+              }}
+              className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 transition font-semibold"
+            >
+              This Month
+            </button>
+            {(startDate || endDate) && (
               <button
                 type="button"
-                onClick={handleExportExcel}
-                title="Download Excel (.xlsx)"
-                className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-700 transition flex items-center gap-1.5 text-xs font-medium shadow-2xs"
+                onClick={() => {
+                  setStartDate('');
+                  setEndDate('');
+                  setCurrentPage(1);
+                }}
+                className="text-[11px] text-rose-600 hover:text-rose-800 font-semibold px-1"
+                title="Clear date filters"
               >
-                <Download className="w-3.5 h-3.5 text-slate-500" />
-                <span>Export Excel</span>
+                Clear
               </button>
-            </div>
-          }
-        />
+            )}
+          </div>
+        </div>
 
-        {/* Unified General Ledger Table */}
-        <EnterpriseTable
+        {/* Right: Compact Live Financial Metrics Chips */}
+        <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap shrink-0">
+          {/* Income Chip */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200/60 text-xs" title="Total Inflows for filtered period">
+            <ArrowDownRight className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span className="text-slate-500 font-medium">In:</span>
+            <strong className="text-emerald-900 font-bold">₹{periodSummary.totalIncome.toLocaleString()}</strong>
+          </div>
+
+          {/* Outflow Chip */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-200/60 text-xs" title="Total Expenses + Advances for filtered period">
+            <ArrowUpRight className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+            <span className="text-slate-500 font-medium">Out:</span>
+            <strong className="text-rose-900 font-bold">₹{(periodSummary.totalExpense + periodSummary.totalAdvance).toLocaleString()}</strong>
+          </div>
+
+          {/* Advance Due Chip */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200/60 text-xs" title={`Advance Due: ₹${periodSummary.totalAdvanceOutstanding.toLocaleString()} of ₹${periodSummary.totalAdvance.toLocaleString()} given`}>
+            <Users className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span className="text-slate-500 font-medium">Due:</span>
+            <strong className="text-amber-900 font-bold">₹{periodSummary.totalAdvanceOutstanding.toLocaleString()}</strong>
+          </div>
+
+          {/* Net Cash Chip */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-xs shadow-2xs" title="Net Cash Balance (Inflows - Outflows)">
+            <Wallet className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+            <span className="text-slate-300 font-medium">Net:</span>
+            <strong className={`font-bold ${periodSummary.netCashflow >= 0 ? 'text-white' : 'text-rose-300'}`}>
+              ₹{periodSummary.netCashflow.toLocaleString()}
+            </strong>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Row 3: Unified General Ledger Table */}
+      <EnterpriseTable
           loading={loading}
           isEmpty={paginatedTransactions.length === 0}
           emptyMessage="No account transactions found matching criteria."
@@ -863,7 +838,6 @@ export default function AccountsPage() {
             </EnterpriseTableBody>
           </table>
         </EnterpriseTable>
-      </div>
 
       {/* Record New Transaction Modal */}
       {isModalOpen && (

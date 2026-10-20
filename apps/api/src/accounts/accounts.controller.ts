@@ -112,7 +112,7 @@ class RecordRecoveryDto implements RecordAdvanceRecoveryRequest {
 @ApiBearerAuth()
 @ApiHeader({ name: 'x-tenant-id', required: true, description: 'Active Tenant ID' })
 @UseGuards(JwtAuthGuard, TenantGuard)
-@Controller('api/v1/accounts')
+@Controller('accounts')
 export class AccountsController {
   constructor(private readonly accountsService: AccountsService) {}
 

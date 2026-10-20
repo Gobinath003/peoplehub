@@ -19,7 +19,6 @@ function LoginContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -72,12 +71,9 @@ function LoginContent() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xl font-black text-slate-900 tracking-tight">PeopleHub</span>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
-                Enterprise
-              </span>
             </div>
             <p className="text-xs text-slate-500 font-medium mt-1">
-              Sign in to your enterprise workspace
+              Sign in to your workspace
             </p>
           </div>
 
@@ -146,20 +142,6 @@ function LoginContent() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-            </div>
-
-            {/* Remember Me */}
-            <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 border-slate-300"
-                />
-                <span className="text-xs font-medium text-slate-600">Remember this device</span>
-              </label>
-              <span className="text-[11px] text-slate-400 font-medium">Session: 30 days</span>
             </div>
 
             {/* Submit CTA */}

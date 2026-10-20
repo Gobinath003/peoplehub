@@ -34,6 +34,32 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [mastersMenuOpen, setMastersMenuOpen] = useState(false);
 
+  const profileDropdownRef = React.useRef<HTMLDivElement>(null);
+  const tenantDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // Close dropdowns when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        profileDropdownRef.current &&
+        !profileDropdownRef.current.contains(event.target as Node)
+      ) {
+        setProfileDropdownOpen(false);
+      }
+      if (
+        tenantDropdownRef.current &&
+        !tenantDropdownRef.current.contains(event.target as Node)
+      ) {
+        setTenantDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   // Immediately redirect to login if unauthenticated
   React.useEffect(() => {
     if (!loading && !user) {
@@ -118,19 +144,11 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-2xs p-1.5 group-hover:border-slate-300 transition">
               <img 
                 src="/noltrion-icon.png" 
-                alt="Noltrion Innovations" 
+                alt="PeopleHub" 
                 className="w-full h-full object-contain" 
               />
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm font-bold text-slate-900 tracking-tight">PeopleHub</span>
-                <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                  HRMS
-                </span>
-              </div>
-              <p className="text-[10px] font-semibold text-slate-400">by Noltrion Innovations</p>
-            </div>
+            <span className="text-base font-extrabold text-slate-900 tracking-tight">PeopleHub</span>
           </Link>
           <button className="lg:hidden text-slate-400 hover:text-slate-600" onClick={() => setSidebarOpen(false)}>
             <X className="w-4 h-4" />
@@ -289,7 +307,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
             {/* Tenant Switcher Dropdown - Only for Super Admin managing multiple companies */}
             {isSuperAdmin && (
-              <div className="relative">
+              <div className="relative" ref={tenantDropdownRef}>
                 <button
                   onClick={() => setTenantDropdownOpen(!tenantDropdownOpen)}
                   className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 focus:outline-none transition"
@@ -340,7 +358,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             )}
 
             {/* Profile Avatar */}
-            <div className="relative">
+            <div className="relative" ref={profileDropdownRef}>
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className="w-8 h-8 rounded-lg bg-slate-900 text-white font-bold flex items-center justify-center text-xs shadow-2xs hover:bg-slate-800 transition"

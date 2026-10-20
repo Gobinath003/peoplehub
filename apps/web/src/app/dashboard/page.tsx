@@ -5,12 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { API_BASE_URL } from '../../config/api';
 import Link from 'next/link';
 import { 
-  Users, CheckCircle2, ChevronRight, 
-  Scissors, Calendar, Clock, ArrowRight,
-  Coins, UserCheck, UserX, AlertCircle, Sparkles,
-  Wallet, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
-  Activity, Layers, BarChart3, PieChart, Building2, ShieldCheck,
-  Check, ArrowUp, RefreshCw
+  Calendar, Clock, UserCheck, BarChart3
 } from 'lucide-react';
 import { EmployeeDto, PieceRateLogDto } from '@people-hub/shared-types';
 
@@ -20,17 +15,6 @@ export default function DashboardHome() {
   const [employees, setEmployees] = useState<EmployeeDto[]>([]);
   const [recentLogs, setRecentLogs] = useState<PieceRateLogDto[]>([]);
   const [totalEarnings, setTotalEarnings] = useState<number>(0);
-  const [accountSummary, setAccountSummary] = useState<{
-    totalIncome: number;
-    totalExpense: number;
-    totalAdvance: number;
-    netCashflow: number;
-  }>({
-    totalIncome: 0,
-    totalExpense: 0,
-    totalAdvance: 0,
-    netCashflow: 0
-  });
   const [loading, setLoading] = useState<boolean>(true);
 
   const isGarments = activeTenant?.industry === 'GARMENTS' || enabledModules?.includes('PIECE_RATE');
@@ -57,10 +41,9 @@ export default function DashboardHome() {
           'x-tenant-id': activeTenant.id
         };
 
-        const [empRes, logsRes, sumRes] = await Promise.all([
+        const [empRes, logsRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/v1/employees`, { headers }).catch(() => null),
-          isGarments ? fetch(`${API_BASE_URL}/api/v1/piece-rate/logs`, { headers }).catch(() => null) : Promise.resolve(null),
-          fetch(`${API_BASE_URL}/api/v1/accounts/summary`, { headers }).catch(() => null)
+          isGarments ? fetch(`${API_BASE_URL}/api/v1/piece-rate/logs`, { headers }).catch(() => null) : Promise.resolve(null)
         ]);
 
         if (empRes && empRes.ok) {
@@ -76,13 +59,6 @@ export default function DashboardHome() {
             setRecentLogs(logsData);
             const earnings = logsData.reduce((acc: number, l: any) => acc + (l.totalAmount || 0), 0);
             setTotalEarnings(earnings);
-          }
-        }
-
-        if (sumRes && sumRes.ok) {
-          const sumData = await sumRes.json();
-          if (sumData) {
-            setAccountSummary(sumData);
           }
         }
       } catch (err) {
@@ -149,19 +125,6 @@ export default function DashboardHome() {
   }, [recentLogs]);
 
   const weeklyTotalUnits = weeklyProductionData.reduce((acc, d) => acc + d.units, 0);
-
-  // Financial Numbers
-  const totalInflow = accountSummary.totalIncome || 285000;
-  const totalOutflow = (accountSummary.totalExpense + accountSummary.totalAdvance) || 142000;
-  const netCashflow = accountSummary.netCashflow || (totalInflow - totalOutflow);
-
-  // Garment Floor Operations Breakdown
-  const floorSkills = [
-    { name: 'Stitching & Body Assembly', share: 42, count: Math.round(totalProductionUnits * 0.42), color: '#6366F1', bg: 'bg-indigo-500', rate: '₹5.50/pc' },
-    { name: 'Overlock & Edge Finishing', share: 26, count: Math.round(totalProductionUnits * 0.26), color: '#0D9488', bg: 'bg-teal-500', rate: '₹4.20/pc' },
-    { name: 'Pattern Cutting & Bundling', share: 18, count: Math.round(totalProductionUnits * 0.18), color: '#F59E0B', bg: 'bg-amber-500', rate: '₹3.80/pc' },
-    { name: 'Quality Inspection & Ironing', share: 14, count: Math.round(totalProductionUnits * 0.14), color: '#10B981', bg: 'bg-emerald-500', rate: '₹2.50/pc' },
-  ];
 
   // Donut SVG circumference math
   // radius = 38, circumference = 2 * PI * 38 = ~238.76
@@ -404,182 +367,6 @@ export default function DashboardHome() {
             <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60 text-[11px]">
               +12.4% vs Prev Week
             </span>
-          </div>
-        </div>
-
-      </div>
-
-      {/* ======================================================== */}
-      {/* 4. BUSINESS OPERATIONS & FINANCIAL CASHFLOW CHARTS       */}
-      {/* ======================================================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        
-        {/* CHART 3: FINANCIAL CASHFLOW DYNAMICS & OUTFLOWS */}
-        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center">
-                  <Wallet className="w-4 h-4" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-extrabold text-slate-900">
-                    Cashflow & Operating Expenses
-                  </h2>
-                  <p className="text-[11px] text-slate-400">Inflows vs operating overheads & staff advances</p>
-                </div>
-              </div>
-              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${netCashflow >= 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
-                ₹{netCashflow.toLocaleString()} Net
-              </span>
-            </div>
-
-            {/* Split Comparison Bar */}
-            <div className="mt-5 space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                <span className="text-emerald-700">Revenue Inflows: ₹{totalInflow.toLocaleString()}</span>
-                <span className="text-rose-700">Outflows: ₹{totalOutflow.toLocaleString()}</span>
-              </div>
-              
-              {/* Dual Proportional Bar */}
-              <div className="h-3.5 w-full bg-slate-100 rounded-full overflow-hidden flex">
-                <div style={{ width: '64%' }} className="bg-emerald-500 h-full" title="Revenue Inflows (64%)" />
-                <div style={{ width: '36%' }} className="bg-rose-500 h-full" title="Operating Outflows (36%)" />
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-                <span>Surplus Margin: ~64%</span>
-                <span>Operational Cost Ratio: ~36%</span>
-              </div>
-            </div>
-
-            {/* Operating Overhead Breakdown */}
-            <div className="mt-4 space-y-2">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                Cost Allocation Dynamics
-              </span>
-
-              {/* Rent & Utilities */}
-              <div>
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1">
-                  <span>Facility Rent & Power Utilities</span>
-                  <span className="text-slate-900 font-bold">42% (₹59,640)</span>
-                </div>
-                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className="bg-indigo-500 h-full rounded-full" style={{ width: '42%' }} />
-                </div>
-              </div>
-
-              {/* Consumables & Raw Materials */}
-              <div>
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1">
-                  <span>Factory Consumables & Needles</span>
-                  <span className="text-slate-900 font-bold">28% (₹39,760)</span>
-                </div>
-                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className="bg-teal-500 h-full rounded-full" style={{ width: '28%' }} />
-                </div>
-              </div>
-
-              {/* Staff Advances */}
-              <div>
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1">
-                  <span>Employee Salary Advances</span>
-                  <span className="text-slate-900 font-bold">18% (₹25,560)</span>
-                </div>
-                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className="bg-amber-500 h-full rounded-full" style={{ width: '18%' }} />
-                </div>
-              </div>
-
-              {/* Logistics & Refreshments */}
-              <div>
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1">
-                  <span>Logistics, Fuel & Refreshments</span>
-                  <span className="text-slate-900 font-bold">12% (₹17,040)</span>
-                </div>
-                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className="bg-rose-500 h-full rounded-full" style={{ width: '12%' }} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Ledger Footer */}
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Live General Ledger • DB Verified</span>
-            <Link href="/dashboard/accounts" className="text-slate-900 hover:underline font-bold flex items-center gap-1">
-              <span>View Accounts</span>
-              <ArrowRight className="w-3 h-3 text-slate-400" />
-            </Link>
-          </div>
-        </div>
-
-        {/* CHART 4: GARMENT FLOOR SKILLS & OPERATIONS BREAKDOWN */}
-        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
-                  <Layers className="w-4 h-4" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-extrabold text-slate-900">
-                    Active Floor Skills & Operations
-                  </h2>
-                  <p className="text-[11px] text-slate-400">Garment assembly breakdown by skill</p>
-                </div>
-              </div>
-              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-                4 Skill Tracks
-              </span>
-            </div>
-
-            {/* Operations List */}
-            <div className="mt-5 space-y-3.5">
-              {floorSkills.map((skill) => (
-                <div key={skill.name} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-full ${skill.bg}`} />
-                      <span className="font-semibold text-slate-800">{skill.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-slate-900">{skill.count.toLocaleString()} pcs</span>
-                      <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
-                        {skill.rate}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${skill.bg}`}
-                      style={{ width: `${skill.share}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Quick Summary Pill Banner */}
-            <div className="mt-5 p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-                <span className="text-slate-600 font-medium">Standard Piece Rate: <strong>₹2.50 to ₹5.50 / unit</strong></span>
-              </div>
-              <span className="text-emerald-700 font-bold">100% Quality Pass</span>
-            </div>
-          </div>
-
-          {/* Piece-rate Footer */}
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Real-time Piece-rate Tracking</span>
-            <Link href={isGarments ? '/dashboard/piece-rate' : '/dashboard/employees'} className="text-slate-900 hover:underline font-bold flex items-center gap-1">
-              <span>Open Floor Sheet</span>
-              <ArrowRight className="w-3 h-3 text-slate-400" />
-            </Link>
           </div>
         </div>
 

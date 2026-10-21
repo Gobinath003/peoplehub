@@ -463,6 +463,14 @@ export default function PieceRatePage() {
       <EnterpriseToolbar
         title="Attendance & Daily Work Ledger"
         tenantName={activeTenant?.name}
+        primaryActionLabel={activeTab === 'sheet' ? '+ Record Floor Work' : undefined}
+        onPrimaryAction={activeTab === 'sheet' ? () => {
+          if (searchedRows.length > 0) {
+            handleOpenSkillsModal(searchedRows[0].employee);
+          } else if (employees.length > 0) {
+            handleOpenSkillsModal(employees[0]);
+          }
+        } : undefined}
         filters={
           <div className="flex items-center gap-2">
             {activeTab === 'sheet' && (
@@ -745,15 +753,19 @@ export default function PieceRatePage() {
                           {/* Actions: Add/Edit Skills + Restaurant Bill Print Slip */}
                           <td className="py-3.5 px-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              {/* Open Skills Modal */}
+                              {/* Open Skills Modal with prominent + Add Work button */}
                               <button
                                 type="button"
                                 onClick={() => handleOpenSkillsModal(emp)}
-                                title="Add or edit multi-skill operations for this operator"
-                                className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] font-bold transition flex items-center gap-1 shadow-2xs"
+                                title="Add or update operations/skills for this operator"
+                                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1 shadow-2xs ${
+                                  hasWork
+                                    ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80'
+                                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold'
+                                }`}
                               >
-                                <Edit3 className="w-3.5 h-3.5 text-slate-600" />
-                                <span>{hasWork ? 'Edit Skills' : '+ Add Skills'}</span>
+                                <Plus className={`w-3.5 h-3.5 ${hasWork ? 'text-indigo-600' : 'text-emerald-700'}`} />
+                                <span>{hasWork ? '+ Add / Edit Work' : '+ Add Work'}</span>
                               </button>
 
                               {/* Single Row Print Slip (Restaurant Bill Style) */}

@@ -32,6 +32,7 @@ export class PayrollService {
       department: emp.department,
       designation: emp.designation,
       branch: emp.branch,
+      salaryType: emp.salaryType || 'MONTHLY_FIXED',
       salaryStructure: emp.salaryStructure ? {
         id: emp.salaryStructure.id,
         employeeId: emp.salaryStructure.employeeId,
@@ -191,10 +192,12 @@ export class PayrollService {
     tenantId: string,
     dto: GeneratePayslipRequest
   ): Promise<{ generatedCount: number; payslips: PayslipDto[] }> {
-    const month = Number(dto.month);
+    const isWeekly = dto.cycleType === 'WEEKLY';
     const year = Number(dto.year);
-    const payPeriod = dto.payPeriod || `${this.getMonthName(month)} ${year}`;
-    const workingDays = dto.workingDays || 30;
+    const weekNumber = Number(dto.weekNumber || 1);
+    const month = isWeekly ? (100 + weekNumber) : Number(dto.month);
+    const workingDays = dto.workingDays || (isWeekly ? 6 : 30);
+    const payPeriod = dto.payPeriod || (isWeekly ? `Week ${weekNumber}, ${year}` : `${this.getMonthName(month)} ${year}`);
 
     // Find target employees
     const whereEmployee: any = {
@@ -216,8 +219,22 @@ export class PayrollService {
       throw new BadRequestException('No eligible active employees found with salary configuration');
     }
 
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+    let startDate: Date;
+    let endDate: Date;
+    if (dto.startDate && dto.endDate) {
+      startDate = new Date(dto.startDate);
+      endDate = new Date(dto.endDate);
+      endDate.setHours(23, 59, 59, 999);
+    } else if (isWeekly) {
+      const daysOffset = (weekNumber - 1) * 7;
+      startDate = new Date(year, 0, 1 + daysOffset);
+      endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 6);
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      startDate = new Date(year, month - 1, 1);
+      endDate = new Date(year, month, 0, 23, 59, 59, 999);
+    }
 
     const generated: any[] = [];
 
@@ -234,7 +251,7 @@ export class PayrollService {
         const salaryType = emp.salaryType || 'MONTHLY_FIXED';
 
         if (salaryType === 'PIECE_RATE') {
-          // 1. Fetch piece-rate activity logs for this month
+          // 1. Fetch piece-rate activity logs for this period
           const logs = await tx.pieceRateLog.findMany({
             where: {
               tenantId,
@@ -271,11 +288,12 @@ export class PayrollService {
           pieceRateDetails = Array.from(actMap.values());
 
           if (emp.salaryStructure) {
-            hra = emp.salaryStructure.hra;
-            allowances = emp.salaryStructure.specialAllowance + emp.salaryStructure.conveyanceAllowance;
-            pf = emp.salaryStructure.pfDeduction;
-            tax = emp.salaryStructure.taxDeduction;
-            other = emp.salaryStructure.otherDeductions;
+            const ratio = isWeekly ? (workingDays / 30) : 1;
+            hra = Math.round(emp.salaryStructure.hra * ratio);
+            allowances = Math.round((emp.salaryStructure.specialAllowance + emp.salaryStructure.conveyanceAllowance) * ratio);
+            pf = Math.round(emp.salaryStructure.pfDeduction * ratio);
+            tax = Math.round(emp.salaryStructure.taxDeduction * ratio);
+            other = Math.round(emp.salaryStructure.otherDeductions * ratio);
           }
         } else {
           // Standard Monthly Fixed Salary
@@ -283,12 +301,13 @@ export class PayrollService {
             continue; // Skip employees without configured salary
           }
 
-          basic = emp.salaryStructure.basicSalary;
-          hra = emp.salaryStructure.hra;
-          allowances = emp.salaryStructure.specialAllowance + emp.salaryStructure.conveyanceAllowance;
-          pf = emp.salaryStructure.pfDeduction;
-          tax = emp.salaryStructure.taxDeduction;
-          other = emp.salaryStructure.otherDeductions;
+          const ratio = isWeekly ? (workingDays / 30) : 1;
+          basic = Math.round(emp.salaryStructure.basicSalary * ratio);
+          hra = Math.round(emp.salaryStructure.hra * ratio);
+          allowances = Math.round((emp.salaryStructure.specialAllowance + emp.salaryStructure.conveyanceAllowance) * ratio);
+          pf = Math.round(emp.salaryStructure.pfDeduction * ratio);
+          tax = Math.round(emp.salaryStructure.taxDeduction * ratio);
+          other = Math.round(emp.salaryStructure.otherDeductions * ratio);
         }
 
         const grossEarnings = basic + hra + allowances;
@@ -296,8 +315,8 @@ export class PayrollService {
         const netPayable = grossEarnings - totalDeductions;
 
         const remarks = salaryType === 'PIECE_RATE'
-          ? `Piece-rate payroll: ${pieceRateUnits || 0} units completed across ${pieceRateDetails?.length || 0} operations`
-          : `Fixed monthly payroll for ${payPeriod}`;
+          ? `${isWeekly ? 'Weekly' : 'Monthly'} piece-rate payroll: ${pieceRateUnits || 0} units completed across ${pieceRateDetails?.length || 0} operations`
+          : `${isWeekly ? 'Weekly' : 'Monthly'} fixed payroll for ${payPeriod}`;
 
         const record = await tx.payslip.upsert({
           where: {

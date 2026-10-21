@@ -322,14 +322,14 @@ export default function DashboardHome() {
               </div>
 
               {/* Bars Container */}
-              <div className="h-40 flex items-end justify-between gap-2 pt-6 pb-2 border-b border-slate-200 relative">
-                {/* Horizontal Target Line at ~66% height */}
-                <div className="absolute left-0 right-0 top-[35%] border-b border-dashed border-slate-300 z-0 pointer-events-none" />
+              <div className="h-52 flex items-end justify-between gap-2 pt-8 pb-2 border-b border-slate-200 relative">
+                {/* Horizontal Target Line at ~33% from top of bar chart area */}
+                <div className="absolute left-0 right-0 top-[38%] border-b border-dashed border-slate-300 z-0 pointer-events-none" />
 
                 {weeklyProductionData.map((d) => (
-                  <div key={d.day} className="flex-1 flex flex-col items-center gap-1.5 z-10 group">
+                  <div key={d.day} className="flex-1 flex flex-col items-center justify-end z-10 group min-w-0">
                     {/* Tooltip / Value on Top */}
-                    <span className={`text-[10px] font-bold px-1 rounded transition ${
+                    <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded shadow-2xs transition whitespace-nowrap mb-1.5 tabular-nums ${
                       d.isPeak 
                         ? 'bg-emerald-100 text-emerald-800' 
                         : 'bg-slate-100 text-slate-700 group-hover:bg-indigo-100 group-hover:text-indigo-800'
@@ -350,7 +350,7 @@ export default function DashboardHome() {
                     </div>
 
                     {/* Day Label */}
-                    <span className="text-[11px] font-bold text-slate-600 mt-1">
+                    <span className="text-[11px] font-bold text-slate-600 mt-2">
                       {d.day}
                     </span>
                   </div>

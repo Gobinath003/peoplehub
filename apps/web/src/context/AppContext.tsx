@@ -102,13 +102,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
       const mockTenants: TenantContext[] = [
         {
-          id: '23ee8399-e03c-4521-9e50-0332e1e1a9e7',
+          id: '7837a312-ed38-4859-9748-9cbad20d1863',
           name: 'ABC Garments Ltd',
           slug: 'abc-garments',
           industry: IndustryType.GARMENTS
         },
         {
-          id: 't3333333-3333-3333-3333-333333333333',
+          id: 'dc2ec6b3-8ed6-4a4f-aab6-03c4ed4bede8',
           name: 'Chennai Logistics Co',
           slug: 'chennai-logistics',
           industry: IndustryType.LOGISTICS

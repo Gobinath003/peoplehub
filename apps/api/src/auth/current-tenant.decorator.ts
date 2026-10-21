@@ -3,6 +3,7 @@ import { TenantContext } from '../prisma/tenant-context';
 
 export const CurrentTenantId = createParamDecorator(
   (data: unknown, ctx: ExecutionContext) => {
-    return TenantContext.getTenantId();
+    const req = ctx.switchToHttp().getRequest();
+    return req.effectiveTenantId || TenantContext.getTenantId() || req.headers['x-tenant-id'] || req.user?.tenantId;
   },
 );

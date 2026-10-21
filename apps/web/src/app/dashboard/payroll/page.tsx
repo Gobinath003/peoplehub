@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { API_BASE_URL } from '../../../config/api';
 import { 
   FileText, DollarSign, Calendar, Check, X, 
   Printer, Play, Search, Filter, Building2, 
   Briefcase, ArrowUpRight, Award, ShieldCheck, 
-  ChevronRight, ChevronLeft, Edit3, Scissors, AlertCircle, Download
+  ChevronRight, ChevronLeft, Edit3, Scissors, AlertCircle, Download, Clock
 } from 'lucide-react';
 import { PayslipDto, SalaryStructureDto } from '@people-hub/shared-types';
 import { exportToExcel } from '../../../utils/excelExport';
@@ -57,9 +57,72 @@ export default function PayrollPage() {
   const [savingSalary, setSavingSalary] = useState(false);
 
   // Generate Payslip State
-  const [genMonth, setGenMonth] = useState(9); // September
+  const [cycleType, setCycleType] = useState<'MONTHLY' | 'WEEKLY'>('MONTHLY');
+  const [genMonth, setGenMonth] = useState(10); // October
   const [genYear, setGenYear] = useState(2026);
+  const [genWeek, setGenWeek] = useState(42); // Current Week
   const [generating, setGenerating] = useState(false);
+
+  // Helper for week date range
+  const weekDateRange = useMemo(() => {
+    const daysOffset = (genWeek - 1) * 7;
+    const start = new Date(genYear, 0, 1 + daysOffset);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return {
+      startStr: start.toISOString().split('T')[0],
+      endStr: end.toISOString().split('T')[0],
+      display: `${formatDate(start)} - ${formatDate(end)}, ${genYear}`
+    };
+  }, [genWeek, genYear]);
+
+  // Pre-Run live salary breakdown for all eligible staff
+  const preRunSalaries = useMemo(() => {
+    const isWeekly = cycleType === 'WEEKLY';
+    const ratio = isWeekly ? (6 / 30) : 1;
+    return structures.map(emp => {
+      const st = emp.salaryStructure;
+      const isPieceRate = emp.salaryType === 'PIECE_RATE';
+      const base = st ? Math.round(st.basicSalary * ratio) : (isPieceRate ? Math.round(22000 * ratio) : 0);
+      const hra = st ? Math.round(st.hra * ratio) : 0;
+      const allowances = st ? Math.round((st.specialAllowance + st.conveyanceAllowance) * ratio) : 0;
+      const pf = st ? Math.round(st.pfDeduction * ratio) : 0;
+      const tax = st ? Math.round(st.taxDeduction * ratio) : 0;
+      const other = st ? Math.round(st.otherDeductions * ratio) : 0;
+
+      const grossEarnings = base + hra + allowances;
+      const totalDeductions = pf + tax + other;
+      const netPayable = grossEarnings - totalDeductions;
+
+      return {
+        ...emp,
+        base,
+        hra,
+        allowances,
+        totalAllowances: hra + allowances,
+        pf,
+        tax,
+        totalDeductions,
+        grossEarnings,
+        netPayable,
+        isConfigured: !!st || isPieceRate
+      };
+    });
+  }, [structures, cycleType]);
+
+  const preRunTotals = useMemo(() => {
+    const eligible = preRunSalaries.filter(s => s.isConfigured);
+    const totalGross = eligible.reduce((acc, s) => acc + s.grossEarnings, 0);
+    const totalDeductions = eligible.reduce((acc, s) => acc + s.totalDeductions, 0);
+    const totalNet = eligible.reduce((acc, s) => acc + s.netPayable, 0);
+    return {
+      count: eligible.length,
+      totalGross,
+      totalDeductions,
+      totalNet
+    };
+  }, [preRunSalaries]);
 
   // Printable Payslip Modal State
   const [viewPayslip, setViewPayslip] = useState<PayslipDto | null>(null);
@@ -104,6 +167,7 @@ export default function PayrollPage() {
         department: 'Sewing & Stitching',
         designation: 'Senior Tailor Master',
         branch: 'Chennai Branch',
+        salaryType: 'MONTHLY_FIXED',
         salaryStructure: {
           id: 's1',
           employeeId: 'e1',
@@ -127,6 +191,7 @@ export default function PayrollPage() {
         department: 'Quality Control',
         designation: 'Fabric Quality Inspector',
         branch: 'Chennai Branch',
+        salaryType: 'MONTHLY_FIXED',
         salaryStructure: {
           id: 's2',
           employeeId: 'e2',
@@ -139,6 +204,30 @@ export default function PayrollPage() {
           otherDeductions: 0,
           grossSalary: 45000,
           netSalary: 41340,
+          currency: 'INR',
+          effectiveDate: '2026-01-01'
+        }
+      },
+      {
+        employeeId: 'e3',
+        employeeCode: 'EMP-103',
+        employeeName: 'Murugan Selvam',
+        department: 'Cutting Section',
+        designation: 'Floor Cutter',
+        branch: 'Chennai Branch',
+        salaryType: 'PIECE_RATE',
+        salaryStructure: {
+          id: 's3',
+          employeeId: 'e3',
+          basicSalary: 21500,
+          hra: 5000,
+          specialAllowance: 2000,
+          conveyanceAllowance: 1500,
+          pfDeduction: 1200,
+          taxDeduction: 0,
+          otherDeductions: 0,
+          grossSalary: 30000,
+          netSalary: 28800,
           currency: 'INR',
           effectiveDate: '2026-01-01'
         }
@@ -155,6 +244,7 @@ export default function PayrollPage() {
         department: 'Sewing & Stitching',
         designation: 'Senior Tailor Master',
         branch: 'Chennai Branch',
+        salaryType: 'MONTHLY_FIXED',
         companyName: activeTenant.name,
         payPeriod: 'August 2026',
         month: 8,
@@ -281,8 +371,11 @@ export default function PayrollPage() {
     setGenerating(true);
     setErrorMsg(null);
 
+    const isWeekly = cycleType === 'WEEKLY';
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const payPeriod = `${monthNames[genMonth - 1]} ${genYear}`;
+    const payPeriod = isWeekly
+      ? `Week ${genWeek} (${weekDateRange.display})`
+      : `${monthNames[genMonth - 1]} ${genYear}`;
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/payroll/payslips/generate`, {
@@ -295,8 +388,12 @@ export default function PayrollPage() {
         body: JSON.stringify({
           month: genMonth,
           year: genYear,
+          cycleType,
+          weekNumber: genWeek,
+          startDate: isWeekly ? weekDateRange.startStr : undefined,
+          endDate: isWeekly ? weekDateRange.endStr : undefined,
           payPeriod,
-          workingDays: 30
+          workingDays: isWeekly ? 6 : 30
         })
       });
 
@@ -318,12 +415,22 @@ export default function PayrollPage() {
     }
 
     // Local fallback generation
+    const ratio = isWeekly ? (6 / 30) : 1;
+    const workingDays = isWeekly ? 6 : 30;
     const newSlips: PayslipDto[] = structures
-      .filter(s => s.salaryStructure !== null)
+      .filter(s => s.salaryStructure !== null || s.salaryType === 'PIECE_RATE')
       .map((s, idx) => {
-        const st = s.salaryStructure!;
-        const allowances = st.specialAllowance + st.conveyanceAllowance;
-        const deductions = st.pfDeduction + st.taxDeduction;
+        const st = s.salaryStructure;
+        const isPiece = s.salaryType === 'PIECE_RATE';
+        const base = st ? Math.round(st.basicSalary * ratio) : (isPiece ? Math.round(22000 * ratio) : 0);
+        const hra = st ? Math.round(st.hra * ratio) : 0;
+        const allowances = st ? Math.round((st.specialAllowance + st.conveyanceAllowance) * ratio) : 0;
+        const pf = st ? Math.round(st.pfDeduction * ratio) : 0;
+        const tax = st ? Math.round(st.taxDeduction * ratio) : 0;
+        const grossEarnings = base + hra + allowances;
+        const totalDeductions = pf + tax;
+        const netPayable = grossEarnings - totalDeductions;
+
         return {
           id: `ps-${Date.now()}-${idx}`,
           tenantId: activeTenant?.id || '',
@@ -335,23 +442,25 @@ export default function PayrollPage() {
           branch: s.branch,
           companyName: activeTenant?.name,
           payPeriod,
-          month: genMonth,
+          salaryType: s.salaryType || 'MONTHLY_FIXED',
+          month: isWeekly ? (100 + genWeek) : genMonth,
           year: genYear,
-          workingDays: 30,
-          presentDays: 30,
-          paidDays: 30,
-          basicSalary: st.basicSalary,
-          hra: st.hra,
+          workingDays,
+          presentDays: workingDays,
+          paidDays: workingDays,
+          pieceRateUnits: isPiece ? (isWeekly ? 180 : 750) : null,
+          basicSalary: base,
+          hra,
           allowances,
-          grossEarnings: st.grossSalary,
-          pfDeduction: st.pfDeduction,
-          taxDeduction: st.taxDeduction,
+          grossEarnings,
+          pfDeduction: pf,
+          taxDeduction: tax,
           otherDeductions: 0,
-          totalDeductions: deductions,
-          netPayable: st.netSalary,
+          totalDeductions,
+          netPayable,
           status: 'GENERATED',
           paymentDate: new Date().toISOString(),
-          remarks: `Automated payroll execution for ${payPeriod}`,
+          remarks: `${isWeekly ? 'Weekly' : 'Monthly'} payroll calculation for ${payPeriod}`,
           createdAt: new Date().toISOString()
         };
       });
@@ -497,6 +606,7 @@ export default function PayrollPage() {
           <table className="w-full text-left border-collapse text-xs">
             <EnterpriseTableHeader>
               <EnterpriseTableTh>Employee</EnterpriseTableTh>
+              <EnterpriseTableTh>Payroll Type</EnterpriseTableTh>
               <EnterpriseTableTh>Basic Salary</EnterpriseTableTh>
               <EnterpriseTableTh>Allowances (HRA + Special)</EnterpriseTableTh>
               <EnterpriseTableTh>Deductions (PF + Tax)</EnterpriseTableTh>
@@ -515,6 +625,12 @@ export default function PayrollPage() {
                         <span>•</span>
                         <span>{emp.designation}</span>
                       </div>
+                    </EnterpriseTableTd>
+
+                    <EnterpriseTableTd>
+                      <EnterpriseBadge variant={emp.salaryType === 'PIECE_RATE' ? 'warning' : 'info'}>
+                        {emp.salaryType === 'PIECE_RATE' ? 'Piece-Rate' : 'Monthly Fixed'}
+                      </EnterpriseBadge>
                     </EnterpriseTableTd>
 
                     <EnterpriseTableTd className="font-semibold text-slate-800">
@@ -573,87 +689,257 @@ export default function PayrollPage() {
         </EnterpriseTable>
       )}
 
-      {/* TAB 2: RUN MONTHLY PAYROLL */}
+      {/* TAB 2: RUN PAYROLL (MONTHLY & WEEKLY) WITH PRE-RUN DETAILS */}
       {activeTab === 'generate' && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 space-y-6 max-w-2xl">
-          <div className="space-y-1">
-            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <Play className="w-5 h-5 text-emerald-600" />
-              <span>Execute Monthly Payroll</span>
-            </h2>
-            <p className="text-xs text-slate-500">
-              Run automated compensation calculation and generate official payslips for all active employees.
-            </p>
-          </div>
+        <div className="space-y-4">
+          {/* Cycle & Period Configuration Bar */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Play className="w-4 h-4 text-emerald-600" />
+                  <span>Run Compensation & Payroll</span>
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Review calculated earnings and deductions across your workforce before finalizing and generating payslips.
+                </p>
+              </div>
 
-          <div className="grid grid-cols-2 gap-4 text-xs">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Pay Month</label>
-              <select
-                value={genMonth}
-                onChange={(e) => setGenMonth(Number(e.target.value))}
-                className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-slate-800 focus:ring-2 focus:ring-primary-500 focus:outline-none"
-              >
-                <option value={1}>January</option>
-                <option value={2}>February</option>
-                <option value={3}>March</option>
-                <option value={4}>April</option>
-                <option value={5}>May</option>
-                <option value={6}>June</option>
-                <option value={7}>July</option>
-                <option value={8}>August</option>
-                <option value={9}>September</option>
-                <option value={10}>October</option>
-                <option value={11}>November</option>
-                <option value={12}>December</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Pay Year</label>
-              <input
-                type="number"
-                value={genYear}
-                onChange={(e) => setGenYear(Number(e.target.value))}
-                className="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-slate-800 focus:ring-2 focus:ring-primary-500 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2.5">
-            <span className="font-bold text-slate-700 block">Pre-run Summary:</span>
-            <div className="flex justify-between text-slate-600">
-              <span>Configured Employees in {activeTenant?.name}:</span>
-              <span className="font-bold font-mono">{structures.length} Total Staff</span>
-            </div>
-            <div className="flex justify-between text-slate-600">
-              <span>Standard Monthly Working Days:</span>
-              <span className="font-bold font-mono">30 Days</span>
-            </div>
-            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900 leading-relaxed space-y-1">
-              <strong className="flex items-center gap-1.5 font-bold">
-                <Scissors className="w-3.5 h-3.5 text-amber-700" />
-                <span>Dual Salary System Processing:</span>
-              </strong>
-              <div className="text-amber-800">
-                • <strong>Monthly Fixed Staff:</strong> Basic salary & configured allowances applied.<br />
-                • <strong>Piece-Rate Workers:</strong> Automatically calculates wages by aggregating daily production logs (Cutting, Stitching, etc.) for this month.
+              {/* Cycle Mode Switcher: Monthly vs Weekly */}
+              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl self-start md:self-auto border border-slate-200/80">
+                <button
+                  type="button"
+                  onClick={() => setCycleType('MONTHLY')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                    cycleType === 'MONTHLY'
+                      ? 'bg-white text-slate-900 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Monthly Cycle</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCycleType('WEEKLY')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                    cycleType === 'WEEKLY'
+                      ? 'bg-white text-slate-900 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Weekly Cycle</span>
+                </button>
               </div>
             </div>
+
+            {/* Cycle Period Parameters */}
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3 text-xs">
+              {cycleType === 'MONTHLY' ? (
+                <>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Pay Month</label>
+                    <select
+                      value={genMonth}
+                      onChange={(e) => setGenMonth(Number(e.target.value))}
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 bg-white font-medium text-slate-900 focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    >
+                      {[
+                        'January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'
+                      ].map((m, idx) => (
+                        <option key={m} value={idx + 1}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Pay Year</label>
+                    <input
+                      type="number"
+                      value={genYear}
+                      onChange={(e) => setGenYear(Number(e.target.value))}
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 font-mono font-medium text-slate-900 focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Cycle Duration</label>
+                    <div className="border border-slate-200 bg-slate-50 rounded-xl px-3 py-2 font-medium text-slate-600">
+                      Standard Month (30 Days)
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Select Week</label>
+                    <select
+                      value={genWeek}
+                      onChange={(e) => setGenWeek(Number(e.target.value))}
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 bg-white font-medium text-slate-900 focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    >
+                      {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
+                        <option key={w} value={w}>Week {w} ({genYear})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Pay Year</label>
+                    <input
+                      type="number"
+                      value={genYear}
+                      onChange={(e) => setGenYear(Number(e.target.value))}
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 font-mono font-medium text-slate-900 focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Active Week Period</label>
+                    <div className="border border-slate-200 bg-slate-50 rounded-xl px-3 py-2 font-bold text-slate-800 font-mono">
+                      {weekDateRange.display}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Cycle Working Days</label>
+                    <div className="border border-slate-200 bg-slate-50 rounded-xl px-3 py-2 font-medium text-slate-600">
+                      Weekly Shift (6 Days)
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
-          <button
-            onClick={handleGeneratePayslips}
-            disabled={generating}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 rounded-xl transition shadow flex items-center justify-center gap-2"
-          >
-            {generating ? (
-              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-            ) : (
-              <Play className="w-4 h-4" />
-            )}
-            <span>Generate Payslips for {activeTenant?.name}</span>
-          </button>
+          {/* Pre-Run Metrics Strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Eligible Staff</span>
+              <span className="text-xl font-black text-slate-900 font-mono">{preRunTotals.count}</span>
+              <span className="text-[11px] text-slate-500 block mt-0.5">{cycleType === 'WEEKLY' ? 'Weekly Line Roster' : 'Monthly Workforce'}</span>
+            </div>
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Gross Earnings</span>
+              <span className="text-xl font-black text-slate-900 font-mono">₹{preRunTotals.totalGross.toLocaleString()}</span>
+              <span className="text-[11px] text-slate-500 block mt-0.5">Base + Shift Allowances</span>
+            </div>
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Statutory Deductions</span>
+              <span className="text-xl font-black text-rose-600 font-mono">-₹{preRunTotals.totalDeductions.toLocaleString()}</span>
+              <span className="text-[11px] text-slate-500 block mt-0.5">PF & Tax Deductions</span>
+            </div>
+            <div className="bg-emerald-50/70 p-4 rounded-xl border border-emerald-200/80 shadow-2xs">
+              <span className="text-[10px] uppercase font-bold text-emerald-700 block mb-0.5">Total Net Disbursement</span>
+              <span className="text-xl font-black text-emerald-800 font-mono">₹{preRunTotals.totalNet.toLocaleString()}</span>
+              <span className="text-[11px] text-emerald-700 font-medium block mt-0.5">Net Payable Payout</span>
+            </div>
+          </div>
+
+          {/* PRE-RUN SALARY DETAILS TABLE */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                Pre-Run Salary Breakdown ({preRunSalaries.length} Employees)
+              </h3>
+              <span className="text-xs font-semibold text-slate-500">
+                Period: <strong className="text-slate-900">{cycleType === 'WEEKLY' ? `Week ${genWeek} (${weekDateRange.display})` : `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][genMonth-1]} ${genYear}`}</strong>
+              </span>
+            </div>
+
+            <EnterpriseTable
+              loading={loading}
+              isEmpty={preRunSalaries.length === 0}
+              emptyMessage="No employees found for payroll calculation."
+            >
+              <table className="w-full text-left border-collapse text-xs">
+                <EnterpriseTableHeader>
+                  <EnterpriseTableTh>Employee</EnterpriseTableTh>
+                  <EnterpriseTableTh>Payroll Type</EnterpriseTableTh>
+                  <EnterpriseTableTh align="right">Base / Output</EnterpriseTableTh>
+                  <EnterpriseTableTh align="right">Allowances</EnterpriseTableTh>
+                  <EnterpriseTableTh align="right">Deductions</EnterpriseTableTh>
+                  <EnterpriseTableTh align="right">Net Payout</EnterpriseTableTh>
+                  <EnterpriseTableTh align="center">Calculation Status</EnterpriseTableTh>
+                </EnterpriseTableHeader>
+                <EnterpriseTableBody>
+                  {preRunSalaries.map((s) => (
+                    <EnterpriseTableRow key={s.employeeId}>
+                      <EnterpriseTableTd>
+                        <div className="font-semibold text-slate-900 text-xs">{s.employeeName}</div>
+                        <div className="text-slate-500 text-[10px] flex items-center gap-1.5 mt-0.5">
+                          <span className="font-medium text-slate-600 font-mono">{s.employeeCode}</span>
+                          <span>•</span>
+                          <span>{s.department}</span>
+                        </div>
+                      </EnterpriseTableTd>
+
+                      <EnterpriseTableTd>
+                        <EnterpriseBadge variant={s.salaryType === 'PIECE_RATE' ? 'warning' : 'info'}>
+                          {s.salaryType === 'PIECE_RATE' ? (
+                            <>
+                              <Scissors className="w-2.5 h-2.5 text-amber-600 inline mr-0.5" />
+                              Piece-Rate
+                            </>
+                          ) : (
+                            'Monthly Fixed'
+                          )}
+                        </EnterpriseBadge>
+                      </EnterpriseTableTd>
+
+                      <EnterpriseTableTd align="right" className="font-mono text-slate-800 font-semibold">
+                        ₹{s.base.toLocaleString()}
+                      </EnterpriseTableTd>
+
+                      <EnterpriseTableTd align="right" className="font-mono text-slate-700">
+                        {s.totalAllowances > 0 ? `+₹${s.totalAllowances.toLocaleString()}` : '—'}
+                      </EnterpriseTableTd>
+
+                      <EnterpriseTableTd align="right" className="font-mono text-rose-600">
+                        {s.totalDeductions > 0 ? `-₹${s.totalDeductions.toLocaleString()}` : '—'}
+                      </EnterpriseTableTd>
+
+                      <EnterpriseTableTd align="right">
+                        <span className="font-mono font-bold text-emerald-700 text-xs bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          ₹{s.netPayable.toLocaleString()}
+                        </span>
+                      </EnterpriseTableTd>
+
+                      <EnterpriseTableTd align="center">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          Ready
+                        </span>
+                      </EnterpriseTableTd>
+                    </EnterpriseTableRow>
+                  ))}
+                </EnterpriseTableBody>
+              </table>
+            </EnterpriseTable>
+          </div>
+
+          {/* Action Box */}
+          <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="text-xs text-slate-600 space-y-0.5">
+              <span className="font-bold text-slate-900 block">
+                Ready to generate official payslips for {activeTenant?.name}?
+              </span>
+              <p className="text-slate-500">
+                Total payout of <strong className="text-emerald-700 font-mono">₹{preRunTotals.totalNet.toLocaleString()}</strong> across <strong>{preRunTotals.count} employees</strong> for {cycleType === 'WEEKLY' ? `Week ${genWeek} (${weekDateRange.display})` : `${['January','February','March','April','May','June','July','August','September','October','November','December'][genMonth-1]} ${genYear}`}.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGeneratePayslips}
+              disabled={generating || preRunTotals.count === 0}
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold text-xs rounded-xl transition shadow-xs flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+            >
+              {generating ? (
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Play className="w-4 h-4" />
+              )}
+              <span>Confirm & Generate Payslips (₹{preRunTotals.totalNet.toLocaleString()})</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -678,6 +964,7 @@ export default function PayrollPage() {
           <table className="w-full text-left border-collapse text-xs">
             <EnterpriseTableHeader>
               <EnterpriseTableTh>Employee</EnterpriseTableTh>
+              <EnterpriseTableTh>Payroll Type</EnterpriseTableTh>
               <EnterpriseTableTh>Pay Period</EnterpriseTableTh>
               <EnterpriseTableTh>Gross Earnings</EnterpriseTableTh>
               <EnterpriseTableTh>Total Deductions</EnterpriseTableTh>
@@ -689,25 +976,23 @@ export default function PayrollPage() {
               {paginatedPayslips.map(ps => (
                 <EnterpriseTableRow key={ps.id}>
                   <EnterpriseTableTd>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-semibold text-slate-900 text-xs">{ps.employeeName}</span>
-                      {ps.salaryType === 'PIECE_RATE' ? (
-                        <EnterpriseBadge variant="warning">
-                          <Scissors className="w-2.5 h-2.5 text-amber-600 inline mr-0.5" />
-                          Piece-Rate
-                        </EnterpriseBadge>
-                      ) : (
-                        <EnterpriseBadge variant="info">Fixed</EnterpriseBadge>
-                      )}
-                    </div>
+                    <div className="font-semibold text-slate-900 text-xs">{ps.employeeName}</div>
                     <div className="text-slate-500 text-[10px] flex items-center gap-1.5 mt-0.5">
                       <span className="font-medium text-slate-600">{ps.employeeCode}</span>
                       <span>•</span>
                       <span>{ps.department}</span>
-                      {ps.pieceRateUnits ? (
-                        <span className="text-amber-800 font-medium">({ps.pieceRateUnits} units)</span>
-                      ) : null}
                     </div>
+                  </EnterpriseTableTd>
+
+                  <EnterpriseTableTd>
+                    {ps.salaryType === 'PIECE_RATE' ? (
+                      <EnterpriseBadge variant="warning">
+                        <Scissors className="w-2.5 h-2.5 text-amber-600 inline mr-0.5" />
+                        Piece-Rate {ps.pieceRateUnits ? `(${ps.pieceRateUnits} pcs)` : ''}
+                      </EnterpriseBadge>
+                    ) : (
+                      <EnterpriseBadge variant="info">Monthly Fixed</EnterpriseBadge>
+                    )}
                   </EnterpriseTableTd>
 
                   <EnterpriseTableTd className="font-medium text-slate-700">

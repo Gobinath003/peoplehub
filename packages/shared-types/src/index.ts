@@ -339,6 +339,10 @@ export interface GeneratePayslipRequest {
   month: number;
   year: number;
   payPeriod: string;
+  cycleType?: 'MONTHLY' | 'WEEKLY';
+  weekNumber?: number;
+  startDate?: string;
+  endDate?: string;
   employeeId?: string; // If omitted, generates for all eligible employees in tenant
   workingDays?: number;
 }

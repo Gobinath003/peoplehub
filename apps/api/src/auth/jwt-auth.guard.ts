@@ -17,9 +17,9 @@ export class JwtAuthGuard implements CanActivate {
 
     // Development fallback for local sandbox sessions
     if (token === 'mock-access-token') {
-      const defaultTenantId = TenantContext.getTenantId() || '23ee8399-e03c-4521-9e50-0332e1e1a9e7';
+      const defaultTenantId = TenantContext.getTenantId() || '7837a312-ed38-4859-9748-9cbad20d1863';
       (request as any)['user'] = {
-        id: 'u1111111-1111-1111-1111-111111111111',
+        id: '11111111-1111-1111-1111-111111111111',
         email: 'priya@garments.com',
         tenantId: defaultTenantId,
         roles: [{ roleCode: 'HR_MANAGER', scopeType: 'TENANT', scopeId: null }],

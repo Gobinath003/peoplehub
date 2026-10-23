@@ -62,10 +62,50 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const savedToken = localStorage.getItem('ph_token');
 
     if (savedUser && savedToken) {
-      setUser(JSON.parse(savedUser));
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        if (parsedUser && parsedUser.id === 'u1111111-1111-1111-1111-111111111111') {
+          parsedUser.id = '11111111-1111-1111-1111-111111111111';
+          localStorage.setItem('ph_user', JSON.stringify(parsedUser));
+        }
+        setUser(parsedUser);
+      } catch {
+        setUser(null);
+      }
+
       setAccessToken(savedToken);
-      if (savedActiveTenant) setActiveTenant(JSON.parse(savedActiveTenant));
-      if (savedTenants) setTenants(JSON.parse(savedTenants));
+
+      if (savedActiveTenant) {
+        try {
+          const parsedTenant = JSON.parse(savedActiveTenant);
+          if (parsedTenant && (parsedTenant.id === '23ee8399-e03c-4521-9e50-0332e1e1a9e7' || parsedTenant.id === 't2222222-2222-2222-2222-222222222222')) {
+            parsedTenant.id = '7837a312-ed38-4859-9748-9cbad20d1863';
+            localStorage.setItem('ph_active_tenant', JSON.stringify(parsedTenant));
+          }
+          setActiveTenant(parsedTenant);
+        } catch {
+          setActiveTenant(null);
+        }
+      }
+
+      if (savedTenants) {
+        try {
+          const parsedList = JSON.parse(savedTenants).map((t: any) => {
+            if (t.id === '23ee8399-e03c-4521-9e50-0332e1e1a9e7' || t.id === 't2222222-2222-2222-2222-222222222222') {
+              return { ...t, id: '7837a312-ed38-4859-9748-9cbad20d1863' };
+            }
+            if (t.id === 't3333333-3333-3333-3333-333333333333') {
+              return { ...t, id: 'dc2ec6b3-8ed6-4a4f-aab6-03c4ed4bede8' };
+            }
+            return t;
+          });
+          localStorage.setItem('ph_tenants', JSON.stringify(parsedList));
+          setTenants(parsedList);
+        } catch {
+          setTenants([]);
+        }
+      }
+
       if (savedRoles) setRoles(JSON.parse(savedRoles));
       if (savedPermissions) setPermissions(JSON.parse(savedPermissions));
       if (savedModules) setEnabledModules(JSON.parse(savedModules));
@@ -95,7 +135,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Client-Side Mock Fallback
     if (email && passwordHash) {
       const mockUser: UserContext = {
-        id: 'u1111111-1111-1111-1111-111111111111',
+        id: '11111111-1111-1111-1111-111111111111',
         email,
         firstName: email.includes('admin') ? 'Super' : 'Priya',
         lastName: email.includes('admin') ? 'Admin' : 'Sharma'

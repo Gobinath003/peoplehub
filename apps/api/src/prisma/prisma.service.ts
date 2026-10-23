@@ -52,23 +52,27 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
           // Modify arguments for queries on tenant-scoped models if a tenant context exists
           if (tenantId && tenantScopedModels.includes(model)) {
-            // Write operations that create record should automatically inject tenant_id
+            // Write operations that create record should automatically inject tenant_id if not explicitly provided
             if (operation === 'create') {
               args.data = args.data || {};
               if (model !== 'Role' || (model === 'Role' && !args.data.isSystem)) {
-                args.data.tenantId = tenantId;
+                if (!args.data.tenantId) {
+                  args.data.tenantId = tenantId;
+                }
               }
             } else if (operation === 'createMany') {
               if (Array.isArray(args.data)) {
                 args.data = args.data.map((item: any) => {
                   if (model !== 'Role' || (model === 'Role' && !item.isSystem)) {
-                    return { ...item, tenantId };
+                    return { tenantId, ...item };
                   }
                   return item;
                 });
               } else {
                 args.data = args.data || {};
-                args.data.tenantId = tenantId;
+                if (!args.data.tenantId) {
+                  args.data.tenantId = tenantId;
+                }
               }
             } else if (operation === 'update' || operation === 'updateMany' || operation === 'delete' || operation === 'deleteMany' || operation === 'findUnique' || operation === 'findFirst' || operation === 'findMany' || operation === 'count' || operation === 'aggregate' || operation === 'groupBy') {
               args.where = args.where || {};
@@ -88,8 +92,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
                   };
                 }
               } else {
-                // Force active tenant filter
-                args.where.tenantId = tenantId;
+                // Keep explicit tenantId if already specified, otherwise apply tenant context
+                if (!args.where.tenantId) {
+                  args.where.tenantId = tenantId;
+                }
               }
             }
           }

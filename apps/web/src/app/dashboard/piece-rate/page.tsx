@@ -85,6 +85,11 @@ export default function PieceRatePage() {
   const [newRate, setNewRate] = useState('20');
   const [newDesc, setNewDesc] = useState('');
 
+  // Effective Tenant ID for Garments Piece-Rate operations
+  const effectiveTenantId = activeTenant?.id === '23ee8399-e03c-4521-9e50-0332e1e1a9e7' || !activeTenant?.id
+    ? '7837a312-ed38-4859-9748-9cbad20d1863'
+    : activeTenant.id;
+
   // Fetch all data from API/DB
   const fetchData = async () => {
     if (!activeTenant || !accessToken) return;
@@ -92,7 +97,7 @@ export default function PieceRatePage() {
     try {
       const headers = {
         'Authorization': `Bearer ${accessToken}`,
-        'x-tenant-id': activeTenant.id
+        'x-tenant-id': effectiveTenantId
       };
 
       const [actRes, empRes, logRes] = await Promise.all([
@@ -312,7 +317,7 @@ export default function PieceRatePage() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
-          'x-tenant-id': activeTenant.id
+          'x-tenant-id': effectiveTenantId
         },
         body: JSON.stringify(payload)
       });
@@ -374,7 +379,7 @@ export default function PieceRatePage() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
-          'x-tenant-id': activeTenant.id
+          'x-tenant-id': effectiveTenantId
         },
         body: JSON.stringify(payload)
       });

@@ -35,7 +35,7 @@ export class TenantGuard implements CanActivate {
         effectiveTenantId = garmentsTenant.id;
         request.headers['x-tenant-id'] = effectiveTenantId;
         request.effectiveTenantId = effectiveTenantId;
-        TenantContext.run(effectiveTenantId, () => {});
+        TenantContext.setTenantId(effectiveTenantId);
         return true;
       }
     } else if (effectiveTenantId === 't3333333-3333-3333-3333-333333333333') {
@@ -46,7 +46,7 @@ export class TenantGuard implements CanActivate {
         effectiveTenantId = logisticsTenant.id;
         request.headers['x-tenant-id'] = effectiveTenantId;
         request.effectiveTenantId = effectiveTenantId;
-        TenantContext.run(effectiveTenantId, () => {});
+        TenantContext.setTenantId(effectiveTenantId);
         return true;
       }
     }
@@ -80,7 +80,7 @@ export class TenantGuard implements CanActivate {
         effectiveTenantId = tenant.id;
         request.headers['x-tenant-id'] = effectiveTenantId;
         request.effectiveTenantId = effectiveTenantId;
-        TenantContext.run(effectiveTenantId, () => {});
+        TenantContext.setTenantId(effectiveTenantId);
       }
     }
 
@@ -89,6 +89,7 @@ export class TenantGuard implements CanActivate {
     }
 
     request.effectiveTenantId = effectiveTenantId;
+    TenantContext.setTenantId(effectiveTenantId);
     return true;
   }
 }

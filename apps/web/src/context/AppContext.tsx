@@ -47,10 +47,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Derived role properties: Platform Super Admin is restricted to global admin@peoplehub.com
   const isSuperAdmin = Boolean(
     user?.email && user.email.trim().toLowerCase() === 'admin@peoplehub.com'
-  ) || roles.some(r => r.roleCode === 'SUPER_ADMIN' || r.roleCode === 'PLATFORM_ADMIN');
-  const isTenantAdmin = roles.some(r => r.roleCode === 'TENANT_ADMIN') || isSuperAdmin;
-  const isHRManager = roles.some(r => r.roleCode === 'HR_MANAGER') || isTenantAdmin;
-  const branchRole = roles.find(r => r.scopeType === ScopeType.BRANCH);
+  ) || Boolean(Array.isArray(roles) && roles.some(r => r?.roleCode === 'SUPER_ADMIN' || r?.roleCode === 'PLATFORM_ADMIN'));
+  const isTenantAdmin = Boolean(Array.isArray(roles) && roles.some(r => r?.roleCode === 'TENANT_ADMIN')) || isSuperAdmin;
+  const isHRManager = Boolean(Array.isArray(roles) && roles.some(r => r?.roleCode === 'HR_MANAGER')) || isTenantAdmin;
+  const branchRole = Array.isArray(roles) ? roles.find(r => r?.scopeType === ScopeType.BRANCH) : null;
   const activeBranchScope = branchRole ? branchRole.scopeId : null;
 
   // Load context from local storage on mount

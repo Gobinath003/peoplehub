@@ -14,7 +14,8 @@ import {
 } from 'lucide-react';
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+  const rawPathname = usePathname();
+  const pathname = rawPathname || '';
   const router = useRouter();
   const { 
     user, 
@@ -122,9 +123,13 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     { name: 'Users & Roles', path: '/dashboard/users', icon: Shield, show: true },
   ].filter(item => item.show);
 
-  const isMasterActive = pathname.startsWith('/dashboard/employees') || 
-                         pathname.startsWith('/dashboard/masters') || 
-                         pathname.startsWith('/dashboard/users');
+  const isMasterActive = Boolean(
+    pathname && (
+      pathname.startsWith('/dashboard/employees') || 
+      pathname.startsWith('/dashboard/masters') || 
+      pathname.startsWith('/dashboard/users')
+    )
+  );
 
   // Auto-expand Masters menu if active route is inside Masters
   React.useEffect(() => {
@@ -169,7 +174,12 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
           {topNavItems.map((item: any) => {
             const Icon = item.icon;
-            const isActive = pathname === item.path || (item.path !== '/dashboard' && pathname.startsWith(item.path));
+            const isActive = Boolean(
+              pathname && (
+                pathname === item.path || 
+                (item.path !== '/dashboard' && pathname.startsWith(item.path))
+              )
+            );
 
             return (
               <div key={item.name} className="relative flex items-center group/nav">
@@ -287,7 +297,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                     href="/dashboard/tenants"
                     className="text-slate-600 hover:text-slate-900 hover:underline"
                   >
-                    All Tenants ({tenants.length})
+                    All Tenants ({(tenants && tenants.length) || 0})
                   </Link>
                   <Link
                     href="/dashboard/tenants?create=true"
@@ -310,11 +320,11 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-white border border-transparent hover:border-slate-200 transition text-left group"
             >
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs">
-                {user.firstName[0]}{user.lastName[0]}
+                {(user?.firstName?.[0] || 'U')}{(user?.lastName?.[0] || '')}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-bold text-slate-800 truncate">
-                  {user.firstName} {user.lastName}
+                  {user?.firstName || ''} {user?.lastName || ''}
                 </div>
                 <div className="text-[10px] text-slate-500 font-medium truncate" title={`${activeTenant?.name || 'Company'}${activeBranchScope ? ` • ${activeBranchScope}` : ''}`}>
                   {activeTenant?.name || 'Company'}
@@ -330,10 +340,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 {/* User Info Header */}
                 <div className="px-3.5 py-2 border-b border-slate-100">
                   <div className="font-extrabold text-slate-900 text-sm">
-                    {user.firstName} {user.lastName}
+                    {user?.firstName || ''} {user?.lastName || ''}
                   </div>
                   <div className="text-slate-400 text-[11px] truncate mt-0.5">
-                    {user.email}
+                    {user?.email || ''}
                   </div>
                 </div>
 
@@ -434,7 +444,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                       </Link>
                     </div>
                     <div className="max-h-56 overflow-y-auto">
-                      {tenants.map(t => (
+                      {(tenants || []).map(t => (
                         <button
                           key={t.id}
                           onClick={async () => {

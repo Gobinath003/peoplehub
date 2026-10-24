@@ -72,22 +72,22 @@ export default function DashboardHome() {
   }, [activeTenant, accessToken, isGarments]);
 
   // Attendance metrics based on current logged roster
-  const totalStaffCount = employees.length;
+  const totalStaffCount = (employees || []).length;
   const todayStr = now.toISOString().split('T')[0];
   const loggedEmployeeIdsToday = new Set(
-    recentLogs
-      .filter(l => l.logDate && l.logDate.startsWith(todayStr))
+    (recentLogs || [])
+      .filter(l => l && l.logDate && l.logDate.startsWith(todayStr))
       .map(l => l.employeeId)
   );
 
-  const presentCount = employees.length > 0 ? loggedEmployeeIdsToday.size : 0;
+  const presentCount = totalStaffCount > 0 ? loggedEmployeeIdsToday.size : 0;
   const absentCount = Math.max(0, totalStaffCount - presentCount);
   const attendanceRate = totalStaffCount > 0 ? Math.round((presentCount / totalStaffCount) * 100) : 0;
   const activeFloorOperators = loggedEmployeeIdsToday.size;
 
   // Piece-rate Production Metrics
   const totalProductionUnits = useMemo(() => {
-    return recentLogs.reduce((acc, l) => acc + (l.quantity || 0), 0);
+    return (recentLogs || []).reduce((acc, l) => acc + (l.quantity || 0), 0);
   }, [recentLogs]);
 
   // Weekly production output trend (Mon - Sat)
@@ -96,9 +96,9 @@ export default function DashboardHome() {
     const dayTotals: { [key: string]: number } = {};
     daysOfWeek.forEach(d => { dayTotals[d] = 0; });
 
-    if (recentLogs.length > 0) {
+    if (recentLogs && recentLogs.length > 0) {
       recentLogs.forEach(l => {
-        if (l.logDate) {
+        if (l && l.logDate) {
           const d = new Date(l.logDate);
           const dayName = daysOfWeek[(d.getDay() + 6) % 7] || 'Mon';
           if (dayTotals[dayName] !== undefined) {

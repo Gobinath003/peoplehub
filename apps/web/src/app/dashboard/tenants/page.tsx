@@ -109,6 +109,22 @@ export default function TenantsManagementPage() {
     fetchTenants();
   }, [accessToken]);
 
+  const resetForm = () => {
+    setName('');
+    setSlug('');
+    setIndustry(IndustryType.GARMENTS);
+    setAddress('');
+    setPhone('');
+    setCompanyEmail('');
+    setWebsite('');
+    setTaxId('');
+    setRegistrationNo('');
+    setAdminFirstName('');
+    setAdminLastName('');
+    setAdminEmail('');
+    setAdminPassword('manager_pass');
+  };
+
   // Automatically open creation modal if ?create=true is in URL
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -178,22 +194,6 @@ export default function TenantsManagementPage() {
       setErrorMsg(e.message || 'Failed to create company via API');
       setSaving(false);
     }
-  };
-
-  const resetForm = () => {
-    setName('');
-    setSlug('');
-    setIndustry(IndustryType.GARMENTS);
-    setAddress('');
-    setPhone('');
-    setCompanyEmail('');
-    setWebsite('');
-    setTaxId('');
-    setRegistrationNo('');
-    setAdminFirstName('');
-    setAdminLastName('');
-    setAdminEmail('');
-    setAdminPassword('manager_pass');
   };
 
   if (!isSuperAdmin) {

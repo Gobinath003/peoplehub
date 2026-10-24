@@ -38,6 +38,21 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const profileDropdownRef = React.useRef<HTMLDivElement>(null);
   const tenantDropdownRef = React.useRef<HTMLDivElement>(null);
 
+  const isMasterActive = Boolean(
+    pathname && (
+      pathname.startsWith('/dashboard/employees') || 
+      pathname.startsWith('/dashboard/masters') || 
+      pathname.startsWith('/dashboard/users')
+    )
+  );
+
+  // Auto-expand Masters menu if active route is inside Masters
+  React.useEffect(() => {
+    if (isMasterActive) {
+      setMastersMenuOpen(true);
+    }
+  }, [isMasterActive]);
+
   // Close dropdowns when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -122,21 +137,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     { name: 'Tenants & RBAC', path: '/dashboard/tenants', icon: Building2, show: isSuperAdmin },
     { name: 'Users & Roles', path: '/dashboard/users', icon: Shield, show: true },
   ].filter(item => item.show);
-
-  const isMasterActive = Boolean(
-    pathname && (
-      pathname.startsWith('/dashboard/employees') || 
-      pathname.startsWith('/dashboard/masters') || 
-      pathname.startsWith('/dashboard/users')
-    )
-  );
-
-  // Auto-expand Masters menu if active route is inside Masters
-  React.useEffect(() => {
-    if (isMasterActive) {
-      setMastersMenuOpen(true);
-    }
-  }, [isMasterActive]);
 
   return (
     <div className="min-h-screen flex bg-[#F8FAFC] font-sans antialiased text-slate-800">

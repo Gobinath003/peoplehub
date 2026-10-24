@@ -31,6 +31,30 @@ class CreateTenantDto implements CreateTenantWithAdminRequest {
   @IsString()
   industry!: IndustryType;
 
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  website?: string;
+
+  @IsOptional()
+  @IsString()
+  taxId?: string;
+
+  @IsOptional()
+  @IsString()
+  registrationNo?: string;
+
   @IsString()
   adminEmail!: string;
 

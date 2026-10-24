@@ -102,6 +102,12 @@ export interface TenantContext {
   name: string;
   slug: string;
   industry: IndustryType;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  taxId?: string | null;
+  registrationNo?: string | null;
 }
 
 export interface ActiveRoleContext {
@@ -138,7 +144,17 @@ export interface TenantResponse {
   slug: string;
   industry: IndustryType;
   status: string;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  taxId?: string | null;
+  registrationNo?: string | null;
   createdAt: string;
+  updatedAt?: string;
+  employeeCount?: number;
+  userCount?: number;
+  managers?: any[];
 }
 
 export interface TenantModuleResponse {
@@ -187,6 +203,12 @@ export interface CreateTenantWithAdminRequest {
   name: string;
   slug: string;
   industry: IndustryType;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  taxId?: string;
+  registrationNo?: string;
   adminEmail: string;
   adminPassword: string;
   adminFirstName: string;

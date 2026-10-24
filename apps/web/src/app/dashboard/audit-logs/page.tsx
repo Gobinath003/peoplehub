@@ -30,56 +30,10 @@ export default function AuditLogsPage() {
         return;
       }
     } catch (e) {
-      console.warn('API fetch audit logs failed, loading mockup logs.', e);
+      console.warn('API fetch audit logs failed.', e);
     }
 
-    // Mock logs fallback
-    const mockLogs: AuditLogResponse[] = [
-      {
-        id: 'log-1',
-        tenantId: activeTenant?.id || 't2222222-2222-2222-2222-222222222222',
-        userId: 'u1111111-1111-1111-1111-111111111111',
-        userEmail: 'admin@peoplehub.com',
-        action: 'POST /api/v1/auth/login',
-        entityName: 'Authentication',
-        entityId: 'u1111111-1111-1111-1111-111111111111',
-        oldValues: null,
-        newValues: { email: 'admin@peoplehub.com', passwordHash: '[REDACTED]' },
-        ipAddress: '127.0.0.1',
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'log-2',
-        tenantId: activeTenant?.id || 't2222222-2222-2222-2222-222222222222',
-        userId: 'u1111111-1111-1111-1111-111111111111',
-        userEmail: 'admin@peoplehub.com',
-        action: 'POST /api/v1/tenants/modules/PIECE_RATE',
-        entityName: 'Tenants',
-        entityId: 'PIECE_RATE',
-        oldValues: null,
-        newValues: { isEnabled: true },
-        ipAddress: '127.0.0.1',
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
-        createdAt: new Date(Date.now() - 300000).toISOString()
-      },
-      {
-        id: 'log-3',
-        tenantId: activeTenant?.id || 't2222222-2222-2222-2222-222222222222',
-        userId: 'u1111111-1111-1111-1111-111111111111',
-        userEmail: 'admin@peoplehub.com',
-        action: 'POST /api/v1/users/u2222222-2222-2222-2222-222222222222/roles',
-        entityName: 'Users',
-        entityId: 'asg-2',
-        oldValues: null,
-        newValues: { roleId: 'role-id-hrm', scopeType: 'BRANCH', scopeId: 'Chennai Branch' },
-        ipAddress: '127.0.0.1',
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
-        createdAt: new Date(Date.now() - 600000).toISOString()
-      }
-    ];
-
-    setLogs(mockLogs);
+    setLogs([]);
     setLoading(false);
   };
 

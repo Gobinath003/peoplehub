@@ -122,34 +122,15 @@ export default function MastersPage() {
         return;
       }
     } catch (e) {
-      console.warn('API fetch failed, fallback to mock masters', e);
+      console.warn('API fetch failed for masters', e);
     }
 
-    // Mock initial fallback if API is unreachable
     setBundle({
-      departments: [
-        { id: 'd1', tenantId: activeTenant.id, code: 'DEPT-CUT', name: 'Cutting & Pattern Making', description: 'Fabric cutting and pattern master division', isActive: true, employeeCount: 2, createdAt: new Date().toISOString() },
-        { id: 'd2', tenantId: activeTenant.id, code: 'DEPT-SEW', name: 'Sewing & Stitching', description: 'Assembly line sewing and garment tailoring', isActive: true, employeeCount: 1, createdAt: new Date().toISOString() },
-        { id: 'd3', tenantId: activeTenant.id, code: 'DEPT-QC', name: 'Quality Control & Inspection', description: 'Fabric and finished garment defect inspection', isActive: true, employeeCount: 0, createdAt: new Date().toISOString() },
-        { id: 'd4', tenantId: activeTenant.id, code: 'DEPT-HR', name: 'Human Resources & Administration', description: 'Workforce management, attendance, and payroll', isActive: true, employeeCount: 0, createdAt: new Date().toISOString() },
-      ],
-      designations: [
-        { id: 'des1', tenantId: activeTenant.id, departmentId: 'd1', departmentName: 'Cutting & Pattern Making', code: 'DESIG-CM', name: 'Cutting Master', description: 'Master fabric layout cutter', isActive: true, employeeCount: 1, createdAt: new Date().toISOString() },
-        { id: 'des2', tenantId: activeTenant.id, departmentId: 'd1', departmentName: 'Cutting & Pattern Making', code: 'DESIG-PAT', name: 'Pattern Specialist', description: 'CAD and manual pattern grading', isActive: true, employeeCount: 1, createdAt: new Date().toISOString() },
-        { id: 'des3', tenantId: activeTenant.id, departmentId: 'd2', departmentName: 'Sewing & Stitching', code: 'DESIG-STITCH', name: 'Senior Tailor Master', description: 'Single needle and overlock operator', isActive: true, employeeCount: 1, createdAt: new Date().toISOString() },
-      ],
-      branches: [
-        { id: 'b1', tenantId: activeTenant.id, code: 'BR-CHN-HQ', name: 'Chennai Head Office', type: 'HEAD_OFFICE', city: 'Chennai', state: 'Tamil Nadu', address: 'Guindy Industrial Estate', isActive: true, employeeCount: 2, createdAt: new Date().toISOString() },
-        { id: 'b2', tenantId: activeTenant.id, code: 'BR-TPR-UNIT1', name: 'Tirupur Garment Unit 1', type: 'FACTORY_UNIT', city: 'Tirupur', state: 'Tamil Nadu', address: 'Avinashi Road Textile Hub', isActive: true, employeeCount: 1, createdAt: new Date().toISOString() },
-      ],
-      shifts: [
-        { id: 's1', tenantId: activeTenant.id, code: 'SH-GEN', name: 'General Shift', startTime: '09:00', endTime: '18:00', breakMinutes: 60, isActive: true, employeeCount: 2, createdAt: new Date().toISOString() },
-        { id: 's2', tenantId: activeTenant.id, code: 'SH-MORN', name: 'Morning Shift (Factory)', startTime: '06:00', endTime: '14:00', breakMinutes: 30, isActive: true, employeeCount: 1, createdAt: new Date().toISOString() },
-      ],
-      employmentTypes: [
-        { id: 'et1', tenantId: activeTenant.id, code: 'ET-PERM', name: 'Permanent Full-Time', description: 'Standard regular on-roll employee', isActive: true, employeeCount: 2, createdAt: new Date().toISOString() },
-        { id: 'et2', tenantId: activeTenant.id, code: 'ET-CONT', name: 'Contract / Piece-Rate Worker', description: 'Daily wage or piece-rate garment producer', isActive: true, employeeCount: 1, createdAt: new Date().toISOString() },
-      ],
+      departments: [],
+      designations: [],
+      branches: [],
+      shifts: [],
+      employmentTypes: [],
     });
     setLoading(false);
   };

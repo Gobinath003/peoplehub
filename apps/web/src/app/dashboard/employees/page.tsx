@@ -158,64 +158,10 @@ export default function EmployeesPage() {
         return;
       }
     } catch (e) {
-      console.warn('API error fetching employees, using mock', e);
+      console.warn('API error fetching employees', e);
     }
 
-    // Initial mock data if empty
-    const mockEmployees: EmployeeDto[] = [
-      {
-        id: 'e1',
-        tenantId: activeTenant.id,
-        userId: null,
-        employeeCode: 'EMP-0001',
-        firstName: 'Kavitha',
-        lastName: 'Ramesh',
-        email: 'kavitha.r@garments.com',
-        phone: '+91 98401 23456',
-        department: 'Sewing & Stitching',
-        designation: 'Senior Tailor Master',
-        branch: 'Chennai Branch',
-        salaryType: 'MONTHLY_FIXED',
-        joiningDate: '2025-06-01T00:00:00Z',
-        status: 'ACTIVE',
-        createdAt: '2025-06-01T00:00:00Z',
-        salaryStructure: {
-          id: 's1',
-          employeeId: 'e1',
-          basicSalary: 24000,
-          hra: 9600,
-          specialAllowance: 2500,
-          conveyanceAllowance: 1500,
-          pfDeduction: 1800,
-          taxDeduction: 1200,
-          otherDeductions: 0,
-          grossSalary: 37600,
-          netSalary: 34600,
-          currency: 'INR',
-          effectiveDate: '2025-06-01T00:00:00Z'
-        }
-      },
-      {
-        id: 'e2',
-        tenantId: activeTenant.id,
-        userId: null,
-        employeeCode: 'EMP-0002',
-        firstName: 'Muthu',
-        lastName: 'Vel',
-        email: 'muthu.v@garments.com',
-        phone: '+91 98402 34567',
-        department: 'Sewing & Stitching',
-        designation: 'Senior Tailor Master',
-        branch: 'Tirupur Unit',
-        salaryType: 'PIECE_RATE',
-        joiningDate: '2026-01-10T00:00:00Z',
-        status: 'ACTIVE',
-        createdAt: '2026-01-10T00:00:00Z',
-        salaryStructure: null
-      }
-    ];
-
-    setEmployees(mockEmployees);
+    setEmployees([]);
     setLoading(false);
   };
 

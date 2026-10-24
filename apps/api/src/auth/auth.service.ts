@@ -88,7 +88,13 @@ export class AuthService {
       id: tu.tenant.id,
       name: tu.tenant.name,
       slug: tu.tenant.slug,
-      industry: tu.tenant.industry as IndustryType
+      industry: tu.tenant.industry as IndustryType,
+      address: tu.tenant.address,
+      phone: tu.tenant.phone,
+      email: tu.tenant.email,
+      website: tu.tenant.website,
+      taxId: tu.tenant.taxId,
+      registrationNo: tu.tenant.registrationNo
     }));
 
     const activeTenantContext = tenants.length > 0 ? tenants[0] : null;
@@ -105,7 +111,7 @@ export class AuthService {
       permissions = context.permissions;
       enabledModules = context.enabledModules;
 
-      accessToken = this.generateAccessToken(user.id, activeTenantContext.id, roles, permissions);
+      accessToken = this.generateAccessToken(user.id, activeTenantContext.id, roles, permissions, user.email);
       refreshToken = await this.generateRefreshToken(user.id);
     } else {
       // User with no tenant (needs to create one)
@@ -158,14 +164,20 @@ export class AuthService {
       id: tu.tenant.id,
       name: tu.tenant.name,
       slug: tu.tenant.slug,
-      industry: tu.tenant.industry as IndustryType
+      industry: tu.tenant.industry as IndustryType,
+      address: tu.tenant.address,
+      phone: tu.tenant.phone,
+      email: tu.tenant.email,
+      website: tu.tenant.website,
+      taxId: tu.tenant.taxId,
+      registrationNo: tu.tenant.registrationNo
     }));
 
     const activeTenant = tenants.find((t: any) => t.id === tenantId)!;
 
     const context = await this.getTenantUserContext(userId, tenantId);
 
-    const accessToken = this.generateAccessToken(userId, tenantId, context.roles, context.permissions);
+    const accessToken = this.generateAccessToken(userId, tenantId, context.roles, context.permissions, user.email);
     const refreshToken = await this.generateRefreshToken(userId);
 
     return {
@@ -220,7 +232,7 @@ export class AuthService {
       permissions = context.permissions;
     }
 
-    const nextAccessToken = this.generateAccessToken(user.id, activeTenantId, roles, permissions);
+    const nextAccessToken = this.generateAccessToken(user.id, activeTenantId, roles, permissions, user.email);
     const nextRefreshToken = await this.generateRefreshToken(user.id);
 
     return {
@@ -332,9 +344,10 @@ export class AuthService {
 
   // --- Helper Methods ---
 
-  private generateAccessToken(userId: string, tenantId: string | null, roles: any[], permissions: string[]): string {
+  private generateAccessToken(userId: string, tenantId: string | null, roles: any[], permissions: string[], email?: string): string {
     const payload = {
       sub: userId,
+      email,
       tenantId,
       roles: roles.map((r: any) => ({
         code: r.roleCode,

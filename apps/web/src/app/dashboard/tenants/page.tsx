@@ -6,7 +6,8 @@ import { useApp } from '../../../context/AppContext';
 import { API_BASE_URL } from '../../../config/api';
 import { 
   Building, Landmark, Plus, Check, X, Users, 
-  ExternalLink, Sparkles, Shield, AlertCircle, Search, Download 
+  ExternalLink, Sparkles, Shield, AlertCircle, Search, Download,
+  MapPin, Phone, Mail, Globe, FileText
 } from 'lucide-react';
 import { IndustryType } from '@people-hub/shared-types';
 import { exportToExcel } from '../../../utils/excelExport';
@@ -28,6 +29,12 @@ interface CompanyTenant {
   slug: string;
   industry: IndustryType;
   status: string;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  taxId?: string | null;
+  registrationNo?: string | null;
   createdAt: string;
   employeeCount?: number;
   userCount?: number;
@@ -62,6 +69,14 @@ export default function TenantsManagementPage() {
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [industry, setIndustry] = useState<IndustryType>(IndustryType.GARMENTS);
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+  const [companyEmail, setCompanyEmail] = useState('');
+  const [website, setWebsite] = useState('');
+  const [taxId, setTaxId] = useState('');
+  const [registrationNo, setRegistrationNo] = useState('');
+
+  // Primary HR Manager State
   const [adminFirstName, setAdminFirstName] = useState('');
   const [adminLastName, setAdminLastName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
@@ -78,40 +93,15 @@ export default function TenantsManagementPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setTenants(data);
+        setTenants(Array.isArray(data) ? data : []);
         setLoading(false);
         return;
       }
     } catch (e) {
-      console.warn('API fetch tenants failed, using fallback list', e);
+      console.warn('API fetch tenants failed', e);
     }
 
-    // Mock fallback
-    const mockList: CompanyTenant[] = [
-      {
-        id: 't2222222-2222-2222-2222-222222222222',
-        name: 'ABC Garments Ltd',
-        slug: 'abc-garments',
-        industry: IndustryType.GARMENTS,
-        status: 'ACTIVE',
-        createdAt: '2026-08-01T00:00:00Z',
-        employeeCount: 45,
-        userCount: 3,
-        managers: [{ id: '1', email: 'priya@garments.com', firstName: 'Priya', lastName: 'Sharma' }]
-      },
-      {
-        id: 't3333333-3333-3333-3333-333333333333',
-        name: 'Chennai Logistics Co',
-        slug: 'chennai-logistics',
-        industry: IndustryType.LOGISTICS,
-        status: 'ACTIVE',
-        createdAt: '2026-08-10T00:00:00Z',
-        employeeCount: 28,
-        userCount: 2,
-        managers: [{ id: '2', email: 'logistics.admin@peoplehub.com', firstName: 'Ravi', lastName: 'Varma' }]
-      }
-    ];
-    setTenants(mockList);
+    setTenants([]);
     setLoading(false);
   };
 
@@ -135,6 +125,12 @@ export default function TenantsManagementPage() {
       name: name.trim(),
       slug: slug.trim(),
       industry,
+      address: address.trim() || undefined,
+      phone: phone.trim() || undefined,
+      email: companyEmail.trim() || undefined,
+      website: website.trim() || undefined,
+      taxId: taxId.trim() || undefined,
+      registrationNo: registrationNo.trim() || undefined,
       adminFirstName: adminFirstName.trim(),
       adminLastName: adminLastName.trim(),
       adminEmail: adminEmail.trim(),
@@ -161,39 +157,28 @@ export default function TenantsManagementPage() {
         setSaving(false);
         return;
       } else {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         setErrorMsg(err.message || 'Failed to create company');
         setSaving(false);
         return;
       }
     } catch (e: any) {
-      console.warn('API error creating tenant, simulating in UI', e);
+      console.warn('API error creating tenant', e);
+      setErrorMsg(e.message || 'Failed to create company via API');
+      setSaving(false);
     }
-
-    // Local mock creation
-    const newCompany: CompanyTenant = {
-      id: `t-mock-${Date.now()}`,
-      name: payload.name,
-      slug: payload.slug,
-      industry: payload.industry,
-      status: 'ACTIVE',
-      createdAt: new Date().toISOString(),
-      employeeCount: 0,
-      userCount: 1,
-      managers: [{ id: 'm-1', email: payload.adminEmail, firstName: payload.adminFirstName, lastName: payload.adminLastName }]
-    };
-
-    setTenants([newCompany, ...tenants]);
-    setSuccessMsg(`Company "${name}" created in test mode! HR Login: ${payload.adminEmail}`);
-    setModalOpen(false);
-    resetForm();
-    setSaving(false);
   };
 
   const resetForm = () => {
     setName('');
     setSlug('');
     setIndustry(IndustryType.GARMENTS);
+    setAddress('');
+    setPhone('');
+    setCompanyEmail('');
+    setWebsite('');
+    setTaxId('');
+    setRegistrationNo('');
     setAdminFirstName('');
     setAdminLastName('');
     setAdminEmail('');
@@ -222,13 +207,16 @@ export default function TenantsManagementPage() {
     );
   }
 
-  const filteredTenants = tenants.filter(t => {
-    const q = searchQuery.toLowerCase();
+  // Filtered tenants calculation
+  const filteredTenants = tenants.filter((t) => {
+    const query = searchQuery.toLowerCase();
     return (
-      t.name.toLowerCase().includes(q) ||
-      t.slug.toLowerCase().includes(q) ||
-      (t.industry || '').toLowerCase().includes(q) ||
-      (t.managers || []).some(m => `${m.firstName} ${m.lastName} ${m.email}`.toLowerCase().includes(q))
+      t.name.toLowerCase().includes(query) ||
+      t.slug.toLowerCase().includes(query) ||
+      t.industry.toLowerCase().includes(query) ||
+      (t.address && t.address.toLowerCase().includes(query)) ||
+      (t.taxId && t.taxId.toLowerCase().includes(query)) ||
+      (t.managers && t.managers.some((m) => `${m.firstName} ${m.lastName}`.toLowerCase().includes(query) || m.email.toLowerCase().includes(query)))
     );
   });
 
@@ -238,27 +226,84 @@ export default function TenantsManagementPage() {
   const handleExportExcel = () => {
     if (filteredTenants.length === 0) return;
     exportToExcel({
-      filename: `Tenants_List_${new Date().toISOString().split('T')[0]}`,
-      sheetName: 'Tenants',
+      filename: `Tenants_Directory_${new Date().toISOString().split('T')[0]}`,
+      sheetName: 'Tenants Directory',
+      reportTitle: 'Multi-Tenant Company Master Directory',
       columns: [
-        { header: 'Organization Name', accessor: 'name' },
-        { header: 'Tenant Slug', accessor: 'slug' },
+        { header: 'Company Name', accessor: 'name' },
+        { header: 'URL Slug', accessor: 'slug' },
         { header: 'Industry Vertical', accessor: 'industry' },
-        { header: 'Primary Managers', accessor: (r) => (r.managers || []).map((m: any) => `${m.firstName} ${m.lastName} (${m.email})`).join('; ') || '-' },
+        { header: 'Registered Address', accessor: (r) => r.address || '-' },
+        { header: 'Official Phone', accessor: (r) => r.phone || '-' },
+        { header: 'Official Email', accessor: (r) => r.email || '-' },
+        { header: 'GSTIN / Tax ID', accessor: (r) => r.taxId || '-' },
+        { header: 'CIN / Reg No', accessor: (r) => r.registrationNo || '-' },
+        { header: 'Website', accessor: (r) => r.website || '-' },
+        { header: 'Headcount', accessor: (r) => r.employeeCount || 0 },
+        { header: 'Primary HR Manager', accessor: (r) => r.managers?.[0]?.email || 'Unassigned' },
         { header: 'Status', accessor: 'status' },
-        { header: 'Created At', accessor: (r) => r.createdAt ? r.createdAt.split('T')[0] : '-' },
       ],
       data: filteredTenants,
     });
   };
 
   return (
-    <div className="space-y-3">
-      {/* Enterprise Toolbar */}
+    <div className="space-y-6 max-w-[1400px] mx-auto pb-12">
+      
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            Tenant Management
+          </h1>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
+            Provision and configure enterprise companies with full legal, address, and primary administrator profiles.
+          </p>
+        </div>
+
+        <button
+          onClick={() => {
+            resetForm();
+            setModalOpen(true);
+          }}
+          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-2xs transition self-start sm:self-auto"
+        >
+          <Plus className="w-4 h-4 text-emerald-400" />
+          <span>Provision New Company</span>
+        </button>
+      </div>
+
+      {/* Success Notification */}
+      {successMsg && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between font-medium">
+          <div className="flex items-center gap-2">
+            <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{successMsg}</span>
+          </div>
+          <button onClick={() => setSuccessMsg(null)} className="text-emerald-600 hover:text-emerald-800">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Error Notification */}
+      {errorMsg && (
+        <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center justify-between font-medium">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+          <button onClick={() => setErrorMsg(null)} className="text-rose-600 hover:text-rose-800">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Search and Action Toolbar */}
       <EnterpriseToolbar
-        title="Tenant Organizations"
+        title="Enterprise Tenants"
         totalCount={filteredTenants.length}
-        searchPlaceholder="Search company, slug, manager..."
+        searchPlaceholder="Search companies by name, slug, address, GSTIN, manager..."
         searchValue={searchQuery}
         onSearchChange={(val) => {
           setSearchQuery(val);
@@ -268,37 +313,20 @@ export default function TenantsManagementPage() {
           <button
             type="button"
             onClick={handleExportExcel}
-            title="Download Excel (.xlsx)"
-            className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-700 transition flex items-center gap-1.5 text-xs font-medium shadow-2xs"
+            disabled={filteredTenants.length === 0}
+            className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-700 transition flex items-center gap-1.5 text-xs font-medium shadow-2xs disabled:opacity-50"
           >
             <Download className="w-3.5 h-3.5 text-slate-500" />
             <span>Export Excel</span>
           </button>
         }
-        primaryActionLabel="Create Company"
-        onPrimaryAction={() => setModalOpen(true)}
-      >
-        <EnterpriseBadge variant="purple">Super Admin</EnterpriseBadge>
-      </EnterpriseToolbar>
+      />
 
-      {/* Success / Error Banners */}
-      {successMsg && (
-        <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs flex items-center justify-between font-medium">
-          <div className="flex items-center gap-2">
-            <Check className="w-4 h-4 text-emerald-600" />
-            <span>{successMsg}</span>
-          </div>
-          <button onClick={() => setSuccessMsg(null)} className="text-emerald-600 hover:text-emerald-800">
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* Enterprise Tenants Table */}
+      {/* Companies Enterprise Table */}
       <EnterpriseTable
         loading={loading}
         isEmpty={filteredTenants.length === 0}
-        emptyMessage="No company tenants found matching criteria."
+        emptyMessage="No companies registered in platform matching search."
         footer={
           filteredTenants.length > 0 && (
             <EnterprisePagination
@@ -306,7 +334,6 @@ export default function TenantsManagementPage() {
               totalItems={filteredTenants.length}
               pageSize={pageSize}
               onPageChange={setCurrentPage}
-              itemLabel="companies"
             />
           )
         }
@@ -314,8 +341,9 @@ export default function TenantsManagementPage() {
         <table className="w-full text-left border-collapse text-xs">
           <EnterpriseTableHeader>
             <EnterpriseTableTh>Company Organization</EnterpriseTableTh>
+            <EnterpriseTableTh>Registered Contact & Address</EnterpriseTableTh>
             <EnterpriseTableTh>Industry Domain</EnterpriseTableTh>
-            <EnterpriseTableTh>Workforce Headcount</EnterpriseTableTh>
+            <EnterpriseTableTh>Headcount</EnterpriseTableTh>
             <EnterpriseTableTh>Primary HR Administrator</EnterpriseTableTh>
             <EnterpriseTableTh>Status</EnterpriseTableTh>
             <EnterpriseTableTh align="right">Context Switch</EnterpriseTableTh>
@@ -327,17 +355,49 @@ export default function TenantsManagementPage() {
               return (
                 <EnterpriseTableRow key={t.id} className={isCurrent ? 'bg-slate-50/50' : ''}>
                   <EnterpriseTableTd>
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-md bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-[10px] shrink-0 border border-slate-200">
-                        <Building className="w-3.5 h-3.5 text-slate-500" />
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-xs shrink-0 border border-slate-200 mt-0.5">
+                        <Building className="w-4 h-4 text-slate-600" />
                       </div>
                       <div className="min-w-0">
-                        <div className="font-semibold text-slate-900 text-xs truncate">
+                        <div className="font-bold text-slate-900 text-xs truncate">
                           {t.name}
                         </div>
-                        <div className="text-slate-400 text-[10px]">
+                        <div className="text-slate-400 text-[10px] font-mono">
                           /{t.slug}
                         </div>
+                        {t.taxId && (
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            <span className="font-semibold text-slate-600">GSTIN:</span> {t.taxId}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </EnterpriseTableTd>
+
+                  <EnterpriseTableTd>
+                    <div className="space-y-0.5 max-w-xs">
+                      {t.address ? (
+                        <div className="text-slate-700 text-[11px] truncate flex items-center gap-1" title={t.address}>
+                          <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span className="truncate">{t.address}</span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 italic text-[10px]">No address registered</span>
+                      )}
+                      <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                        {t.phone && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="w-2.5 h-2.5 text-slate-400" />
+                            <span>{t.phone}</span>
+                          </span>
+                        )}
+                        {t.email && (
+                          <span className="flex items-center gap-1">
+                            <Mail className="w-2.5 h-2.5 text-slate-400" />
+                            <span>{t.email}</span>
+                          </span>
+                        )}
                       </div>
                     </div>
                   </EnterpriseTableTd>
@@ -410,18 +470,18 @@ export default function TenantsManagementPage() {
         </table>
       </EnterpriseTable>
 
-      {/* Modal: Create Company */}
+      {/* Modal: Provision Company Tenant */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full border border-slate-200 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full border border-slate-200 overflow-hidden my-8">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-primary-100 text-primary-700 rounded-lg">
-                  <Landmark className="w-4 h-4" />
+                <div className="p-2 bg-emerald-50 text-emerald-700 rounded-lg">
+                  <Landmark className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-800 text-sm">Provision New Company Tenant</h3>
-                  <p className="text-[11px] text-slate-400">Set up company profile and primary HR manager</p>
+                  <h3 className="font-extrabold text-slate-900 text-sm">Provision New Company Tenant</h3>
+                  <p className="text-[11px] text-slate-400">Configure complete company profile, address, tax IDs, and primary administrator</p>
                 </div>
               </div>
               <button onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -435,25 +495,29 @@ export default function TenantsManagementPage() {
               </div>
             )}
 
-            <form onSubmit={handleCreateCompany} className="p-6 space-y-4 text-xs">
-              {/* Section 1: Company Info */}
+            <form onSubmit={handleCreateCompany} className="p-6 space-y-5 text-xs max-h-[75vh] overflow-y-auto">
+              {/* Section 1: Organization & Identity */}
               <div className="space-y-3">
-                <h4 className="font-bold text-slate-700 uppercase tracking-wider text-[10px]">1. Organization Profile</h4>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Company Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => handleNameChange(e.target.value)}
-                    placeholder="e.g. Apex Textiles Ltd"
-                    className="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
+                <h4 className="font-extrabold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                  <Building className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>1. Organization & Legal Identity</span>
+                </h4>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">URL Slug *</label>
+                    <label className="block font-semibold text-slate-700 mb-1">Company Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={name}
+                      onChange={(e) => handleNameChange(e.target.value)}
+                      placeholder="e.g. Apex Textiles Ltd"
+                      className="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">URL Identifier / Slug *</label>
                     <input
                       type="text"
                       required
@@ -463,7 +527,9 @@ export default function TenantsManagementPage() {
                       className="w-full border border-slate-300 rounded-lg p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     />
                   </div>
+                </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">Industry Vertical *</label>
                     <select
@@ -479,13 +545,93 @@ export default function TenantsManagementPage() {
                       <option value={IndustryType.CORPORATE}>Corporate / Office</option>
                     </select>
                   </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">GSTIN / Tax ID</label>
+                    <input
+                      type="text"
+                      value={taxId}
+                      onChange={(e) => setTaxId(e.target.value.toUpperCase())}
+                      placeholder="e.g. 33AABCA1234F1Z8"
+                      className="w-full border border-slate-300 rounded-lg p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">CIN / Registration No</label>
+                    <input
+                      type="text"
+                      value={registrationNo}
+                      onChange={(e) => setRegistrationNo(e.target.value.toUpperCase())}
+                      placeholder="e.g. U18101TN2020PTC123456"
+                      className="w-full border border-slate-300 rounded-lg p-2.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Section 2: Initial HR Manager Account */}
-              <div className="space-y-3 pt-3 border-t border-slate-100">
-                <h4 className="font-bold text-slate-700 uppercase tracking-wider text-[10px]">2. Primary HR Manager Credentials</h4>
-                <div className="grid grid-cols-2 gap-3">
+              {/* Section 2: Registered Address & Communication */}
+              <div className="space-y-3 pt-4 border-t border-slate-200">
+                <h4 className="font-extrabold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>2. Registered Office & Communication Details</span>
+                </h4>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Registered Address / Facility Location</label>
+                  <textarea
+                    rows={2}
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="e.g. Plot No. 42-45, Guindy Industrial Estate, Chennai - 600032, Tamil Nadu"
+                    className="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none leading-relaxed"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Official Phone</label>
+                    <input
+                      type="text"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="e.g. +91 44 2250 1890"
+                      className="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Official Company Email</label>
+                    <input
+                      type="email"
+                      value={companyEmail}
+                      onChange={(e) => setCompanyEmail(e.target.value)}
+                      placeholder="e.g. info@apextextiles.com"
+                      className="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Website URL</label>
+                    <input
+                      type="text"
+                      value={website}
+                      onChange={(e) => setWebsite(e.target.value)}
+                      placeholder="e.g. https://www.apextextiles.com"
+                      className="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3: Primary HR Administrator Credentials */}
+              <div className="space-y-3 pt-4 border-t border-slate-200">
+                <h4 className="font-extrabold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-amber-600" />
+                  <span>3. Primary HR Administrator Credentials</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">First Name *</label>
                     <input
@@ -510,57 +656,58 @@ export default function TenantsManagementPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Work Email *</label>
+                    <label className="block font-semibold text-slate-700 mb-1">Manager Login Email *</label>
                     <input
                       type="email"
                       required
                       value={adminEmail}
                       onChange={(e) => setAdminEmail(e.target.value)}
-                      placeholder="e.g. hr@apextextiles.com"
+                      placeholder="e.g. hr.rajesh@apextextiles.com"
                       className="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Temporary Password *</label>
+                    <label className="block font-semibold text-slate-700 mb-1">Initial Password *</label>
                     <input
                       type="password"
                       required
                       value={adminPassword}
                       onChange={(e) => setAdminPassword(e.target.value)}
-                      className="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                      className="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none font-mono"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
+              <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 text-slate-600 rounded-xl hover:bg-slate-50 font-semibold"
+                  className="px-4 py-2 border border-slate-300 text-slate-600 rounded-xl hover:bg-slate-50 font-semibold text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold flex items-center gap-2 shadow"
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold flex items-center gap-2 shadow text-xs transition"
                 >
                   {saving ? (
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                   ) : (
-                    <Sparkles className="w-4 h-4" />
+                    <Sparkles className="w-4 h-4 text-emerald-400" />
                   )}
-                  <span>Create Company</span>
+                  <span>Provision Tenant Organization</span>
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
     </div>
   );
 }

@@ -37,7 +37,7 @@ interface EmployeeSalaryRow {
 }
 
 export default function PayrollPage() {
-  const { activeTenant, accessToken } = useApp();
+  const { activeTenant, accessToken, activeBranchScope } = useApp();
   const [activeTab, setActiveTab] = useState<'structures' | 'generate' | 'history'>('structures');
   const [structures, setStructures] = useState<EmployeeSalaryRow[]>([]);
   const [payslips, setPayslips] = useState<PayslipDto[]>([]);
@@ -155,121 +155,11 @@ export default function PayrollPage() {
         return;
       }
     } catch (e) {
-      console.warn('API error fetching payroll, falling back to mock data', e);
+      console.warn('API error fetching payroll', e);
     }
 
-    // Mock Fallback
-    const mockStructures: EmployeeSalaryRow[] = [
-      {
-        employeeId: 'e1',
-        employeeCode: 'EMP-101',
-        employeeName: 'Kavitha Ramesh',
-        department: 'Sewing & Stitching',
-        designation: 'Senior Tailor Master',
-        branch: 'Chennai Branch',
-        salaryType: 'MONTHLY_FIXED',
-        salaryStructure: {
-          id: 's1',
-          employeeId: 'e1',
-          basicSalary: 25000,
-          hra: 10000,
-          specialAllowance: 3000,
-          conveyanceAllowance: 2000,
-          pfDeduction: 1800,
-          taxDeduction: 1200,
-          otherDeductions: 0,
-          grossSalary: 40000,
-          netSalary: 37000,
-          currency: 'INR',
-          effectiveDate: '2026-01-01'
-        }
-      },
-      {
-        employeeId: 'e2',
-        employeeCode: 'EMP-102',
-        employeeName: 'Anand Murugan',
-        department: 'Quality Control',
-        designation: 'Fabric Quality Inspector',
-        branch: 'Chennai Branch',
-        salaryType: 'MONTHLY_FIXED',
-        salaryStructure: {
-          id: 's2',
-          employeeId: 'e2',
-          basicSalary: 28000,
-          hra: 11000,
-          specialAllowance: 4000,
-          conveyanceAllowance: 2000,
-          pfDeduction: 2160,
-          taxDeduction: 1500,
-          otherDeductions: 0,
-          grossSalary: 45000,
-          netSalary: 41340,
-          currency: 'INR',
-          effectiveDate: '2026-01-01'
-        }
-      },
-      {
-        employeeId: 'e3',
-        employeeCode: 'EMP-103',
-        employeeName: 'Murugan Selvam',
-        department: 'Cutting Section',
-        designation: 'Floor Cutter',
-        branch: 'Chennai Branch',
-        salaryType: 'PIECE_RATE',
-        salaryStructure: {
-          id: 's3',
-          employeeId: 'e3',
-          basicSalary: 21500,
-          hra: 5000,
-          specialAllowance: 2000,
-          conveyanceAllowance: 1500,
-          pfDeduction: 1200,
-          taxDeduction: 0,
-          otherDeductions: 0,
-          grossSalary: 30000,
-          netSalary: 28800,
-          currency: 'INR',
-          effectiveDate: '2026-01-01'
-        }
-      }
-    ];
-
-    const mockSlips: PayslipDto[] = [
-      {
-        id: 'p1',
-        tenantId: activeTenant.id,
-        employeeId: 'e1',
-        employeeCode: 'EMP-101',
-        employeeName: 'Kavitha Ramesh',
-        department: 'Sewing & Stitching',
-        designation: 'Senior Tailor Master',
-        branch: 'Chennai Branch',
-        salaryType: 'MONTHLY_FIXED',
-        companyName: activeTenant.name,
-        payPeriod: 'August 2026',
-        month: 8,
-        year: 2026,
-        workingDays: 31,
-        presentDays: 31,
-        paidDays: 31,
-        basicSalary: 25000,
-        hra: 10000,
-        allowances: 5000,
-        grossEarnings: 40000,
-        pfDeduction: 1800,
-        taxDeduction: 1200,
-        otherDeductions: 0,
-        totalDeductions: 3000,
-        netPayable: 37000,
-        status: 'PAID',
-        paymentDate: '2026-08-31T00:00:00Z',
-        remarks: 'Processed for August 2026',
-        createdAt: '2026-08-31T00:00:00Z'
-      }
-    ];
-
-    setStructures(mockStructures);
-    setPayslips(mockSlips);
+    setStructures([]);
+    setPayslips([]);
     setLoading(false);
   };
 
@@ -334,36 +224,7 @@ export default function PayrollPage() {
       console.warn('API error, updating locally', e);
     }
 
-    // Local fallback
-    const gross = payload.basicSalary + payload.hra + payload.specialAllowance + payload.conveyanceAllowance;
-    const net = gross - (payload.pfDeduction + payload.taxDeduction);
-
-    setStructures(prev => prev.map(item => {
-      if (item.employeeId === selectedEmp.employeeId) {
-        return {
-          ...item,
-          salaryStructure: {
-            id: `s-mock-${Date.now()}`,
-            employeeId: item.employeeId,
-            basicSalary: payload.basicSalary,
-            hra: payload.hra,
-            specialAllowance: payload.specialAllowance,
-            conveyanceAllowance: payload.conveyanceAllowance,
-            pfDeduction: payload.pfDeduction,
-            taxDeduction: payload.taxDeduction,
-            otherDeductions: 0,
-            grossSalary: gross,
-            netSalary: net,
-            currency: 'INR',
-            effectiveDate: new Date().toISOString()
-          }
-        };
-      }
-      return item;
-    }));
-
-    setSuccessMsg(`Salary structure updated for ${selectedEmp.employeeName} (Net: ₹${net.toLocaleString()})`);
-    setEditModalOpen(false);
+    setErrorMsg('Failed to update salary structure via API');
     setSavingSalary(false);
   };
 
@@ -414,60 +275,7 @@ export default function PayrollPage() {
       console.warn('API error generating payslips, simulating locally', e);
     }
 
-    // Local fallback generation
-    const ratio = isWeekly ? (6 / 30) : 1;
-    const workingDays = isWeekly ? 6 : 30;
-    const newSlips: PayslipDto[] = structures
-      .filter(s => s.salaryStructure !== null || s.salaryType === 'PIECE_RATE')
-      .map((s, idx) => {
-        const st = s.salaryStructure;
-        const isPiece = s.salaryType === 'PIECE_RATE';
-        const base = st ? Math.round(st.basicSalary * ratio) : (isPiece ? Math.round(22000 * ratio) : 0);
-        const hra = st ? Math.round(st.hra * ratio) : 0;
-        const allowances = st ? Math.round((st.specialAllowance + st.conveyanceAllowance) * ratio) : 0;
-        const pf = st ? Math.round(st.pfDeduction * ratio) : 0;
-        const tax = st ? Math.round(st.taxDeduction * ratio) : 0;
-        const grossEarnings = base + hra + allowances;
-        const totalDeductions = pf + tax;
-        const netPayable = grossEarnings - totalDeductions;
-
-        return {
-          id: `ps-${Date.now()}-${idx}`,
-          tenantId: activeTenant?.id || '',
-          employeeId: s.employeeId,
-          employeeCode: s.employeeCode,
-          employeeName: s.employeeName,
-          department: s.department,
-          designation: s.designation,
-          branch: s.branch,
-          companyName: activeTenant?.name,
-          payPeriod,
-          salaryType: s.salaryType || 'MONTHLY_FIXED',
-          month: isWeekly ? (100 + genWeek) : genMonth,
-          year: genYear,
-          workingDays,
-          presentDays: workingDays,
-          paidDays: workingDays,
-          pieceRateUnits: isPiece ? (isWeekly ? 180 : 750) : null,
-          basicSalary: base,
-          hra,
-          allowances,
-          grossEarnings,
-          pfDeduction: pf,
-          taxDeduction: tax,
-          otherDeductions: 0,
-          totalDeductions,
-          netPayable,
-          status: 'GENERATED',
-          paymentDate: new Date().toISOString(),
-          remarks: `${isWeekly ? 'Weekly' : 'Monthly'} payroll calculation for ${payPeriod}`,
-          createdAt: new Date().toISOString()
-        };
-      });
-
-    setPayslips([...newSlips, ...payslips]);
-    setSuccessMsg(`Successfully generated ${newSlips.length} payslips for ${payPeriod}!`);
-    setActiveTab('history');
+    setErrorMsg('Failed to generate payslips via API');
     setGenerating(false);
   };
 
@@ -1190,16 +998,28 @@ export default function PayrollPage() {
 
             {/* Printable Payslip Body */}
             <div id="printable-payslip" className="p-8 text-slate-800 space-y-6 text-xs bg-white">
-              {/* Company Header */}
-              <div className="text-center pb-4 border-b-2 border-slate-800 space-y-1">
-                <h2 className="text-xl font-black text-slate-900 uppercase tracking-wide">
+              {/* Company Header with Full Legal, Address & Tax Info */}
+              <div className="text-center pb-5 border-b-2 border-slate-900 space-y-1.5">
+                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
                   {viewPayslip.companyName || activeTenant?.name}
                 </h2>
-                <p className="text-slate-500 text-xs">
-                  Branch: {viewPayslip.branch || 'Head Office'} • Industry Vertical: {activeTenant?.industry}
-                </p>
-                <div className="inline-block bg-slate-100 text-slate-800 font-bold px-3 py-1 rounded text-xs mt-2 border border-slate-300">
-                  PAYSLIP FOR THE MONTH OF {viewPayslip.payPeriod?.toUpperCase()}
+                {activeTenant?.address && (
+                  <p className="text-slate-600 text-xs font-medium max-w-xl mx-auto leading-relaxed">
+                    {activeTenant.address}
+                  </p>
+                )}
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-slate-500 font-medium">
+                  {activeTenant?.phone && <span><strong>Phone:</strong> {activeTenant.phone}</span>}
+                  {activeTenant?.email && <span>• <strong>Email:</strong> {activeTenant.email}</span>}
+                  {activeTenant?.website && <span>• <strong>Web:</strong> {activeTenant.website}</span>}
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-slate-600 font-semibold">
+                  {activeTenant?.taxId && <span><strong>GSTIN / Tax ID:</strong> {activeTenant.taxId}</span>}
+                  {activeTenant?.registrationNo && <span>• <strong>CIN:</strong> {activeTenant.registrationNo}</span>}
+                  <span>• <strong>Branch:</strong> {viewPayslip.branch || activeBranchScope || 'Head Office'}</span>
+                </div>
+                <div className="inline-block bg-slate-900 text-white font-black px-4 py-1 rounded-md text-xs mt-2 uppercase tracking-wider">
+                  PAYSLIP FOR {viewPayslip.payPeriod?.toUpperCase()}
                 </div>
               </div>
 

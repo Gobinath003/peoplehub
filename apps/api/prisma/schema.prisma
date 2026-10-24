@@ -13,6 +13,12 @@ model Tenant {
   name      String
   industry  String         // e.g. GARMENTS, MANUFACTURING, LABOUR, CONSULTANCY, LOGISTICS, CORPORATE
   status    String         // ACTIVE, SUSPENDED, DEACTIVATED
+  address        String?
+  phone          String?
+  email          String?
+  website        String?
+  taxId          String?        @map("tax_id")
+  registrationNo String?        @map("registration_no")
   createdAt DateTime       @default(now()) @map("created_at")
   updatedAt DateTime       @updatedAt @map("updated_at")
 

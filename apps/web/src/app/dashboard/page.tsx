@@ -72,7 +72,7 @@ export default function DashboardHome() {
   }, [activeTenant, accessToken, isGarments]);
 
   // Attendance metrics based on current logged roster
-  const totalStaffCount = employees.length || 24;
+  const totalStaffCount = employees.length;
   const todayStr = now.toISOString().split('T')[0];
   const loggedEmployeeIdsToday = new Set(
     recentLogs
@@ -80,17 +80,14 @@ export default function DashboardHome() {
       .map(l => l.employeeId)
   );
 
-  const presentCount = employees.length > 0
-    ? (loggedEmployeeIdsToday.size > 0 ? loggedEmployeeIdsToday.size : Math.max(1, totalStaffCount - 2))
-    : 22;
+  const presentCount = employees.length > 0 ? loggedEmployeeIdsToday.size : 0;
   const absentCount = Math.max(0, totalStaffCount - presentCount);
-  const attendanceRate = totalStaffCount > 0 ? Math.round((presentCount / totalStaffCount) * 100) : 92;
-  const activeFloorOperators = Math.max(1, Math.round(presentCount * 0.85));
+  const attendanceRate = totalStaffCount > 0 ? Math.round((presentCount / totalStaffCount) * 100) : 0;
+  const activeFloorOperators = loggedEmployeeIdsToday.size;
 
   // Piece-rate Production Metrics
   const totalProductionUnits = useMemo(() => {
-    const sum = recentLogs.reduce((acc, l) => acc + (l.quantity || 0), 0);
-    return sum > 0 ? sum : 3420;
+    return recentLogs.reduce((acc, l) => acc + (l.quantity || 0), 0);
   }, [recentLogs]);
 
   // Weekly production output trend (Mon - Sat)
@@ -111,15 +108,13 @@ export default function DashboardHome() {
       });
     }
 
-    const defaultUnits = [480, 560, 690, 840, 780, 510];
-    return daysOfWeek.map((day, idx) => {
-      const realUnits = dayTotals[day];
-      const units = realUnits > 0 ? realUnits : defaultUnits[idx];
+    return daysOfWeek.map((day) => {
+      const units = dayTotals[day] || 0;
       return {
         day,
         units,
         isPeak: units >= 800,
-        heightPct: Math.min(100, Math.round((units / 900) * 100))
+        heightPct: units > 0 ? Math.min(100, Math.round((units / 900) * 100)) : 0
       };
     });
   }, [recentLogs]);
@@ -364,8 +359,8 @@ export default function DashboardHome() {
             <span className="font-semibold text-slate-700">
               Avg Daily Run: <strong>{Math.round(weeklyTotalUnits / 6)} Units/Day</strong>
             </span>
-            <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60 text-[11px]">
-              +12.4% vs Prev Week
+            <span className="text-indigo-700 font-bold bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200/60 text-[11px]">
+              Live Shift Data
             </span>
           </div>
         </div>

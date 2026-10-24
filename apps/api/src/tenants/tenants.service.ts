@@ -46,6 +46,12 @@ export class TenantsService {
       slug: t.slug,
       industry: t.industry,
       status: t.status,
+      address: t.address,
+      phone: t.phone,
+      email: t.email,
+      website: t.website,
+      taxId: t.taxId,
+      registrationNo: t.registrationNo,
       createdAt: t.createdAt.toISOString(),
       updatedAt: t.updatedAt.toISOString(),
       employeeCount: t._count.employees,
@@ -90,6 +96,12 @@ export class TenantsService {
           slug: dto.slug.toLowerCase().trim(),
           industry: dto.industry,
           status: 'ACTIVE',
+          address: dto.address || null,
+          phone: dto.phone || null,
+          email: dto.email || null,
+          website: dto.website || null,
+          taxId: dto.taxId || null,
+          registrationNo: dto.registrationNo || null,
         }
       });
 

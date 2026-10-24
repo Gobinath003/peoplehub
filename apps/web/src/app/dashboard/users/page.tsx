@@ -45,6 +45,7 @@ export default function UserManagementPage() {
   const [selectedRole, setSelectedRole] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const pageSize = 10;
   
   // Form fields for assigning role
@@ -91,67 +92,10 @@ export default function UserManagementPage() {
         return;
       }
     } catch (e) {
-      console.warn('API fetch users failed, loading mock members.', e);
+      console.warn('API fetch users failed.', e);
     }
 
-    // 2. Mock Fallback
-    const mockUsers: MemberUser[] = [
-      {
-        id: 'u1111111-1111-1111-1111-111111111111',
-        email: 'admin@peoplehub.com',
-        firstName: 'Priya',
-        lastName: 'Sharma',
-        status: 'ACTIVE',
-        createdAt: '2026-08-01T12:00:00Z',
-        roles: [
-          {
-            id: 'asg-1',
-            roleId: 'role-id-admin',
-            roleCode: 'TENANT_ADMIN',
-            roleName: 'Tenant Administrator',
-            scopeType: ScopeType.TENANT,
-            scopeId: null
-          }
-        ]
-      },
-      {
-        id: 'u2222222-2222-2222-2222-222222222222',
-        email: 'kumar@abcgarments.com',
-        firstName: 'Kumar',
-        lastName: 'Saran',
-        status: 'ACTIVE',
-        createdAt: '2026-08-15T09:30:00Z',
-        roles: [
-          {
-            id: 'asg-2',
-            roleId: 'role-id-hrm',
-            roleCode: 'HR_MANAGER',
-            roleName: 'HR Manager',
-            scopeType: ScopeType.BRANCH,
-            scopeId: 'Chennai Branch'
-          }
-        ]
-      },
-      {
-        id: 'u3333333-3333-3333-3333-333333333333',
-        email: 'ananya@abcgarments.com',
-        firstName: 'Ananya',
-        lastName: 'Sen',
-        status: 'ACTIVE',
-        createdAt: '2026-08-20T10:00:00Z',
-        roles: [
-          {
-            id: 'asg-3',
-            roleId: 'role-id-emp',
-            roleCode: 'EMPLOYEE',
-            roleName: 'Employee',
-            scopeType: ScopeType.OWN,
-            scopeId: null
-          }
-        ]
-      }
-    ];
-    setUsers(mockUsers);
+    setUsers([]);
     setLoading(false);
   };
 
@@ -192,30 +136,7 @@ export default function UserManagementPage() {
       console.warn('API role assignment failed, updates only simulated locally.', e);
     }
 
-    // Mock local update
-    const updatedUsers = users.map(u => {
-      if (u.id === selectedUser.id) {
-        const roles = u.roles || [];
-        return {
-          ...u,
-          roles: [
-            ...roles,
-            {
-              id: `asg-mock-${Date.now()}`,
-              roleId: roleObj.id,
-              roleCode: roleObj.code,
-              roleName: roleObj.name,
-              scopeType,
-              scopeId: scopeId || null
-            }
-          ]
-        };
-      }
-      return u;
-    });
-
-    setUsers(updatedUsers);
-    setModalOpen(false);
+    setErrorMsg('Failed to assign role via API');
     setSaving(false);
   };
 
@@ -236,17 +157,7 @@ export default function UserManagementPage() {
       console.warn('API revoke role failed, updating locally.', e);
     }
 
-    // Mock local delete
-    const updated = users.map(u => {
-      if (u.id === userToUpdate.id) {
-        return {
-          ...u,
-          roles: (u.roles || []).filter(r => r.id !== assignmentId)
-        };
-      }
-      return u;
-    });
-    setUsers(updated);
+    setErrorMsg('Failed to revoke role via API');
   };
 
   // Filtered users calculation

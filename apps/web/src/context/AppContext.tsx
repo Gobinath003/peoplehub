@@ -129,74 +129,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return true;
       }
     } catch (e) {
-      console.warn('Backend API connection failed, falling back to client-side mock login credentials.', e);
+      console.warn('Backend API connection failed during login', e);
     }
 
-    // Client-Side Mock Fallback
-    if (email && passwordHash) {
-      const mockUser: UserContext = {
-        id: '11111111-1111-1111-1111-111111111111',
-        email,
-        firstName: email.includes('admin') ? 'Super' : 'Priya',
-        lastName: email.includes('admin') ? 'Admin' : 'Sharma'
-      };
-      const mockTenants: TenantContext[] = [
-        {
-          id: '7837a312-ed38-4859-9748-9cbad20d1863',
-          name: 'ABC Garments Ltd',
-          slug: 'abc-garments',
-          industry: IndustryType.GARMENTS
-        },
-        {
-          id: 'dc2ec6b3-8ed6-4a4f-aab6-03c4ed4bede8',
-          name: 'Chennai Logistics Co',
-          slug: 'chennai-logistics',
-          industry: IndustryType.LOGISTICS
-        }
-      ];
-      const mockRoles: ActiveRoleContext[] = email.includes('admin') ? [
-        {
-          roleId: 'r-admin',
-          roleCode: 'TENANT_ADMIN',
-          scopeType: ScopeType.TENANT,
-          scopeId: null
-        }
-      ] : [
-        {
-          roleId: 'r-hrm',
-          roleCode: 'HR_MANAGER',
-          scopeType: ScopeType.BRANCH,
-          scopeId: 'Chennai Branch'
-        }
-      ];
-      const mockPermissions = [
-        'EMPLOYEE_VIEW', 'EMPLOYEE_CREATE', 'EMPLOYEE_EDIT', 'EMPLOYEE_DELETE',
-        'ATTENDANCE_VIEW', 'ATTENDANCE_EDIT', 'ATTENDANCE_REGULARIZE', 'ATTENDANCE_APPROVE',
-        'LEAVE_VIEW', 'LEAVE_APPLY', 'LEAVE_APPROVE',
-        'PAYROLL_VIEW', 'PAYROLL_PROCESS', 'PAYROLL_APPROVE',
-        'TENANT_SETTINGS_VIEW', 'TENANT_SETTINGS_EDIT', 'MODULE_MANAGE', 'AUDIT_LOG_VIEW'
-      ];
-      const mockModules = [
-        'ORGANIZATION', 'EMPLOYEES', 'ATTENDANCE', 'LEAVE', 'SHIFTS', 'PAYROLL', 'DOCUMENTS', 'EXPENSES', 'REPORTS', 'AUDIT', 'PIECE_RATE'
-      ];
-
-      const session = {
-        accessToken: 'mock-access-token',
-        refreshToken: 'mock-refresh-token',
-        user: mockUser,
-        activeTenant: mockTenants[0],
-        tenants: mockTenants,
-        roles: mockRoles,
-        permissions: mockPermissions,
-        enabledModules: mockModules
-      };
-
-      saveSession(session);
-      router.push('/dashboard');
-      setLoading(false);
-      return true;
-    }
-
+    return false;
     setLoading(false);
     return false;
   };
@@ -240,10 +176,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return;
       }
     } catch (e) {
-      console.warn('API Switch tenant failed, performing client-side mock switch.', e);
+      console.warn('API Switch tenant failed, performing client-side session update.', e);
     }
 
-    // Mock Switch fallback
+    // Fallback using authenticated tenants list
     const target = tenants.find(t => t.id === tenantId);
     if (target) {
       setActiveTenant(target);

@@ -339,6 +339,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               </div>
             )}
           </div>
+          <p className="text-[9px] text-slate-400 text-center pb-2 pt-1 select-none">
+            © 2026 Noltrion Innovations
+          </p>
         </div>
       </aside>
 
@@ -413,15 +416,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Dynamic Content Container */}
-        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 lg:p-6 flex flex-col justify-between">
-          <div className="flex-1">
-            {children}
-          </div>
-
-          {/* Corporate Footer */}
-          <footer className="mt-8 pt-4 pb-2 border-t border-slate-200/80 text-center text-[11px] text-slate-400">
-            <span>© 2026 Noltrion Innovations. All rights reserved.</span>
-          </footer>
+        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 lg:p-6">
+          {children}
         </main>
       </div>
     </div>

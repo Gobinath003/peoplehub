@@ -127,6 +127,18 @@ export default function PayrollPage() {
   // Printable Payslip Modal State
   const [viewPayslip, setViewPayslip] = useState<PayslipDto | null>(null);
 
+  // Close payslip on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setViewPayslip(null);
+        setEditModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const fetchPayrollData = async () => {
     if (!activeTenant) return;
     setLoading(true);
@@ -497,158 +509,145 @@ export default function PayrollPage() {
         </EnterpriseTable>
       )}
 
-      {/* TAB 2: RUN PAYROLL (MONTHLY & WEEKLY) WITH PRE-RUN DETAILS */}
+      {/* TAB 2: RUN PAYROLL (COMPACT HIGH-DENSITY WORKBENCH) */}
       {activeTab === 'generate' && (
-        <div className="space-y-4">
-          {/* Cycle & Period Configuration Bar */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-5">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Play className="w-4 h-4 text-emerald-600" />
-                  <span>Run Compensation & Payroll</span>
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Review calculated earnings and deductions across your workforce before finalizing and generating payslips.
-                </p>
-              </div>
-
-              {/* Cycle Mode Switcher: Monthly vs Weekly */}
-              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl self-start md:self-auto border border-slate-200/80">
+        <div className="space-y-3">
+          {/* Integrated Control & Execution Bar */}
+          <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs p-2.5 sm:p-3 flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              {/* Cycle Switcher */}
+              <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200/80">
                 <button
                   type="button"
                   onClick={() => setCycleType('MONTHLY')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  className={`px-2.5 py-1 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${
                     cycleType === 'MONTHLY'
                       ? 'bg-white text-slate-900 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Monthly Cycle</span>
+                  <span>Monthly</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setCycleType('WEEKLY')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  className={`px-2.5 py-1 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${
                     cycleType === 'WEEKLY'
                       ? 'bg-white text-slate-900 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Weekly Cycle</span>
+                  <span>Weekly</span>
                 </button>
               </div>
-            </div>
 
-            {/* Cycle Period Parameters */}
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3 text-xs">
+              {/* Inline Month / Week Picker */}
               {cycleType === 'MONTHLY' ? (
-                <>
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Pay Month</label>
-                    <select
-                      value={genMonth}
-                      onChange={(e) => setGenMonth(Number(e.target.value))}
-                      className="w-full border border-slate-300 rounded-xl px-3 py-2 bg-white font-medium text-slate-900 focus:ring-2 focus:ring-slate-900 focus:outline-none"
-                    >
-                      {[
-                        'January', 'February', 'March', 'April', 'May', 'June',
-                        'July', 'August', 'September', 'October', 'November', 'December'
-                      ].map((m, idx) => (
-                        <option key={m} value={idx + 1}>{m}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Pay Year</label>
-                    <input
-                      type="number"
-                      value={genYear}
-                      onChange={(e) => setGenYear(Number(e.target.value))}
-                      className="w-full border border-slate-300 rounded-xl px-3 py-2 font-mono font-medium text-slate-900 focus:ring-2 focus:ring-slate-900 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Cycle Duration</label>
-                    <div className="border border-slate-200 bg-slate-50 rounded-xl px-3 py-2 font-medium text-slate-600">
-                      Standard Month (30 Days)
-                    </div>
-                  </div>
-                </>
+                <div className="flex items-center gap-1.5">
+                  <select
+                    value={genMonth}
+                    onChange={(e) => setGenMonth(Number(e.target.value))}
+                    className="border border-slate-200 rounded-lg px-2.5 py-1 bg-white font-semibold text-slate-800 text-xs focus:ring-1 focus:ring-slate-900 focus:outline-none"
+                  >
+                    {[
+                      'January', 'February', 'March', 'April', 'May', 'June',
+                      'July', 'August', 'September', 'October', 'November', 'December'
+                    ].map((m, idx) => (
+                      <option key={m} value={idx + 1}>{m}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    value={genYear}
+                    onChange={(e) => setGenYear(Number(e.target.value))}
+                    className="w-16 border border-slate-200 rounded-lg px-2 py-1 font-mono font-semibold text-slate-800 text-xs text-center focus:ring-1 focus:ring-slate-900 focus:outline-none"
+                  />
+                  <span className="text-[11px] text-slate-400 font-medium hidden sm:inline px-1">
+                    (Standard 30 Days)
+                  </span>
+                </div>
               ) : (
-                <>
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Select Week</label>
-                    <select
-                      value={genWeek}
-                      onChange={(e) => setGenWeek(Number(e.target.value))}
-                      className="w-full border border-slate-300 rounded-xl px-3 py-2 bg-white font-medium text-slate-900 focus:ring-2 focus:ring-slate-900 focus:outline-none"
-                    >
-                      {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
-                        <option key={w} value={w}>Week {w} ({genYear})</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Pay Year</label>
-                    <input
-                      type="number"
-                      value={genYear}
-                      onChange={(e) => setGenYear(Number(e.target.value))}
-                      className="w-full border border-slate-300 rounded-xl px-3 py-2 font-mono font-medium text-slate-900 focus:ring-2 focus:ring-slate-900 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Active Week Period</label>
-                    <div className="border border-slate-200 bg-slate-50 rounded-xl px-3 py-2 font-bold text-slate-800 font-mono">
-                      {weekDateRange.display}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Cycle Working Days</label>
-                    <div className="border border-slate-200 bg-slate-50 rounded-xl px-3 py-2 font-medium text-slate-600">
-                      Weekly Shift (6 Days)
-                    </div>
-                  </div>
-                </>
+                <div className="flex items-center gap-1.5">
+                  <select
+                    value={genWeek}
+                    onChange={(e) => setGenWeek(Number(e.target.value))}
+                    className="border border-slate-200 rounded-lg px-2.5 py-1 bg-white font-semibold text-slate-800 text-xs focus:ring-1 focus:ring-slate-900 focus:outline-none"
+                  >
+                    {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
+                      <option key={w} value={w}>Week {w}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    value={genYear}
+                    onChange={(e) => setGenYear(Number(e.target.value))}
+                    className="w-16 border border-slate-200 rounded-lg px-2 py-1 font-mono font-semibold text-slate-800 text-xs text-center focus:ring-1 focus:ring-slate-900 focus:outline-none"
+                  />
+                  <span className="text-[11px] font-bold text-slate-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 font-mono">
+                    {weekDateRange.display}
+                  </span>
+                </div>
               )}
             </div>
+
+            {/* Run / Generate Button in Top Toolbar */}
+            <button
+              type="button"
+              onClick={handleGeneratePayslips}
+              disabled={generating || preRunTotals.count === 0}
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs rounded-lg transition shadow-2xs flex items-center gap-1.5 shrink-0"
+            >
+              {generating ? (
+                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Play className="w-3.5 h-3.5" />
+              )}
+              <span>Generate Payslips (₹{preRunTotals.totalNet.toLocaleString()})</span>
+            </button>
           </div>
 
-          {/* Pre-Run Metrics Strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Eligible Staff</span>
-              <span className="text-xl font-black text-slate-900 font-mono">{preRunTotals.count}</span>
-              <span className="text-[11px] text-slate-500 block mt-0.5">{cycleType === 'WEEKLY' ? 'Weekly Line Roster' : 'Monthly Workforce'}</span>
+          {/* Compact Summary KPI Strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-between">
+              <div>
+                <span className="text-[9px] uppercase font-bold text-slate-400 block leading-tight">Eligible Staff</span>
+                <span className="text-[10px] text-slate-500 font-medium">{cycleType === 'WEEKLY' ? 'Weekly Line' : 'Monthly Workforce'}</span>
+              </div>
+              <span className="text-sm font-black text-slate-900 font-mono">{preRunTotals.count}</span>
             </div>
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Gross Earnings</span>
-              <span className="text-xl font-black text-slate-900 font-mono">₹{preRunTotals.totalGross.toLocaleString()}</span>
-              <span className="text-[11px] text-slate-500 block mt-0.5">Base + Shift Allowances</span>
+            <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-between">
+              <div>
+                <span className="text-[9px] uppercase font-bold text-slate-400 block leading-tight">Gross Earnings</span>
+                <span className="text-[10px] text-slate-500 font-medium">Base + Allowances</span>
+              </div>
+              <span className="text-sm font-black text-slate-900 font-mono">₹{preRunTotals.totalGross.toLocaleString()}</span>
             </div>
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Statutory Deductions</span>
-              <span className="text-xl font-black text-rose-600 font-mono">-₹{preRunTotals.totalDeductions.toLocaleString()}</span>
-              <span className="text-[11px] text-slate-500 block mt-0.5">PF & Tax Deductions</span>
+            <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-between">
+              <div>
+                <span className="text-[9px] uppercase font-bold text-slate-400 block leading-tight">Deductions</span>
+                <span className="text-[10px] text-slate-500 font-medium">PF & Tax</span>
+              </div>
+              <span className="text-sm font-black text-rose-600 font-mono">-₹{preRunTotals.totalDeductions.toLocaleString()}</span>
             </div>
-            <div className="bg-emerald-50/70 p-4 rounded-xl border border-emerald-200/80 shadow-2xs">
-              <span className="text-[10px] uppercase font-bold text-emerald-700 block mb-0.5">Total Net Disbursement</span>
-              <span className="text-xl font-black text-emerald-800 font-mono">₹{preRunTotals.totalNet.toLocaleString()}</span>
-              <span className="text-[11px] text-emerald-700 font-medium block mt-0.5">Net Payable Payout</span>
+            <div className="bg-emerald-50/70 px-3 py-1.5 rounded-lg border border-emerald-200/80 shadow-2xs flex items-center justify-between">
+              <div>
+                <span className="text-[9px] uppercase font-bold text-emerald-800 block leading-tight">Net Payout</span>
+                <span className="text-[10px] text-emerald-700 font-medium">Net Take-Home</span>
+              </div>
+              <span className="text-sm font-black text-emerald-900 font-mono">₹{preRunTotals.totalNet.toLocaleString()}</span>
             </div>
           </div>
 
           {/* PRE-RUN SALARY DETAILS TABLE */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between px-1">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+              <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
                 Pre-Run Salary Breakdown ({preRunSalaries.length} Employees)
               </h3>
-              <span className="text-xs font-semibold text-slate-500">
-                Period: <strong className="text-slate-900">{cycleType === 'WEEKLY' ? `Week ${genWeek} (${weekDateRange.display})` : `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][genMonth-1]} ${genYear}`}</strong>
+              <span className="text-[11px] font-semibold text-slate-500">
+                Period: <strong className="text-slate-800">{cycleType === 'WEEKLY' ? `Week ${genWeek} (${weekDateRange.display})` : `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][genMonth-1]} ${genYear}`}</strong>
               </span>
             </div>
 
@@ -721,32 +720,6 @@ export default function PayrollPage() {
                 </EnterpriseTableBody>
               </table>
             </EnterpriseTable>
-          </div>
-
-          {/* Action Box */}
-          <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="text-xs text-slate-600 space-y-0.5">
-              <span className="font-bold text-slate-900 block">
-                Ready to generate official payslips for {activeTenant?.name}?
-              </span>
-              <p className="text-slate-500">
-                Total payout of <strong className="text-emerald-700 font-mono">₹{preRunTotals.totalNet.toLocaleString()}</strong> across <strong>{preRunTotals.count} employees</strong> for {cycleType === 'WEEKLY' ? `Week ${genWeek} (${weekDateRange.display})` : `${['January','February','March','April','May','June','July','August','September','October','November','December'][genMonth-1]} ${genYear}`}.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleGeneratePayslips}
-              disabled={generating || preRunTotals.count === 0}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold text-xs rounded-xl transition shadow-xs flex items-center justify-center gap-2 shrink-0 cursor-pointer"
-            >
-              {generating ? (
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Play className="w-4 h-4" />
-              )}
-              <span>Confirm & Generate Payslips (₹{preRunTotals.totalNet.toLocaleString()})</span>
-            </button>
           </div>
         </div>
       )}
@@ -975,29 +948,41 @@ export default function PayrollPage() {
 
       {/* MODAL 2: PRINTABLE OFFICIAL PAYSLIP */}
       {viewPayslip && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-200 overflow-hidden my-8">
-            {/* Top Toolbar */}
-            <div className="flex items-center justify-between px-6 py-3.5 bg-slate-900 text-white">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                Official Payslip Document
-              </span>
-              <div className="flex items-center gap-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
+            {/* Sticky Header with Always-Visible Print & Close buttons */}
+            <div className="shrink-0 flex items-center justify-between px-5 py-2.5 bg-slate-900 text-white border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                  Official Payslip
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
+                  • {viewPayslip.employeeCode} - {viewPayslip.employeeName}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={() => window.print()}
-                  className="bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition shadow"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition shadow-xs"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>Print Document</span>
+                  <span>Print</span>
                 </button>
-                <button onClick={() => setViewPayslip(null)} className="text-slate-400 hover:text-white">
+                <button
+                  type="button"
+                  onClick={() => setViewPayslip(null)}
+                  className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+                  title="Close (Esc)"
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            {/* Printable Payslip Body */}
-            <div id="printable-payslip" className="p-8 text-slate-800 space-y-6 text-xs bg-white">
+            {/* Scrollable Printable Payslip Body */}
+            <div id="printable-payslip" className="overflow-y-auto flex-1 p-5 sm:p-6 text-slate-800 space-y-4 text-xs bg-white">
               {/* Company Header with Full Legal, Address & Tax Info */}
               <div className="text-center pb-5 border-b-2 border-slate-900 space-y-1.5">
                 <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">

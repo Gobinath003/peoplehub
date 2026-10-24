@@ -109,6 +109,17 @@ export default function TenantsManagementPage() {
     fetchTenants();
   }, [accessToken]);
 
+  // Automatically open creation modal if ?create=true is in URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('create') === 'true') {
+        resetForm();
+        setModalOpen(true);
+      }
+    }
+  }, []);
+
   // Auto-generate slug from name
   const handleNameChange = (val: string) => {
     setName(val);
@@ -254,10 +265,10 @@ export default function TenantsManagementPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            Tenant Management
+            Tenant Management & Creation
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Provision and configure enterprise companies with full legal, address, and primary administrator profiles.
+            Provision and create enterprise client companies with complete legal profile, address, phone, email, and administrator credentials.
           </p>
         </div>
 
@@ -266,10 +277,10 @@ export default function TenantsManagementPage() {
             resetForm();
             setModalOpen(true);
           }}
-          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-2xs transition self-start sm:self-auto"
+          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-2xs transition self-start sm:self-auto cursor-pointer"
         >
           <Plus className="w-4 h-4 text-emerald-400" />
-          <span>Provision New Company</span>
+          <span>+ Create New Tenant</span>
         </button>
       </div>
 
@@ -480,8 +491,8 @@ export default function TenantsManagementPage() {
                   <Landmark className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm">Provision New Company Tenant</h3>
-                  <p className="text-[11px] text-slate-400">Configure complete company profile, address, tax IDs, and primary administrator</p>
+                  <h3 className="font-extrabold text-slate-900 text-sm">Create New Company Tenant</h3>
+                  <p className="text-[11px] text-slate-400">Configure complete company profile, address, contact details, tax IDs, and primary administrator</p>
                 </div>
               </div>
               <button onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -700,7 +711,7 @@ export default function TenantsManagementPage() {
                   ) : (
                     <Sparkles className="w-4 h-4 text-emerald-400" />
                   )}
-                  <span>Provision Tenant Organization</span>
+                  <span>Create & Provision Tenant</span>
                 </button>
               </div>
             </form>

@@ -10,7 +10,7 @@ import {
   Search, Building, ChevronRight, ChevronDown,
   Menu, X, BadgeCheck, FileText, Landmark, 
   Scissors, SlidersHorizontal, UserCheck, Bell, Building2,
-  Wallet
+  Wallet, Plus
 } from 'lucide-react';
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
@@ -102,6 +102,13 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   // Top-level Navigation Items
   const topNavItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutGrid, show: true },
+    { 
+      name: 'Tenant Management', 
+      path: '/dashboard/tenants', 
+      icon: Building2, 
+      show: isSuperAdmin,
+      quickCreate: true
+    },
     { name: 'Attendance & Production', path: '/dashboard/piece-rate', icon: Scissors, show: isGarments },
     { name: 'Payroll & Compensation', path: '/dashboard/payroll', icon: FileText, show: true },
     { name: 'Accounts', path: '/dashboard/accounts', icon: Wallet, show: true },
@@ -109,19 +116,22 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   // Masters Sub-Items
   const masterSubItems = [
-    { name: 'Workforce & Employees', path: '/dashboard/employees', icon: UserCheck },
-    { name: 'Organization Masters', path: '/dashboard/masters', icon: Landmark },
-    { 
-      name: isSuperAdmin ? 'Tenants & RBAC' : 'Users & Roles', 
-      path: isSuperAdmin ? '/dashboard/tenants' : '/dashboard/users', 
-      icon: Shield 
-    },
-  ];
+    { name: 'Workforce & Employees', path: '/dashboard/employees', icon: UserCheck, show: true },
+    { name: 'Organization Masters', path: '/dashboard/masters', icon: Landmark, show: true },
+    { name: 'Tenants & RBAC', path: '/dashboard/tenants', icon: Building2, show: isSuperAdmin },
+    { name: 'Users & Roles', path: '/dashboard/users', icon: Shield, show: true },
+  ].filter(item => item.show);
 
   const isMasterActive = pathname.startsWith('/dashboard/employees') || 
                          pathname.startsWith('/dashboard/masters') || 
-                         pathname.startsWith('/dashboard/tenants') || 
                          pathname.startsWith('/dashboard/users');
+
+  // Auto-expand Masters menu if active route is inside Masters
+  React.useEffect(() => {
+    if (isMasterActive) {
+      setMastersMenuOpen(true);
+    }
+  }, [isMasterActive]);
 
   return (
     <div className="min-h-screen flex bg-[#F8FAFC] font-sans antialiased text-slate-800">
@@ -157,30 +167,40 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
         {/* Navigation Menu */}
         <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
-          {topNavItems.map((item) => {
+          {topNavItems.map((item: any) => {
             const Icon = item.icon;
-            const isActive = pathname === item.path;
+            const isActive = pathname === item.path || (item.path !== '/dashboard' && pathname.startsWith(item.path));
 
             return (
-              <div key={item.name} className="relative">
+              <div key={item.name} className="relative flex items-center group/nav">
                 <Link
                   href={item.path}
                   onClick={() => setSidebarOpen(false)}
                   className={`
-                    group flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors
+                    flex-1 flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors
                     ${isActive 
                       ? 'text-white bg-slate-900 font-semibold shadow-xs' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}
                   `}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700'}`} />
-                    <span className="tracking-tight">{item.name}</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover/nav:text-slate-700'}`} />
+                    <span className="tracking-tight truncate">{item.name}</span>
                   </div>
-                  {isActive && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  {isActive && !item.quickCreate && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
                   )}
                 </Link>
+                {item.quickCreate && (
+                  <Link
+                    href="/dashboard/tenants?create=true"
+                    onClick={() => setSidebarOpen(false)}
+                    title="Create New Tenant"
+                    className="ml-1 p-1.5 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-600 hover:text-white border border-emerald-200 hover:border-emerald-600 transition shadow-2xs shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </Link>
+                )}
               </div>
             );
           })}
@@ -243,7 +263,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
           {/* ACTIVE WORKSPACE CONTEXT - Only for platform Super Admin managing multiple client tenants */}
           {isSuperAdmin && (
-            <div className="pt-6 pb-2 px-2">
+            <div className="pt-5 pb-2 px-2">
               <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 px-1">
                 Active Organization
               </div>
@@ -261,6 +281,21 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 </div>
                 <div className="text-[10px] text-slate-500 font-medium">
                   Scope: <strong className="text-slate-700">{activeBranchScope || 'All Branches'}</strong>
+                </div>
+                <div className="pt-2 border-t border-slate-200/70 flex items-center justify-between text-[10px] font-bold">
+                  <Link
+                    href="/dashboard/tenants"
+                    className="text-slate-600 hover:text-slate-900 hover:underline"
+                  >
+                    All Tenants ({tenants.length})
+                  </Link>
+                  <Link
+                    href="/dashboard/tenants?create=true"
+                    className="text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1 transition"
+                  >
+                    <Plus className="w-2.5 h-2.5" />
+                    <span>Create</span>
+                  </Link>
                 </div>
               </div>
             </div>
@@ -359,8 +394,21 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             </button>
           </div>
 
-          {/* Right Controls: Tenant Switcher (Super Admin) */}
+          {/* Right Controls: Tenant Switcher & Quick Create (Super Admin) */}
           <div className="flex items-center gap-2">
+            {/* Direct Create Tenant Shortcut for Super Admin */}
+            {isSuperAdmin && (
+              <Link
+                href="/dashboard/tenants?create=true"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition shadow-2xs"
+                title="Create New Tenant"
+              >
+                <Plus className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">Create Tenant</span>
+                <span className="sm:hidden">New</span>
+              </Link>
+            )}
+
             {/* Tenant Switcher Dropdown - Only for Super Admin managing multiple companies */}
             {isSuperAdmin && (
               <div className="relative" ref={tenantDropdownRef}>

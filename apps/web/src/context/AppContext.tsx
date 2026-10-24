@@ -45,7 +45,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   // Derived role properties: Platform Super Admin is restricted to global admin@peoplehub.com
-  const isSuperAdmin = user?.email === 'admin@peoplehub.com';
+  const isSuperAdmin = Boolean(
+    user?.email && user.email.trim().toLowerCase() === 'admin@peoplehub.com'
+  ) || roles.some(r => r.roleCode === 'SUPER_ADMIN' || r.roleCode === 'PLATFORM_ADMIN');
   const isTenantAdmin = roles.some(r => r.roleCode === 'TENANT_ADMIN') || isSuperAdmin;
   const isHRManager = roles.some(r => r.roleCode === 'HR_MANAGER') || isTenantAdmin;
   const branchRole = roles.find(r => r.scopeType === ScopeType.BRANCH);
@@ -125,15 +127,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const data = await response.json();
         saveSession(data);
+        setLoading(false);
         router.push('/dashboard');
         return true;
       }
     } catch (e) {
       console.warn('Backend API connection failed during login', e);
+    } finally {
+      setLoading(false);
     }
 
-    return false;
-    setLoading(false);
     return false;
   };
 

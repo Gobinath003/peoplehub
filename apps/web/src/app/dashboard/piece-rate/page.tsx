@@ -47,6 +47,42 @@ interface EmployeeWorkRow {
   hasWork: boolean;
 }
 
+// Convert numbers to Indian Rupees in words for formal wage disbursement ledgers
+function numberToWordsINR(num: number): string {
+  if (!num || num === 0) return 'Zero Rupees Only';
+  const a = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  const inWords = (n: number): string => {
+    let str = '';
+    if (n >= 10000000) {
+      str += inWords(Math.floor(n / 10000000)) + ' Crore ';
+      n %= 10000000;
+    }
+    if (n >= 100000) {
+      str += inWords(Math.floor(n / 100000)) + ' Lakh ';
+      n %= 100000;
+    }
+    if (n >= 1000) {
+      str += inWords(Math.floor(n / 1000)) + ' Thousand ';
+      n %= 1000;
+    }
+    if (n >= 100) {
+      str += inWords(Math.floor(n / 100)) + ' Hundred ';
+      n %= 100;
+    }
+    if (n > 0) {
+      if (str !== '') str += 'and ';
+      if (n < 20) str += a[n] + ' ';
+      else str += b[Math.floor(n / 10)] + ' ' + a[n % 10] + ' ';
+    }
+    return str.trim();
+  };
+
+  const words = inWords(Math.floor(num));
+  return `${words} Rupees Only`.replace(/\s+/g, ' ');
+}
+
 export default function PieceRatePage() {
   const { activeTenant, accessToken, activeBranchScope } = useApp();
   
@@ -1363,12 +1399,12 @@ export default function PieceRatePage() {
       {/* ======================================================== */}
       {ledgerModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[95vh]">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[96vh]">
             {/* Modal Controls */}
             <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-200 bg-slate-50 print:hidden">
               <div>
                 <h3 className="font-extrabold text-slate-900 text-sm">Organization Daily Production & Wage Ledger</h3>
-                <p className="text-[11px] text-slate-500">Printable master ledger for {periodType === 'DAILY' ? selectedDate : periodType === 'WEEKLY' ? weekRange.display : `Month ${selectedMonth}/${selectedYear}`}</p>
+                <p className="text-[11px] text-slate-500">Official statutory wage disbursement register for {periodType === 'DAILY' ? selectedDate : periodType === 'WEEKLY' ? weekRange.display : `Month ${selectedMonth}/${selectedYear}`}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -1390,115 +1426,225 @@ export default function PieceRatePage() {
             </div>
 
             {/* Printable Master Ledger View */}
-            <div id="printable-ledger" className="p-8 bg-white text-slate-900 space-y-6 overflow-y-auto">
-              {/* Ledger Header with Complete Legal Company Profile */}
-              <div className="border-b-2 border-slate-900 pb-4 flex items-start justify-between">
-                <div>
-                  <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">{activeTenant?.name || 'Company Name'}</h1>
-                  {activeTenant?.address && (
-                    <p className="text-xs text-slate-600 font-medium max-w-lg mt-0.5 leading-relaxed">{activeTenant.address}</p>
-                  )}
-                  <div className="flex flex-wrap items-center gap-x-2 text-[10px] text-slate-500 font-medium mt-1">
-                    {activeTenant?.phone && <span><strong>Ph:</strong> {activeTenant.phone}</span>}
-                    {activeTenant?.email && <span>• <strong>Email:</strong> {activeTenant.email}</span>}
-                    {activeTenant?.taxId && <span>• <strong>GSTIN:</strong> {activeTenant.taxId}</span>}
-                    {activeTenant?.registrationNo && <span>• <strong>CIN:</strong> {activeTenant.registrationNo}</span>}
-                    <span>• <strong>Branch:</strong> {activeBranchScope || 'All Production Units'}</span>
+            <div id="printable-ledger" className="p-6 md:p-8 bg-white text-slate-900 space-y-4 overflow-y-auto">
+              {/* Formal Ledger Document Header */}
+              <div className="border-b-2 border-slate-900 pb-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-0.5 flex-1">
+                    <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">
+                      {activeTenant?.name || 'Company Name'}
+                    </h1>
+                    {activeTenant?.address && (
+                      <p className="text-[11px] text-slate-700 font-medium max-w-xl leading-snug">
+                        {activeTenant.address}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-x-3 text-[10px] text-slate-600 font-medium pt-0.5">
+                      {activeTenant?.taxId && <span><strong>GSTIN:</strong> {activeTenant.taxId}</span>}
+                      {activeTenant?.registrationNo && <span><strong>CIN:</strong> {activeTenant.registrationNo}</span>}
+                      {activeTenant?.phone && <span><strong>Ph:</strong> {activeTenant.phone}</span>}
+                      {activeTenant?.email && <span><strong>Email:</strong> {activeTenant.email}</span>}
+                      <span><strong>Branch:</strong> {activeBranchScope || 'Garment Production Facility'}</span>
+                    </div>
                   </div>
-                  <p className="text-xs font-black text-slate-900 mt-2 uppercase tracking-wider bg-slate-100 inline-block px-2.5 py-0.5 rounded border border-slate-300">
-                    MASTER PRODUCTION & PIECE-RATE WAGE DISBURSEMENT LEDGER
-                  </p>
+
+                  {/* Metadata Block Right */}
+                  <div className="text-right text-xs border border-slate-400 rounded-md p-2 bg-slate-50/80 min-w-[210px] shrink-0 font-sans">
+                    <div className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Register Reference</div>
+                    <div className="font-mono font-black text-slate-900 text-xs mt-0.5">
+                      PRL-{selectedDate.replace(/-/g, '')}
+                    </div>
+                    <div className="mt-1 pt-1 border-t border-slate-300 text-[10px] text-slate-700 space-y-0.5 text-left">
+                      <div><strong>Date / Period:</strong> {periodType === 'DAILY' ? selectedDate : periodType === 'WEEKLY' ? weekRange.display : `Month ${selectedMonth}/${selectedYear}`}</div>
+                      <div><strong>Generated:</strong> {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-right text-xs">
-                  <div className="font-bold text-slate-900">Period: {periodType === 'DAILY' ? selectedDate : weekRange.display}</div>
-                  <div className="text-slate-500 text-[10px] mt-0.5">Generated: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</div>
+
+                {/* Formal Title Banner */}
+                <div className="mt-3 py-1.5 px-3 bg-slate-900 text-white text-center rounded-sm font-black text-xs uppercase tracking-wider flex items-center justify-between">
+                  <span>DAILY PRODUCTION & PIECE-RATE WAGE DISBURSEMENT REGISTER</span>
+                  <span className="text-[10px] font-normal tracking-normal text-slate-300">Form No. 25 (Piece-Rate Register)</span>
                 </div>
               </div>
 
-              {/* Ledger Summary Stats */}
-              <div className="grid grid-cols-4 gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs">
-                <div>
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Roster</span>
-                  <span className="font-black text-slate-900 text-sm">{totalRosterCount} Operators</span>
+              {/* Compact Key Metrics Strip (Clean Accounting Grid) */}
+              <div className="grid grid-cols-4 border border-slate-400 bg-slate-50 divide-x divide-slate-400 text-center text-xs">
+                <div className="py-2 px-3">
+                  <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider block">Total Operators</span>
+                  <span className="font-black text-slate-900 text-sm font-mono">{totalRosterCount}</span>
                 </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Active Today</span>
-                  <span className="font-black text-emerald-800 text-sm">{activeOperatorCount} Present</span>
+                <div className="py-2 px-3">
+                  <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider block">Present & Active</span>
+                  <span className="font-black text-slate-900 text-sm font-mono">{activeOperatorCount}</span>
                 </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Pieces</span>
-                  <span className="font-black text-indigo-900 text-sm">{grandTotalUnits.toLocaleString()} Units</span>
+                <div className="py-2 px-3">
+                  <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider block">Total Pieces Produced</span>
+                  <span className="font-black text-slate-900 text-sm font-mono">{grandTotalUnits.toLocaleString()} pcs</span>
                 </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Grand Total Wages</span>
-                  <span className="font-black text-emerald-700 text-sm">₹{grandTotalWages.toLocaleString()}</span>
+                <div className="py-2 px-3 bg-slate-100/80">
+                  <span className="text-[9px] uppercase font-bold text-slate-700 tracking-wider block">Total Wages Accrued</span>
+                  <span className="font-black text-slate-900 text-sm font-mono">₹{grandTotalWages.toLocaleString()}</span>
                 </div>
               </div>
 
-              {/* Master Table */}
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b-2 border-slate-900 text-[11px] font-black text-slate-800 uppercase">
-                    <th className="py-2 px-2 text-center w-8">#</th>
-                    <th className="py-2 px-3">Emp Code</th>
-                    <th className="py-2 px-3">Operator Name</th>
-                    <th className="py-2 px-3">Department</th>
-                    <th className="py-2 px-3">Operations & Quantity</th>
-                    <th className="py-2 px-3 text-right">Total Units</th>
-                    <th className="py-2 px-3 text-right">Wage (₹)</th>
-                    <th className="py-2 px-3 text-center w-28">Signature</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {employeeWorkRows
-                    .filter(r => r.hasWork)
-                    .map((row, idx) => (
-                      <tr key={row.employee.id} className="text-xs">
-                        <td className="py-2.5 px-2 text-center text-slate-400 font-bold">{idx + 1}</td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-slate-700">{row.employee.employeeCode}</td>
-                        <td className="py-2.5 px-3 font-bold text-slate-900">{row.employee.firstName} {row.employee.lastName}</td>
-                        <td className="py-2.5 px-3 text-slate-600">{row.employee.department}</td>
-                        <td className="py-2.5 px-3">
-                          <div className="space-y-0.5">
-                            {row.activitiesSummary.map((a, i) => (
-                              <div key={i} className="text-[11px] text-slate-700">
-                                <span>{a.name}: </span>
-                                <strong>{a.qty} {a.unit}</strong>
-                                <span className="text-slate-400"> (@₹{a.rate}) = </span>
-                                <span className="font-bold text-slate-900">₹{a.total.toLocaleString()}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">{row.totalUnits.toLocaleString()}</td>
-                        <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-800">₹{row.totalWages.toLocaleString()}</td>
-                        <td className="py-2.5 px-3 text-center border-b border-slate-100">
-                          <div className="h-4 border-b border-dotted border-slate-400 w-24 mx-auto"></div>
+              {/* Master Ledger Grid Table */}
+              <div className="border border-slate-400 overflow-hidden">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-100 text-[10px] font-black text-slate-900 uppercase border-b-2 border-slate-900 divide-x divide-slate-300">
+                      <th className="py-2 px-2 text-center w-8">#</th>
+                      <th className="py-2 px-3 w-20">Emp ID</th>
+                      <th className="py-2 px-3 w-40">Operator Name</th>
+                      <th className="py-2 px-3 w-32">Department</th>
+                      <th className="py-2 px-3">Itemized Operations, Rates & Quantity</th>
+                      <th className="py-2 px-3 text-right w-24">Total Units</th>
+                      <th className="py-2 px-3 text-right w-28">Wage (₹)</th>
+                      <th className="py-2 px-3 text-center w-28">Signature / Thumb</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-300">
+                    {employeeWorkRows.filter(r => r.hasWork).length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="py-6 text-center text-slate-400 italic">
+                          No production output recorded for this period.
                         </td>
                       </tr>
-                    ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 border-slate-900 font-black text-xs bg-slate-50">
-                    <td colSpan={5} className="py-3 px-3 text-right uppercase">GRAND TOTAL:</td>
-                    <td className="py-3 px-3 text-right font-mono text-sm">{grandTotalUnits.toLocaleString()}</td>
-                    <td className="py-3 px-3 text-right font-mono text-sm text-emerald-800">₹{grandTotalWages.toLocaleString()}</td>
-                    <td></td>
-                  </tr>
-                </tfoot>
-              </table>
+                    ) : (
+                      employeeWorkRows
+                        .filter(r => r.hasWork)
+                        .map((row, idx) => (
+                          <tr key={row.employee.id} className="text-xs divide-x divide-slate-300 align-top hover:bg-slate-50/50">
+                            {/* Serial Number */}
+                            <td className="py-2 px-2 text-center text-slate-500 font-bold">
+                              {idx + 1}
+                            </td>
 
-              {/* Verification & Sign-off Block */}
-              <div className="pt-8 grid grid-cols-3 gap-8 text-center text-xs">
+                            {/* Employee Code */}
+                            <td className="py-2 px-3 font-mono font-bold text-slate-800 whitespace-nowrap">
+                              {row.employee.employeeCode}
+                            </td>
+
+                            {/* Operator Name */}
+                            <td className="py-2 px-3 font-bold text-slate-900">
+                              {row.employee.firstName} {row.employee.lastName}
+                            </td>
+
+                            {/* Department */}
+                            <td className="py-2 px-3 text-slate-700 whitespace-nowrap">
+                              {row.employee.department}
+                            </td>
+
+                            {/* Nested Operations Table (Structured, Non-Wrapping) */}
+                            <td className="p-0">
+                              <table className="w-full text-[11px] border-collapse">
+                                <thead>
+                                  <tr className="text-[9px] uppercase font-bold text-slate-400 border-b border-slate-200 bg-slate-50/60">
+                                    <th className="text-left font-bold py-1 px-2">Operation / Skill</th>
+                                    <th className="text-right font-bold py-1 px-2 w-24">Rate / Unit</th>
+                                    <th className="text-right font-bold py-1 px-2 w-20">Quantity</th>
+                                    <th className="text-right font-bold py-1 px-2 w-24">Subtotal</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                  {row.activitiesSummary.map((a, i) => (
+                                    <tr key={i}>
+                                      <td className="py-1 px-2 font-medium text-slate-800">
+                                        {a.name}
+                                      </td>
+                                      <td className="py-1 px-2 text-right font-mono text-slate-600 whitespace-nowrap">
+                                        ₹{a.rate}/{a.unit}
+                                      </td>
+                                      <td className="py-1 px-2 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                                        {a.qty} {a.unit}
+                                      </td>
+                                      <td className="py-1 px-2 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                                        ₹{a.total.toLocaleString()}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </td>
+
+                            {/* Total Units */}
+                            <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                              {row.totalUnits.toLocaleString()} pcs
+                            </td>
+
+                            {/* Total Wage */}
+                            <td className="py-2 px-3 text-right font-mono font-black text-slate-900 whitespace-nowrap">
+                              ₹{row.totalWages.toLocaleString()}
+                            </td>
+
+                            {/* Signature Line */}
+                            <td className="py-2 px-3 text-center">
+                              <div className="flex flex-col items-center justify-end h-10 pb-0.5">
+                                <div className="w-20 border-b border-slate-400"></div>
+                                <span className="text-[8px] uppercase tracking-wider text-slate-400 mt-1">Sign / Thumb</span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                    )}
+                  </tbody>
+                  <tfoot>
+                    {/* Grand Total Row */}
+                    <tr className="border-t-2 border-slate-900 font-black text-xs bg-slate-100 divide-x divide-slate-300">
+                      <td colSpan={5} className="py-2.5 px-3 text-right uppercase tracking-wider text-slate-800">
+                        GRAND TOTAL (ALL ACTIVE OPERATORS):
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono font-black text-sm text-slate-900 whitespace-nowrap">
+                        {grandTotalUnits.toLocaleString()} pcs
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono font-black text-sm text-slate-900 whitespace-nowrap">
+                        ₹{grandTotalWages.toLocaleString()}
+                      </td>
+                      <td className="bg-slate-100"></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Amount in Words Box */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 bg-slate-50 border border-slate-300 rounded-sm text-xs gap-1">
                 <div>
-                  <div className="border-t border-slate-400 pt-1.5 font-bold text-slate-700">Prepared by (Floor Supervisor)</div>
+                  <span className="text-[10px] uppercase font-bold text-slate-500 mr-2">Amount in Words:</span>
+                  <strong className="font-mono text-slate-900 font-bold">{numberToWordsINR(grandTotalWages)}</strong>
                 </div>
-                <div>
-                  <div className="border-t border-slate-400 pt-1.5 font-bold text-slate-700">Verified by (Quality In-charge)</div>
+                <div className="text-[10px] text-slate-500 font-mono">
+                  Active Operators Logged: <strong className="text-slate-800">{employeeWorkRows.filter(r => r.hasWork).length}</strong>
                 </div>
-                <div>
-                  <div className="border-t border-slate-400 pt-1.5 font-bold text-slate-700">Approved by (Accounts / Management)</div>
+              </div>
+
+              {/* Statutory Sign-off Block */}
+              <div className="pt-6 grid grid-cols-3 gap-8 text-center text-xs">
+                <div className="space-y-1">
+                  <div className="h-9"></div>
+                  <div className="border-t-2 border-slate-800 pt-1 font-bold text-slate-800">
+                    Prepared by (Floor Supervisor)
+                  </div>
+                  <div className="text-[10px] text-slate-500">Signature & Date</div>
                 </div>
+                <div className="space-y-1">
+                  <div className="h-9"></div>
+                  <div className="border-t-2 border-slate-800 pt-1 font-bold text-slate-800">
+                    Verified by (Quality In-Charge)
+                  </div>
+                  <div className="text-[10px] text-slate-500">Signature & Date</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="h-9"></div>
+                  <div className="border-t-2 border-slate-800 pt-1 font-bold text-slate-800">
+                    Approved by (Accounts / Factory Manager)
+                  </div>
+                  <div className="text-[10px] text-slate-500">Signature & Date</div>
+                </div>
+              </div>
+
+              {/* Ledger Compliance Footer */}
+              <div className="text-center text-[9px] text-slate-400 pt-2 border-t border-slate-200">
+                Official Piece-Rate Output & Wage Disbursement Ledger • Generated via PeopleHub HRMS • Confidential & For Internal Audit
               </div>
             </div>
           </div>
@@ -1605,6 +1751,14 @@ export default function PieceRatePage() {
       {/* Global Print Styles */}
       <style jsx global>{`
         @media print {
+          @page {
+            size: landscape;
+            margin: 8mm;
+          }
+          body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
           body * {
             visibility: hidden;
           }
@@ -1612,14 +1766,31 @@ export default function PieceRatePage() {
           #printable-ledger, #printable-ledger * {
             visibility: visible;
           }
-          #printable-receipt, #printable-ledger {
+          #printable-receipt {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            max-width: 400px;
+            background: white !important;
+            color: black !important;
+            padding: 16px;
+          }
+          #printable-ledger {
             position: absolute;
             left: 0;
             top: 0;
             width: 100%;
             background: white !important;
             color: black !important;
-            padding: 24px;
+            padding: 0 !important;
+          }
+          #printable-ledger table {
+            page-break-inside: auto;
+          }
+          #printable-ledger tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
           }
         }
       `}</style>

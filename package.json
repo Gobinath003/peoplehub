@@ -16,6 +16,8 @@
     "build": "npm run build:types && npm run prisma:generate && npm run build:api && npm run build:web",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "test:engine": "node scripts/test-engine.js",
+    "test:pre-push": "node scripts/test-engine.js",
     "prisma:generate": "npm run prisma:generate --workspace=@people-hub/api",
     "prisma:migrate": "npm run prisma:migrate --workspace=@people-hub/api",
     "prisma:migrate:deploy": "npm run prisma:migrate:deploy --workspace=@people-hub/api",

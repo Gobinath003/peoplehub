@@ -511,12 +511,12 @@ export default function PieceRatePage() {
   };
 
   return (
-    <div className="space-y-3 pb-8">
+    <div className="space-y-2 pb-6">
       {/* Enterprise Toolbar */}
       <EnterpriseToolbar
         title="Attendance & Daily Work Ledger"
         tenantName={activeTenant?.name}
-        primaryActionLabel={activeTab === 'sheet' ? '+ Record Floor Work' : undefined}
+        primaryActionLabel={activeTab === 'sheet' ? 'Record Floor Work' : undefined}
         onPrimaryAction={activeTab === 'sheet' ? () => {
           if (searchedRows.length > 0) {
             handleOpenSkillsModal(searchedRows[0].employee);
@@ -560,7 +560,7 @@ export default function PieceRatePage() {
 
       {/* Notifications */}
       {successMsg && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between font-medium">
+        <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between font-medium">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{successMsg}</span>
@@ -572,7 +572,7 @@ export default function PieceRatePage() {
       )}
 
       {errorMsg && (
-        <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center justify-between font-medium">
+        <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center justify-between font-medium">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{errorMsg}</span>
@@ -587,134 +587,143 @@ export default function PieceRatePage() {
       {/* TAB 1: DAILY WORK ENTRY (Attendance & Multi-Skill Output) */}
       {/* ======================================================== */}
       {activeTab === 'sheet' && (
-        <div className="space-y-3">
-          {/* Controls Bar: Period Toggle (Daily/Weekly/Monthly) & Date Picker */}
-          <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2.5">
-              {/* Period Type Toggle */}
-              <div className="inline-flex items-center p-1 rounded-xl bg-slate-100 border border-slate-200 text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setPeriodType('DAILY')}
-                  className={`px-3 py-1 rounded-lg transition ${periodType === 'DAILY' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                  Daily
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPeriodType('WEEKLY')}
-                  className={`px-3 py-1 rounded-lg transition ${periodType === 'WEEKLY' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                  Weekly
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPeriodType('MONTHLY')}
-                  className={`px-3 py-1 rounded-lg transition ${periodType === 'MONTHLY' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                  Monthly
-                </button>
+        <div className="space-y-2">
+          {/* Unified Compact Controls & KPI Summary Bar */}
+          <div className="bg-white p-2.5 px-3 rounded-xl border border-slate-200 shadow-2xs space-y-2">
+            {/* Row 1: Period Toggle + Date Selector + Search Input */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Period Type Segmented Toggle */}
+                <div className="inline-flex items-center p-0.5 rounded-lg bg-slate-100 border border-slate-200 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setPeriodType('DAILY')}
+                    className={`px-2.5 py-1 rounded-md transition ${periodType === 'DAILY' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    Daily
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPeriodType('WEEKLY')}
+                    className={`px-2.5 py-1 rounded-md transition ${periodType === 'WEEKLY' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    Weekly
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPeriodType('MONTHLY')}
+                    className={`px-2.5 py-1 rounded-md transition ${periodType === 'MONTHLY' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    Monthly
+                  </button>
+                </div>
+
+                {/* Date Controls */}
+                {periodType === 'DAILY' && (
+                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg">
+                    <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                    <span className="text-xs font-semibold text-slate-600">Date:</span>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="bg-transparent text-xs font-bold text-slate-900 focus:outline-none"
+                    />
+                  </div>
+                )}
+
+                {periodType === 'WEEKLY' && (
+                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg text-xs">
+                    <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                    <span className="text-slate-500 font-medium">Week:</span>
+                    <strong className="text-slate-900">{weekRange.display}</strong>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="bg-transparent text-xs text-slate-400 font-mono focus:outline-none ml-1"
+                    />
+                  </div>
+                )}
+
+                {periodType === 'MONTHLY' && (
+                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg text-xs">
+                    <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                      className="bg-transparent font-bold text-slate-900 focus:outline-none text-xs"
+                    >
+                      {[
+                        'January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'
+                      ].map((m, idx) => (
+                        <option key={m} value={idx + 1}>{m}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      className="bg-transparent font-bold text-slate-900 focus:outline-none text-xs"
+                    >
+                      {[2024, 2025, 2026, 2027].map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
-              {/* Date / Period Controls based on Period Type */}
-              {periodType === 'DAILY' && (
-                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
-                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                  <span className="text-xs font-semibold text-slate-700">Date:</span>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="bg-transparent text-xs font-bold text-slate-900 focus:outline-none"
-                  />
+              {/* Search Input */}
+              <div className="relative w-full md:w-64">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search operator, code, dept..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1 rounded-lg border border-slate-200 text-xs focus:ring-1 focus:ring-slate-900 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Row 2: Sleek Single-Line KPI Metrics Strip */}
+            <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-y-1.5 gap-x-3 text-xs">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Total Roster:</span>
+                  <span className="font-mono font-black text-slate-800">{totalRosterCount}</span>
+                  <span className="text-[10px] text-slate-400">Operators</span>
                 </div>
-              )}
 
-              {periodType === 'WEEKLY' && (
-                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs">
-                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                  <span className="text-slate-500 font-medium">Active Week:</span>
-                  <strong className="text-slate-900">{weekRange.display}</strong>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="bg-transparent text-xs text-slate-400 font-mono focus:outline-none ml-1"
-                  />
+                <div className="h-3 w-px bg-slate-200 hidden sm:block"></div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] uppercase font-bold text-emerald-700">Present / Active:</span>
+                  <span className="font-mono font-black text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-100">{activeOperatorCount}</span>
+                  <span className="text-[10px] text-emerald-600">With Output</span>
                 </div>
-              )}
 
-              {periodType === 'MONTHLY' && (
-                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs">
-                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                  <select
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                    className="bg-transparent font-bold text-slate-900 focus:outline-none text-xs"
-                  >
-                    {[
-                      'January', 'February', 'March', 'April', 'May', 'June',
-                      'July', 'August', 'September', 'October', 'November', 'December'
-                    ].map((m, idx) => (
-                      <option key={m} value={idx + 1}>{m}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={selectedYear}
-                    onChange={(e) => setSelectedYear(Number(e.target.value))}
-                    className="bg-transparent font-bold text-slate-900 focus:outline-none text-xs"
-                  >
-                    {[2024, 2025, 2026, 2027].map(y => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
+                <div className="h-3 w-px bg-slate-200 hidden sm:block"></div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] uppercase font-bold text-slate-400">No Output:</span>
+                  <span className="font-mono font-bold text-slate-600">{inactiveOperatorCount}</span>
                 </div>
-              )}
-            </div>
 
-            {/* Search Input */}
-            <div className="relative w-full md:w-64">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search operator, code, dept..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
-              />
-            </div>
-          </div>
+                <div className="h-3 w-px bg-slate-200 hidden sm:block"></div>
 
-          {/* KPI Strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-            <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs text-center">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Total Roster</span>
-              <span className="text-base font-black text-slate-900">{totalRosterCount}</span>
-              <span className="text-[10px] text-slate-400 block mt-0.5">Operators</span>
-            </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] uppercase font-bold text-indigo-700">Total Pieces:</span>
+                  <span className="font-mono font-black text-indigo-900 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-100">{grandTotalUnits.toLocaleString()} pcs</span>
+                </div>
+              </div>
 
-            <div className="bg-emerald-50/70 p-3 rounded-xl border border-emerald-100 text-center">
-              <span className="text-[10px] uppercase font-bold text-emerald-700 block mb-0.5">Present / Active</span>
-              <span className="text-base font-black text-emerald-800">{activeOperatorCount}</span>
-              <span className="text-[10px] text-emerald-600 block mt-0.5">With Output</span>
-            </div>
-
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">No Output</span>
-              <span className="text-base font-black text-slate-600">{inactiveOperatorCount}</span>
-              <span className="text-[10px] text-slate-400 block mt-0.5">Inactive / Absent</span>
-            </div>
-
-            <div className="bg-indigo-50/70 p-3 rounded-xl border border-indigo-100 text-center">
-              <span className="text-[10px] uppercase font-bold text-indigo-700 block mb-0.5">Total Pieces</span>
-              <span className="text-base font-black text-indigo-900">{grandTotalUnits.toLocaleString()}</span>
-              <span className="text-[10px] text-indigo-600 block mt-0.5">Units Finished</span>
-            </div>
-
-            <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs text-center col-span-2 sm:col-span-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Total Floor Wages</span>
-              <span className="text-base font-black text-emerald-700">₹{grandTotalWages.toLocaleString()}</span>
-              <span className="text-[10px] text-slate-400 block mt-0.5">Payable Accrued</span>
+              {/* Floor Wages Total Pill */}
+              <div className="flex items-center gap-1.5 bg-emerald-50/80 border border-emerald-200 px-2.5 py-0.5 rounded-lg ml-auto">
+                <span className="text-[10px] uppercase font-bold text-emerald-700">Floor Wages:</span>
+                <span className="font-mono font-black text-emerald-800 text-xs">₹{grandTotalWages.toLocaleString()}</span>
+              </div>
             </div>
           </div>
 
@@ -732,13 +741,13 @@ export default function PieceRatePage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                      <th className="py-3 px-4 text-center w-12">#</th>
-                      <th className="py-3 px-4">Operator</th>
-                      <th className="py-3 px-4">Skills & Operations Summary</th>
-                      <th className="py-3 px-4 text-center w-32">Pieces Produced</th>
-                      <th className="py-3 px-4 text-right w-36">Total Wages (₹)</th>
-                      <th className="py-3 px-4 text-right w-44">Actions</th>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="py-2.5 px-3 text-center w-10">#</th>
+                      <th className="py-2.5 px-3">Operator</th>
+                      <th className="py-2.5 px-3">Skills & Operations Summary</th>
+                      <th className="py-2.5 px-3 text-center w-28">Pieces Produced</th>
+                      <th className="py-2.5 px-3 text-right w-32">Total Wages (₹)</th>
+                      <th className="py-2.5 px-3 text-right w-40">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -752,31 +761,31 @@ export default function PieceRatePage() {
                           className="hover:bg-slate-50/70 transition"
                         >
                           {/* Row Number */}
-                          <td className="py-3.5 px-4 text-center font-bold text-slate-400">
+                          <td className="py-2 px-3 text-center font-bold text-slate-400">
                             {index + 1}
                           </td>
 
                           {/* Operator Details */}
-                          <td className="py-3.5 px-4">
-                            <div className="font-extrabold text-slate-900">
+                          <td className="py-2 px-3">
+                            <div className="font-extrabold text-slate-900 leading-snug">
                               {emp.firstName} {emp.lastName}
                             </div>
-                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                            <div className="text-[10px] text-slate-400 font-mono">
                               {emp.employeeCode} • {emp.department}
                             </div>
                           </td>
 
                           {/* Summary of Skills / Operations */}
-                          <td className="py-3.5 px-4">
+                          <td className="py-2 px-3">
                             {row.activitiesSummary.length > 0 ? (
                               <div className="flex items-center gap-2">
                                 <button
                                   type="button"
                                   onClick={() => setDetailsModalRow(row)}
-                                  className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-50 hover:bg-indigo-50/80 border border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-950 text-xs font-semibold transition group shadow-2xs text-left"
+                                  className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-indigo-50/80 border border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-950 text-xs font-semibold transition group shadow-2xs text-left"
                                   title="Click to view full skills & operations breakdown popup"
                                 >
-                                  <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[10px] font-black shrink-0 shadow-2xs">
+                                  <span className="inline-flex items-center justify-center px-1.5 py-0.2 rounded bg-indigo-600 text-white text-[10px] font-black shrink-0 shadow-2xs">
                                     {row.activitiesSummary.length} {row.activitiesSummary.length === 1 ? 'Skill' : 'Skills'}
                                   </span>
                                   <span className="text-slate-600 group-hover:text-indigo-900 text-[11px] font-medium truncate max-w-[180px] sm:max-w-[240px]">
@@ -796,35 +805,35 @@ export default function PieceRatePage() {
                           </td>
 
                           {/* Total Units Produced */}
-                          <td className="py-3.5 px-4 text-center">
+                          <td className="py-2 px-3 text-center">
                             <span className={`font-mono text-xs font-black ${hasWork ? 'text-slate-900' : 'text-slate-300'}`}>
                               {row.totalUnits.toLocaleString()} pcs
                             </span>
                           </td>
 
                           {/* Total Accrued Wages */}
-                          <td className="py-3.5 px-4 text-right">
+                          <td className="py-2 px-3 text-right">
                             <span className={`font-mono text-sm font-black ${hasWork ? 'text-emerald-700' : 'text-slate-300'}`}>
                               ₹{row.totalWages.toLocaleString()}
                             </span>
                           </td>
 
                           {/* Actions: Add/Edit Skills + Restaurant Bill Print Slip */}
-                          <td className="py-3.5 px-4 text-right">
+                          <td className="py-2 px-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               {/* Open Skills Modal with prominent + Add Work button */}
                               <button
                                 type="button"
                                 onClick={() => handleOpenSkillsModal(emp)}
                                 title="Add or update operations/skills for this operator"
-                                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1 shadow-2xs ${
+                                className={`px-2 py-1 rounded-lg text-[11px] font-bold transition flex items-center gap-1 shadow-2xs ${
                                   hasWork
                                     ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80'
                                     : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold'
                                 }`}
                               >
-                                <Plus className={`w-3.5 h-3.5 ${hasWork ? 'text-indigo-600' : 'text-emerald-700'}`} />
-                                <span>{hasWork ? '+ Add / Edit Work' : '+ Add Work'}</span>
+                                <Plus className={`w-3 h-3 ${hasWork ? 'text-indigo-600' : 'text-emerald-700'}`} />
+                                <span>{hasWork ? 'Edit Work' : 'Add Work'}</span>
                               </button>
 
                               {/* Single Row Print Slip (Restaurant Bill Style) */}
@@ -832,7 +841,7 @@ export default function PieceRatePage() {
                                 type="button"
                                 onClick={() => handleOpenSlip(emp)}
                                 title="Print itemized wage slip (restaurant bill style)"
-                                className={`p-1.5 rounded-lg border transition ${
+                                className={`p-1 rounded-lg border transition ${
                                   hasWork 
                                     ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs' 
                                     : 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'

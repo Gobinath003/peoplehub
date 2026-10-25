@@ -403,9 +403,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               </div>
             )}
           </div>
-          <p className="text-[9px] text-slate-400 text-center pb-2 pt-1 select-none">
-            © 2026 Noltrion Innovations
-          </p>
         </div>
       </aside>
 
@@ -423,9 +420,14 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           <span className="text-xs font-bold text-slate-800 truncate">{activeTenant?.name || 'PeopleHub'}</span>
         </header>
 
-        {/* Dynamic Content Container */}
-        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 lg:p-6">
-          {children}
+        {/* Dynamic Content Container with Bottom Copyright Footer */}
+        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 lg:p-6 flex flex-col justify-between">
+          <div className="flex-1">
+            {children}
+          </div>
+          <footer className="mt-6 pt-3 pb-1 border-t border-slate-200/60 text-center text-[10px] text-slate-400 shrink-0">
+            © 2026 Noltrion Innovations. All rights reserved.
+          </footer>
         </main>
       </div>
     </div>

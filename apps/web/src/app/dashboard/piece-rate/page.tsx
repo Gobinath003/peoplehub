@@ -9,7 +9,7 @@ import {
   AlertCircle, Sparkles, Tag, Clock, CheckCircle2, 
   ChevronRight, ChevronLeft, Save, Download, Printer,
   UserCheck, FileText, Building2, ArrowRight, PlusCircle, 
-  Edit3, DollarSign, Award, Users
+  Edit3, DollarSign, Award, Users, Eye
 } from 'lucide-react';
 import { exportToExcel } from '../../../utils/excelExport';
 import { 
@@ -36,6 +36,15 @@ interface SkillLineItem {
   quantity: number;
   unitRate: number;
   remarks: string;
+}
+
+interface EmployeeWorkRow {
+  employee: EmployeeDto;
+  logs: PieceRateLogDto[];
+  totalUnits: number;
+  totalWages: number;
+  activitiesSummary: Array<{ name: string; unit: string; qty: number; rate: number; total: number }>;
+  hasWork: boolean;
 }
 
 export default function PieceRatePage() {
@@ -73,6 +82,9 @@ export default function PieceRatePage() {
   // Single Row Bill / Slip Print Modal (Restaurant-style bill)
   const [slipModalOpen, setSlipModalOpen] = useState(false);
   const [slipEmp, setSlipEmp] = useState<EmployeeDto | null>(null);
+
+  // Skills & Operations Breakdown Details Popup Modal
+  const [detailsModalRow, setDetailsModalRow] = useState<EmployeeWorkRow | null>(null);
 
   // Common Daily Ledger Print Modal (Organization summary)
   const [ledgerModalOpen, setLedgerModalOpen] = useState(false);
@@ -721,22 +733,28 @@ export default function PieceRatePage() {
                           {/* Summary of Skills / Operations */}
                           <td className="py-3.5 px-4">
                             {row.activitiesSummary.length > 0 ? (
-                              <div className="flex flex-wrap gap-1.5">
-                                {row.activitiesSummary.map((act, i) => (
-                                  <span 
-                                    key={i} 
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-800"
-                                  >
-                                    <span>{act.name}:</span>
-                                    <strong className="text-slate-900">{act.qty} {act.unit}</strong>
-                                    <span className="text-slate-400 font-mono">(@₹{act.rate})</span>
-                                    <span className="text-emerald-700 font-bold font-mono">₹{act.total.toLocaleString()}</span>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setDetailsModalRow(row)}
+                                  className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-50 hover:bg-indigo-50/80 border border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-950 text-xs font-semibold transition group shadow-2xs text-left"
+                                  title="Click to view full skills & operations breakdown popup"
+                                >
+                                  <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[10px] font-black shrink-0 shadow-2xs">
+                                    {row.activitiesSummary.length} {row.activitiesSummary.length === 1 ? 'Skill' : 'Skills'}
                                   </span>
-                                ))}
+                                  <span className="text-slate-600 group-hover:text-indigo-900 text-[11px] font-medium truncate max-w-[180px] sm:max-w-[240px]">
+                                    {row.activitiesSummary.map(a => `${a.name} (${a.qty})`).join(', ')}
+                                  </span>
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 group-hover:underline ml-1 shrink-0">
+                                    <Eye className="w-3.5 h-3.5" />
+                                    <span>Details</span>
+                                  </span>
+                                </button>
                               </div>
                             ) : (
                               <span className="text-slate-400 italic text-[11px]">
-                                No work operations recorded for {periodType === 'DAILY' ? selectedDate : periodType === 'WEEKLY' ? 'this week' : 'this month'}
+                                No work operations recorded
                               </span>
                             )}
                           </td>
@@ -1066,6 +1084,144 @@ export default function PieceRatePage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL 1B: SKILLS & OPERATIONS DETAILS POPUP MODAL        */}
+      {/* ======================================================== */}
+      {detailsModalRow && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/90">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-2xs">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-sm">
+                    Skills & Operations Breakdown
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                    {detailsModalRow.employee.firstName} {detailsModalRow.employee.lastName} • <span className="font-mono font-bold text-slate-700">{detailsModalRow.employee.employeeCode}</span> • {detailsModalRow.employee.department}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailsModalRow(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+              {/* Period Context Badge Strip */}
+              <div className="flex items-center justify-between px-3.5 py-2 bg-slate-50 rounded-xl border border-slate-200 text-slate-600">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="font-semibold text-slate-700">Period:</span>
+                  <span className="font-bold text-slate-900">
+                    {periodType === 'DAILY' ? selectedDate : periodType === 'WEEKLY' ? weekRange.display : `Month ${selectedMonth}/${selectedYear}`}
+                  </span>
+                </div>
+                <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-md border border-indigo-100">
+                  {detailsModalRow.activitiesSummary.length} {detailsModalRow.activitiesSummary.length === 1 ? 'Operation Logged' : 'Operations Logged'}
+                </span>
+              </div>
+
+              {/* Itemized Operations Table */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                      <th className="py-2.5 px-3 text-center w-8">#</th>
+                      <th className="py-2.5 px-3">Operation / Skill</th>
+                      <th className="py-2.5 px-3 text-center">Unit</th>
+                      <th className="py-2.5 px-3 text-right">Unit Rate</th>
+                      <th className="py-2.5 px-3 text-center">Pieces</th>
+                      <th className="py-2.5 px-3 text-right">Total Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {detailsModalRow.activitiesSummary.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/60 transition">
+                        <td className="py-2.5 px-3 text-center font-bold text-slate-400">{idx + 1}</td>
+                        <td className="py-2.5 px-3 font-semibold text-slate-900">{item.name}</td>
+                        <td className="py-2.5 px-3 text-center text-slate-500 capitalize font-mono text-[11px]">{item.unit}</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-slate-600">₹{item.rate}</td>
+                        <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-900">{item.qty} {item.unit}</td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700">₹{item.total.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-50 border-t-2 border-slate-200 font-bold text-slate-900">
+                      <td colSpan={4} className="py-2.5 px-3 text-right uppercase text-[10px] text-slate-500 tracking-wider">Total Output & Wages:</td>
+                      <td className="py-2.5 px-3 text-center font-mono font-black text-slate-900">{detailsModalRow.totalUnits} pcs</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-700 text-sm">₹{detailsModalRow.totalWages.toLocaleString()}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Remarks Breakdown if any */}
+              {detailsModalRow.logs.some(l => l.remarks) && (
+                <div className="space-y-1.5 pt-1">
+                  <span className="text-[11px] font-bold text-slate-600 block">Operation Remarks:</span>
+                  <div className="space-y-1">
+                    {detailsModalRow.logs.filter(l => l.remarks).map((log, i) => (
+                      <div key={i} className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-200">
+                        <strong className="text-slate-800">{log.activityName}:</strong> {log.remarks}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="flex items-center justify-between px-6 py-3.5 border-t border-slate-100 bg-slate-50/70">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const emp = detailsModalRow.employee;
+                    setDetailsModalRow(null);
+                    handleOpenSkillsModal(emp);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition shadow-2xs"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Edit Work</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const emp = detailsModalRow.employee;
+                    setDetailsModalRow(null);
+                    handleOpenSlip(emp);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition shadow-2xs"
+                >
+                  <Printer className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Print Slip</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setDetailsModalRow(null)}
+                className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition shadow-sm"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

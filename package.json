@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "dev:api": "npm run dev --workspace=@people-hub/api",
-    "dev:web": "npm run dev --workspace=@people-hub/web",
+    "dev:web": "next dev apps/web",
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
     "build:types": "npm run build --workspace=@people-hub/shared-types",
     "build:api": "npm run build --workspace=@people-hub/api",

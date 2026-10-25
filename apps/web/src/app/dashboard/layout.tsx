@@ -292,6 +292,25 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 <div className="text-[10px] text-slate-500 font-medium">
                   Scope: <strong className="text-slate-700">{activeBranchScope || 'All Branches'}</strong>
                 </div>
+
+                {/* Company Switcher inside sidebar for Super Admin */}
+                {tenants && tenants.length > 1 && (
+                  <div className="pt-1">
+                    <select
+                      value={activeTenant?.id || ''}
+                      onChange={(e) => switchTenant(e.target.value)}
+                      className="w-full text-[10px] font-bold bg-white border border-slate-200 rounded-lg px-2 py-1 text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                      title="Switch active organization context"
+                    >
+                      {tenants.map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div className="pt-2 border-t border-slate-200/70 flex items-center justify-between text-[10px] font-bold">
                   <Link
                     href="/dashboard/tenants"
@@ -392,85 +411,16 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Top Header Bar */}
-        <header className={`items-center justify-between px-4 sm:px-6 bg-white border-b border-slate-200/80 ${isSuperAdmin ? 'flex h-11' : 'flex lg:hidden h-11'}`}>
-          {/* Left: Mobile Toggle */}
-          <div className="flex items-center gap-3">
-            <button 
-              className="text-slate-600 lg:hidden p-1.5 rounded-lg bg-white border border-slate-200"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Right Controls: Tenant Switcher & Quick Create (Super Admin) */}
-          <div className="flex items-center gap-2">
-            {/* Direct Create Tenant Shortcut for Super Admin */}
-            {isSuperAdmin && (
-              <Link
-                href="/dashboard/tenants?create=true"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition shadow-2xs"
-                title="Create New Tenant"
-              >
-                <Plus className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="hidden sm:inline">Create Tenant</span>
-                <span className="sm:hidden">New</span>
-              </Link>
-            )}
-
-            {/* Tenant Switcher Dropdown - Only for Super Admin managing multiple companies */}
-            {isSuperAdmin && (
-              <div className="relative" ref={tenantDropdownRef}>
-                <button
-                  onClick={() => setTenantDropdownOpen(!tenantDropdownOpen)}
-                  className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 focus:outline-none transition"
-                >
-                  <Building className="w-3.5 h-3.5 text-slate-500" />
-                  <span className="max-w-[120px] truncate">{activeTenant?.name || 'Company'}</span>
-                  <span className="text-[9px] bg-slate-100 text-slate-700 px-1 py-0.2 rounded font-bold border border-slate-200">Switch</span>
-                </button>
-
-                {tenantDropdownOpen && (
-                  <div className="absolute right-0 mt-1.5 w-60 rounded-xl border border-slate-200 bg-white shadow-lg z-50 py-1.5 text-xs">
-                    <div className="px-3 py-1.5 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                      <span>Switch Company</span>
-                      <Link 
-                        href="/dashboard/tenants" 
-                        onClick={() => setTenantDropdownOpen(false)}
-                        className="text-slate-900 hover:underline text-[10px] font-bold"
-                      >
-                        + New
-                      </Link>
-                    </div>
-                    <div className="max-h-56 overflow-y-auto">
-                      {(tenants || []).map(t => (
-                        <button
-                          key={t.id}
-                          onClick={async () => {
-                            setTenantDropdownOpen(false);
-                            await switchTenant(t.id);
-                          }}
-                          className={`
-                            w-full text-left px-3 py-2 text-xs flex flex-col hover:bg-slate-50 transition border-b border-slate-50 last:border-0
-                            ${activeTenant?.id === t.id ? 'bg-slate-50 font-bold text-slate-900' : 'text-slate-700'}
-                          `}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="truncate">{t.name}</span>
-                            {activeTenant?.id === t.id && (
-                              <span className="text-[9px] text-emerald-700 font-bold">Active</span>
-                            )}
-                          </div>
-                          <span className="text-[10px] text-slate-400 font-normal mt-0.5 capitalize">{t.industry?.toLowerCase()}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+        {/* Mobile-Only Header Bar (Hidden on Desktop) */}
+        <header className="flex lg:hidden items-center justify-between px-4 h-11 bg-white border-b border-slate-200/80">
+          <button 
+            className="text-slate-600 p-1.5 rounded-lg bg-white border border-slate-200"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open Navigation"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+          <span className="text-xs font-bold text-slate-800 truncate">{activeTenant?.name || 'PeopleHub'}</span>
         </header>
 
         {/* Dynamic Content Container */}

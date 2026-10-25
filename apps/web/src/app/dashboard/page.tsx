@@ -3,9 +3,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { API_BASE_URL } from '../../config/api';
-import Link from 'next/link';
 import { 
-  Calendar, Clock, UserCheck, BarChart3, Building2, Plus
+  Calendar, Clock, UserCheck, BarChart3
 } from 'lucide-react';
 import { EmployeeDto, PieceRateLogDto } from '@people-hub/shared-types';
 
@@ -160,41 +159,6 @@ export default function DashboardHome() {
           </span>
         </div>
       </div>
-
-      {/* Super Admin Platform Administration Banner */}
-      {isSuperAdmin && (
-        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-              <Building2 className="w-5 h-5 text-emerald-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Platform Super Admin</span>
-                <span className="text-[10px] bg-white/20 text-white px-1.5 py-0.2 rounded font-medium">Multi-Tenant Platform</span>
-              </div>
-              <p className="text-xs text-slate-300 mt-0.5">
-                Manage all registered client companies, legal profiles, or provision and create new tenants on the platform.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2.5 shrink-0">
-            <Link
-              href="/dashboard/tenants"
-              className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5"
-            >
-              <span>View All Tenants</span>
-            </Link>
-            <Link
-              href="/dashboard/tenants?create=true"
-              className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ Create Tenant</span>
-            </Link>
-          </div>
-        </div>
-      )}
 
       {/* ======================================================== */}
       {/* 2. VISUAL CHARTS: ATTENDANCE & FLOOR PRODUCTION TRENDS   */}

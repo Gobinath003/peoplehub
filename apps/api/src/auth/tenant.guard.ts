@@ -88,6 +88,24 @@ export class TenantGuard implements CanActivate {
       throw new ForbiddenException('The tenant account is currently inactive, suspended, or deactivated');
     }
 
+    // Enforce strict multi-tenant boundary: real users must hold an ACTIVE membership in the requested tenant
+    const isMockSandboxUser = user.id === '11111111-1111-1111-1111-111111111111';
+    if (!isMockSandboxUser && user.id) {
+      const membership = await this.prisma.tenantUser.findUnique({
+        where: {
+          tenantId_userId: {
+            tenantId: effectiveTenantId,
+            userId: user.id,
+          },
+        },
+        select: { status: true },
+      });
+
+      if (!membership || membership.status?.toUpperCase() !== 'ACTIVE') {
+        throw new ForbiddenException('Access denied: You do not belong to the requested organization');
+      }
+    }
+
     request.effectiveTenantId = effectiveTenantId;
     TenantContext.setTenantId(effectiveTenantId);
     return true;

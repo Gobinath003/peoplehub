@@ -388,8 +388,18 @@ export class PieceRateService {
     month: number,
     year: number
   ): Promise<PieceRateEmployeeSummaryDto[]> {
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+    const now = new Date();
+    const parsedMonth = Number(month);
+    const parsedYear = Number(year);
+    const safeMonth = Number.isFinite(parsedMonth) && parsedMonth >= 1 && parsedMonth <= 12
+      ? parsedMonth
+      : now.getMonth() + 1;
+    const safeYear = Number.isFinite(parsedYear) && parsedYear >= 1970 && parsedYear <= 2100
+      ? parsedYear
+      : now.getFullYear();
+
+    const startDate = new Date(safeYear, safeMonth - 1, 1);
+    const endDate = new Date(safeYear, safeMonth, 0, 23, 59, 59, 999);
 
     const logs = await this.prisma.tenantClient.pieceRateLog.findMany({
       where: {

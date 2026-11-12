@@ -80,16 +80,42 @@ async function request(url, options = {}, postData = null) {
   });
 }
 
+let spawnedApiProcess = null;
+
+async function isPortOpen(urlStr) {
+  try {
+    const res = await request(urlStr, { timeout: 2000 });
+    return res.status > 0;
+  } catch {
+    return false;
+  }
+}
+
 async function resolveActiveApiBase() {
   process.stdout.write(`  Probing local API (${LOCAL_API_BASE})... `);
-  try {
-    const res = await request(`${LOCAL_API_BASE}/tenants`, { timeout: 1500 });
-    if (res.status === 200 || res.status === 401) {
-      console.log(`${colors.green}ACTIVE${colors.reset}`);
-      return LOCAL_API_BASE;
+  if (await isPortOpen(`${LOCAL_API_BASE}/health`)) {
+    console.log(`${colors.green}ACTIVE${colors.reset}`);
+    return LOCAL_API_BASE;
+  }
+
+  const distMain = path.join(API_DIR, 'dist', 'main.js');
+  if (fs.existsSync(distMain)) {
+    console.log(`${colors.gray}Starting local NestJS API (${distMain})...${colors.reset}`);
+    spawnedApiProcess = spawn(process.execPath, ['dist/main.js'], {
+      cwd: API_DIR,
+      env: { ...process.env, PORT: '3001' },
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+
+    const deadline = Date.now() + 25000;
+    while (Date.now() < deadline) {
+      if (await isPortOpen(`${LOCAL_API_BASE}/health`)) {
+        console.log(`  Local API initialized: ${colors.green}ACTIVE${colors.reset}`);
+        return LOCAL_API_BASE;
+      }
+      if (spawnedApiProcess.exitCode !== null) break;
+      await new Promise((r) => setTimeout(r, 400));
     }
-  } catch (e) {
-    // Local API not running, fallback to remote
   }
 
   console.log(`${colors.yellow}OFFLINE (Falling back to live Render API)${colors.reset}`);
@@ -529,6 +555,16 @@ async function runTestEngine() {
   console.log(`Total Execution Time      : ${totalDuration}s`);
   console.log('--------------------------------------------------------------------------------');
 
+  if (spawnedApiProcess) {
+    try {
+      if (process.platform === 'win32') {
+        execSync(`taskkill /pid ${spawnedApiProcess.pid} /T /F`, { stdio: 'ignore' });
+      } else {
+        spawnedApiProcess.kill('SIGTERM');
+      }
+    } catch {}
+  }
+
   if (failedTests === 0) {
     console.log(`${colors.bgGreen}  OVERALL RESULT: [GO] APPLICATION FULLY VERIFIED - SAFE TO DEPLOY  ${colors.reset}\n`);
     process.exit(0);
@@ -539,6 +575,15 @@ async function runTestEngine() {
 }
 
 runTestEngine().catch(err => {
+  if (spawnedApiProcess) {
+    try {
+      if (process.platform === 'win32') {
+        execSync(`taskkill /pid ${spawnedApiProcess.pid} /T /F`, { stdio: 'ignore' });
+      } else {
+        spawnedApiProcess.kill('SIGTERM');
+      }
+    } catch {}
+  }
   console.error('\nFatal Automated Test Engine Error:', err);
   process.exit(1);
 });

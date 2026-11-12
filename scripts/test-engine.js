@@ -9,13 +9,14 @@
  * 5. Git Status & Deployment Readiness
  */
 
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const https = require('https');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
+const API_DIR = path.join(ROOT_DIR, 'apps', 'api');
 const LOCAL_API_BASE = 'http://localhost:3001/api/v1';
 const REMOTE_API_BASE = 'https://peoplehub-api-l0yc.onrender.com/api/v1';
 

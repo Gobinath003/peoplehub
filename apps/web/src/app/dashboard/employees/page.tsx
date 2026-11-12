@@ -8,9 +8,10 @@ import {
   Users, Plus, Search, Filter, Check, X, 
   Building2, Briefcase, Calendar, Phone, 
   BadgeCheck, DollarSign, ChevronRight, ChevronLeft, AlertCircle, Scissors, Layers,
-  Pencil, Trash2, Lock, Download
+  Pencil, Trash2, Lock, Download, KeyRound, Clock, Banknote
 } from 'lucide-react';
-import { EmployeeDto, MasterBundleDto } from '@people-hub/shared-types';
+import { EmployeeDto, MasterBundleDto, SalaryType } from '@people-hub/shared-types';
+import { CompensationFields, CompensationSummaryCell } from '../../../components/CompensationFields';
 import { exportToExcel } from '../../../utils/excelExport';
 import {
   EnterpriseToolbar,
@@ -51,8 +52,16 @@ const DEFAULT_GARMENT_MASTERS: MasterBundleDto = {
   ]
 };
 
+const SALARY_TYPE_CATALOG = [
+  { code: SalaryType.MONTHLY_FIXED, label: 'Monthly Fixed Salary', shortLabel: 'Monthly Fixed', desc: 'Fixed monthly salary with allowances and statutory deductions.' },
+  { code: SalaryType.HOURLY, label: 'Hourly Rate Salary', shortLabel: 'Hourly Rate', desc: 'Hourly billing rate paid from verified daily regular & overtime hours.' },
+  { code: SalaryType.PIECE_RATE, label: 'Piece-Rate Output Salary', shortLabel: 'Piece-Rate Output', desc: 'Computed purely from daily verified piece output (cutting, stitching, etc.).' },
+  { code: SalaryType.DAILY_WAGE, label: 'Daily Wage Salary', shortLabel: 'Daily Wage', desc: 'Per-day wage rate multiplied by working days in the pay cycle.' },
+];
+
 export default function EmployeesPage() {
-  const { activeTenant, accessToken, activeBranchScope } = useApp();
+  const { activeTenant, accessToken, activeBranchScope, enabledSalaryTypes } = useApp();
+  const [tenantSalaryTypes, setTenantSalaryTypes] = useState<string[]>(enabledSalaryTypes);
   const [employees, setEmployees] = useState<EmployeeDto[]>([]);
   const [masterBundle, setMasterBundle] = useState<MasterBundleDto>(DEFAULT_GARMENT_MASTERS);
   const [loading, setLoading] = useState(true);
@@ -86,6 +95,10 @@ export default function EmployeesPage() {
   const [conveyanceAllowance, setConveyanceAllowance] = useState('1500');
   const [pfDeduction, setPfDeduction] = useState('1800');
   const [taxDeduction, setTaxDeduction] = useState('1000');
+  const [hourlyRate, setHourlyRate] = useState('500');
+  const [dailyRate, setDailyRate] = useState('800');
+  const [standardHours, setStandardHours] = useState('160');
+  const [overtimeMultiplier, setOvertimeMultiplier] = useState('1.5');
 
   // Edit Form State
   const [editingEmpId, setEditingEmpId] = useState('');
@@ -104,7 +117,23 @@ export default function EmployeesPage() {
   const [editSalaryType, setEditSalaryType] = useState('MONTHLY_FIXED');
   const [editBasicSalary, setEditBasicSalary] = useState('20000');
   const [editHra, setEditHra] = useState('5000');
+  const [editHourlyRate, setEditHourlyRate] = useState('500');
+  const [editDailyRate, setEditDailyRate] = useState('800');
+  const [editStandardHours, setEditStandardHours] = useState('160');
+  const [editOvertimeMultiplier, setEditOvertimeMultiplier] = useState('1.5');
+  const [editPfDeduction, setEditPfDeduction] = useState('0');
+  const [editTaxDeduction, setEditTaxDeduction] = useState('0');
   const [editStatus, setEditStatus] = useState('ACTIVE');
+  const [reportingManagerId, setReportingManagerId] = useState('');
+  const [createPortalLogin, setCreatePortalLogin] = useState(false);
+  const [portalPassword, setPortalPassword] = useState('Welcome@123');
+  const [portalRoleCode, setPortalRoleCode] = useState('EMPLOYEE');
+  const [editReportingManagerId, setEditReportingManagerId] = useState('');
+  const [portalModalEmp, setPortalModalEmp] = useState<EmployeeDto | null>(null);
+  const [portalLoginEmail, setPortalLoginEmail] = useState('');
+  const [portalLoginPassword, setPortalLoginPassword] = useState('Welcome@123');
+  const [portalLoginRole, setPortalLoginRole] = useState('EMPLOYEE');
+  const [savingPortalLogin, setSavingPortalLogin] = useState(false);
 
   const fetchMasters = async () => {
     try {
@@ -167,7 +196,20 @@ export default function EmployeesPage() {
 
   useEffect(() => {
     fetchEmployees();
+    setTenantSalaryTypes(enabledSalaryTypes);
     fetchMasters();
+    if (activeTenant && accessToken) {
+      fetch(`${API_BASE_URL}/api/v1/tenants/salary-types`, {
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'x-tenant-id': activeTenant.id }
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (Array.isArray(data?.enabledSalaryTypes) && data.enabledSalaryTypes.length > 0) {
+            setTenantSalaryTypes(data.enabledSalaryTypes);
+          }
+        })
+        .catch(() => {});
+    }
   }, [activeTenant, accessToken]);
 
   // Generate next automatic employee code
@@ -189,7 +231,12 @@ export default function EmployeesPage() {
     setLastName('');
     setEmail('');
     setPhone('');
-    setSalaryType('MONTHLY_FIXED');
+    const defaultST = tenantSalaryTypes[0] || SalaryType.MONTHLY_FIXED;
+    setSalaryType(defaultST);
+    setHourlyRate('500');
+    setDailyRate('800');
+    setStandardHours(defaultST === SalaryType.DAILY_WAGE ? '26' : '160');
+    setOvertimeMultiplier('1.5');
     setBasicSalary('22000');
     setHra('8000');
     setSpecialAllowance('2500');
@@ -214,6 +261,10 @@ export default function EmployeesPage() {
     if (masterBundle.employmentTypes.length > 0) {
       setSelectedEmpTypeId(masterBundle.employmentTypes[0].id);
     }
+    setReportingManagerId('');
+    setCreatePortalLogin(false);
+    setPortalPassword('Welcome@123');
+    setPortalRoleCode('EMPLOYEE');
     setModalOpen(true);
   };
 
@@ -238,13 +289,21 @@ export default function EmployeesPage() {
       branchId: selectedBranchId || undefined,
       shiftId: selectedShiftId || undefined,
       employmentTypeId: selectedEmpTypeId || undefined,
+      reportingManagerId: reportingManagerId || undefined,
+      createPortalLogin,
+      portalPassword: createPortalLogin ? portalPassword : undefined,
+      roleCode: createPortalLogin ? portalRoleCode : undefined,
       salaryType,
       joiningDate,
       status: 'ACTIVE',
-      basicSalary: isPieceRate ? 0 : (Number(basicSalary) || 0),
-      hra: isPieceRate ? 0 : (Number(hra) || 0),
-      specialAllowance: isPieceRate ? 0 : (Number(specialAllowance) || 0),
-      conveyanceAllowance: isPieceRate ? 0 : (Number(conveyanceAllowance) || 0),
+      basicSalary: salaryType === SalaryType.MONTHLY_FIXED ? (Number(basicSalary) || 0) : 0,
+      hra: salaryType === SalaryType.MONTHLY_FIXED ? (Number(hra) || 0) : 0,
+      specialAllowance: salaryType === SalaryType.MONTHLY_FIXED ? (Number(specialAllowance) || 0) : 0,
+      conveyanceAllowance: salaryType === SalaryType.MONTHLY_FIXED ? (Number(conveyanceAllowance) || 0) : 0,
+      hourlyRate: salaryType === SalaryType.HOURLY ? (Number(hourlyRate) || 0) : 0,
+      dailyRate: salaryType === SalaryType.DAILY_WAGE ? (Number(dailyRate) || 0) : 0,
+      standardHours: salaryType === SalaryType.HOURLY || salaryType === SalaryType.DAILY_WAGE ? (Number(standardHours) || 0) : 0,
+      overtimeMultiplier: salaryType === SalaryType.HOURLY ? (Number(overtimeMultiplier) || 1.5) : 1.5,
       pfDeduction: isPieceRate ? 0 : (Number(pfDeduction) || 0),
       taxDeduction: isPieceRate ? 0 : (Number(taxDeduction) || 0),
     };
@@ -341,10 +400,23 @@ export default function EmployeesPage() {
     if (emp.salaryStructure) {
       setEditBasicSalary(emp.salaryStructure.basicSalary.toString());
       setEditHra(emp.salaryStructure.hra.toString());
+      setEditHourlyRate((emp.salaryStructure.hourlyRate ?? 500).toString());
+      setEditDailyRate((emp.salaryStructure.dailyRate ?? 800).toString());
+      setEditStandardHours((emp.salaryStructure.standardHours ?? (emp.salaryType === SalaryType.DAILY_WAGE ? 26 : 160)).toString());
+      setEditOvertimeMultiplier((emp.salaryStructure.overtimeMultiplier ?? 1.5).toString());
+      setEditPfDeduction((emp.salaryStructure.pfDeduction ?? 0).toString());
+      setEditTaxDeduction((emp.salaryStructure.taxDeduction ?? 0).toString());
     } else {
       setEditBasicSalary('20000');
       setEditHra('5000');
+      setEditHourlyRate('500');
+      setEditDailyRate('800');
+      setEditStandardHours(emp.salaryType === SalaryType.DAILY_WAGE ? '26' : '160');
+      setEditOvertimeMultiplier('1.5');
+      setEditPfDeduction('0');
+      setEditTaxDeduction('0');
     }
+    setEditReportingManagerId(emp.reportingManagerId || '');
     setEditModalOpen(true);
   };
 
@@ -367,10 +439,17 @@ export default function EmployeesPage() {
       branchId: editBranchId || undefined,
       shiftId: editShiftId || undefined,
       employmentTypeId: editEmpTypeId || undefined,
+      reportingManagerId: editReportingManagerId || '',
       salaryType: editSalaryType,
       status: editStatus,
-      basicSalary: isPieceRate ? 0 : (Number(editBasicSalary) || 0),
-      hra: isPieceRate ? 0 : (Number(editHra) || 0),
+      basicSalary: editSalaryType === SalaryType.MONTHLY_FIXED ? (Number(editBasicSalary) || 0) : 0,
+      hra: editSalaryType === SalaryType.MONTHLY_FIXED ? (Number(editHra) || 0) : 0,
+      hourlyRate: editSalaryType === SalaryType.HOURLY ? (Number(editHourlyRate) || 0) : 0,
+      dailyRate: editSalaryType === SalaryType.DAILY_WAGE ? (Number(editDailyRate) || 0) : 0,
+      standardHours: editSalaryType === SalaryType.HOURLY || editSalaryType === SalaryType.DAILY_WAGE ? (Number(editStandardHours) || 0) : 0,
+      overtimeMultiplier: editSalaryType === SalaryType.HOURLY ? (Number(editOvertimeMultiplier) || 1.5) : 1.5,
+      pfDeduction: editSalaryType === SalaryType.PIECE_RATE ? 0 : (Number(editPfDeduction) || 0),
+      taxDeduction: editSalaryType === SalaryType.PIECE_RATE ? 0 : (Number(editTaxDeduction) || 0),
     };
 
     try {
@@ -388,6 +467,11 @@ export default function EmployeesPage() {
         setSuccessMsg(`Employee ${editEmpCode} updated successfully!`);
         await fetchEmployees();
         setEditModalOpen(false);
+        setSaving(false);
+        return;
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setErrorMsg(Array.isArray(err.message) ? err.message.join(', ') : (err.message || `Failed to update employee ${editEmpCode}`));
         setSaving(false);
         return;
       }
@@ -431,6 +515,50 @@ export default function EmployeesPage() {
     setSuccessMsg(`Employee ${editEmpCode} updated successfully!`);
     setEditModalOpen(false);
     setSaving(false);
+  };
+
+  const handleOpenPortalModal = (emp: EmployeeDto) => {
+    setPortalModalEmp(emp);
+    setPortalLoginEmail(emp.email || '');
+    setPortalLoginPassword('Welcome@123');
+    setPortalLoginRole('EMPLOYEE');
+    setErrorMsg(null);
+  };
+
+  const handleSavePortalLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!portalModalEmp || !activeTenant) return;
+    setSavingPortalLogin(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/employees/${portalModalEmp.id}/portal-login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+          'x-tenant-id': activeTenant.id,
+        },
+        body: JSON.stringify({
+          email: portalLoginEmail.trim() || undefined,
+          password: portalLoginPassword.trim(),
+          roleCode: portalLoginRole,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Failed to provision portal login');
+      }
+      const updated: EmployeeDto = await res.json();
+      setSuccessMsg(
+        `Portal login active for ${updated.firstName} ${updated.lastName} — sign in with ID "${updated.employeeCode}" or "${updated.email || portalLoginEmail}".`
+      );
+      setPortalModalEmp(null);
+      await fetchEmployees();
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Failed to provision portal login');
+    } finally {
+      setSavingPortalLogin(false);
+    }
   };
 
   // Delete Employee
@@ -497,8 +625,9 @@ export default function EmployeesPage() {
         { header: 'Department', accessor: 'department' },
         { header: 'Designation', accessor: 'designation' },
         { header: 'Branch', accessor: (r) => r.branch || '-' },
+        { header: 'Reporting Manager', accessor: (r) => r.reportingManagerName ? `${r.reportingManagerName} (${r.reportingManagerCode})` : 'Unassigned' },
         { header: 'Salary Type', accessor: 'salaryType' },
-        { header: 'Gross Salary', accessor: (r) => r.salaryStructure?.grossSalary ? `₹${r.salaryStructure.grossSalary.toLocaleString()}` : '-' },
+        { header: 'Compensation Rate / Gross', accessor: (r) => r.salaryType === SalaryType.HOURLY ? `₹${(r.salaryStructure?.hourlyRate || 0).toLocaleString()}/hr` : r.salaryType === SalaryType.DAILY_WAGE ? `₹${(r.salaryStructure?.dailyRate || 0).toLocaleString()}/day` : r.salaryStructure?.grossSalary ? `₹${r.salaryStructure.grossSalary.toLocaleString()}/mo` : '-' },
         { header: 'Phone', accessor: (r) => r.phone || '-' },
         { header: 'Status', accessor: 'status' },
         { header: 'Joining Date', accessor: (r) => r.joiningDate ? r.joiningDate.split('T')[0] : '-' },
@@ -584,6 +713,7 @@ export default function EmployeesPage() {
             <EnterpriseTableTh>Employee</EnterpriseTableTh>
             <EnterpriseTableTh>Department & Role</EnterpriseTableTh>
             <EnterpriseTableTh>Branch Scope</EnterpriseTableTh>
+            <EnterpriseTableTh>Reporting Manager</EnterpriseTableTh>
             <EnterpriseTableTh>Compensation Profile</EnterpriseTableTh>
             <EnterpriseTableTh>Status</EnterpriseTableTh>
             <EnterpriseTableTh align="right">Actions</EnterpriseTableTh>
@@ -627,26 +757,24 @@ export default function EmployeesPage() {
                   </span>
                 </EnterpriseTableTd>
 
+                {/* Reporting Manager */}
+                <EnterpriseTableTd>
+                  {emp.reportingManagerName ? (
+                    <div>
+                      <div className="font-semibold text-slate-800 text-xs">{emp.reportingManagerName}</div>
+                      <div className="text-[10px] text-slate-400 font-mono">{emp.reportingManagerCode}</div>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 italic">Unassigned</span>
+                  )}
+                </EnterpriseTableTd>
+
                 {/* Compensation */}
                 <EnterpriseTableTd>
-                  <div className="flex items-center gap-1.5">
-                    {emp.salaryType === 'PIECE_RATE' ? (
-                      <EnterpriseBadge variant="warning">
-                        <Scissors className="w-2.5 h-2.5 text-amber-600 inline mr-1" />
-                        Piece-Rate Output
-                      </EnterpriseBadge>
-                    ) : (
-                      <div className="flex items-center gap-1.5">
-                        <EnterpriseBadge variant="info">Fixed</EnterpriseBadge>
-                        {emp.salaryStructure && (
-                          <span className="font-semibold text-slate-900 text-xs">
-                            ₹{emp.salaryStructure.grossSalary.toLocaleString()}
-                            <span className="text-[10px] text-slate-400 font-normal">/mo</span>
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  <CompensationSummaryCell
+                    salaryType={emp.salaryType}
+                    salaryStructure={emp.salaryStructure}
+                  />
                 </EnterpriseTableTd>
 
                 {/* Status */}
@@ -661,6 +789,18 @@ export default function EmployeesPage() {
                 {/* Action Buttons: Edit and Delete */}
                 <EnterpriseTableTd align="right">
                   <div className="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenPortalModal(emp)}
+                      title={emp.userId ? 'Reset Portal Login Credentials' : 'Provision Portal Login'}
+                      className={`p-1 rounded transition ${
+                        emp.userId
+                          ? 'text-emerald-600 hover:bg-emerald-50'
+                          : 'text-amber-600 hover:bg-amber-50'
+                      }`}
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleOpenEditModal(emp)}
@@ -686,6 +826,90 @@ export default function EmployeesPage() {
       </EnterpriseTable>
 
       {/* ======================================================== */}
+      {/* MODAL: PROVISION / RESET EMPLOYEE PORTAL LOGIN */}
+      {portalModalEmp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-slate-900 text-emerald-400 rounded-xl">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm">
+                    {portalModalEmp.userId ? 'Reset Portal Login Credentials' : 'Provision Employee Portal Login'}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    {portalModalEmp.firstName} {portalModalEmp.lastName} ({portalModalEmp.employeeCode})
+                  </p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setPortalModalEmp(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePortalLogin} className="p-6 space-y-4 text-xs">
+              <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl text-[11px] text-emerald-900">
+                Once provisioned, this employee can sign in using their Employee ID (<strong>{portalModalEmp.employeeCode}</strong>) or Email address to view leave balances, apply for leaves, and review team requests if they are a Reporting Manager.
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Portal Email (Optional if using Employee ID)</label>
+                <input
+                  type="email"
+                  value={portalLoginEmail}
+                  onChange={(e) => setPortalLoginEmail(e.target.value)}
+                  placeholder={`e.g. ${portalModalEmp.employeeCode.toLowerCase()}@company.com`}
+                  className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Portal Password *</label>
+                <input
+                  type="text"
+                  required
+                  minLength={4}
+                  value={portalLoginPassword}
+                  onChange={(e) => setPortalLoginPassword(e.target.value)}
+                  className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 font-mono text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Portal Access Role</label>
+                <select
+                  value={portalLoginRole}
+                  onChange={(e) => setPortalLoginRole(e.target.value)}
+                  className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-semibold"
+                >
+                  <option value="EMPLOYEE">Employee Self-Service (Leave Apply / Manager Approvals)</option>
+                  <option value="HR_MANAGER">HR Manager (Workforce & Leave Admin)</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setPortalModalEmp(null)}
+                  className="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingPortalLogin}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold shadow"
+                >
+                  {savingPortalLogin ? 'Saving...' : 'Save Portal Credentials'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* MODAL: ADD NEW EMPLOYEE                                  */}
       {/* ======================================================== */}
       {modalOpen && (
@@ -908,6 +1132,67 @@ export default function EmployeesPage() {
                 </div>
               </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1.5">
+                      Reporting Manager <span className="text-slate-400 font-normal">(Leave Approver)</span>
+                    </label>
+                    <select
+                      value={reportingManagerId}
+                      onChange={(e) => setReportingManagerId(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-semibold focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                    >
+                      <option value="">No Reporting Manager (Routes to HR / Admin)</option>
+                      {employees
+                        .filter((emp) => emp.status !== 'TERMINATED')
+                        .map((emp) => (
+                          <option key={emp.id} value={emp.id}>
+                            {emp.employeeCode} — {emp.firstName} {emp.lastName} ({emp.designation})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-2.5">
+                    <label className="flex items-center justify-between cursor-pointer">
+                      <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                        <KeyRound className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Enable Employee Portal Login</span>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={createPortalLogin}
+                        onChange={(e) => setCreatePortalLogin(e.target.checked)}
+                      />
+                    </label>
+                    {createPortalLogin && (
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Portal Password</label>
+                          <input
+                            type="text"
+                            required={createPortalLogin}
+                            value={portalPassword}
+                            onChange={(e) => setPortalPassword(e.target.value)}
+                            className="w-full border border-slate-300 rounded-lg p-1.5 bg-white text-slate-800 font-mono text-[11px]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Access Role</label>
+                          <select
+                            value={portalRoleCode}
+                            onChange={(e) => setPortalRoleCode(e.target.value)}
+                            className="w-full border border-slate-300 rounded-lg p-1.5 bg-white text-slate-800 text-[11px] font-semibold"
+                          >
+                            <option value="EMPLOYEE">Employee (Self-Service)</option>
+                            <option value="HR_MANAGER">HR Manager</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
               {/* 3. Salary System & Configuration */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -922,120 +1207,42 @@ export default function EmployeesPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setSalaryType('MONTHLY_FIXED')}
-                    className={`p-4 rounded-2xl border text-left transition flex items-start gap-3.5 ${
-                      salaryType === 'MONTHLY_FIXED'
-                        ? 'border-primary-500 bg-primary-50/70 text-primary-950 ring-2 ring-primary-500/20 shadow-xs'
-                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-2.5 rounded-xl mt-0.5 ${salaryType === 'MONTHLY_FIXED' ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                      <DollarSign className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-sm text-slate-800">Monthly Fixed Salary</div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">Fixed monthly salary with allowances and statutory deductions.</div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSalaryType('PIECE_RATE')}
-                    className={`p-4 rounded-2xl border text-left transition flex items-start gap-3.5 ${
-                      salaryType === 'PIECE_RATE'
-                        ? 'border-amber-500 bg-amber-50/70 text-amber-950 ring-2 ring-amber-500/20 shadow-xs'
-                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-2.5 rounded-xl mt-0.5 ${salaryType === 'PIECE_RATE' ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                      <Scissors className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-sm text-slate-800">Piece-Rate Output Salary</div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">Computed purely from daily verified piece output (cutting, stitching, etc.).</div>
-                    </div>
-                  </button>
-                </div>
-
-                {/* ITEM 2: When Piece-Rate is selected, fixed salary items DISAPPEAR completely */}
-                {salaryType === 'PIECE_RATE' ? (
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-950 text-xs space-y-1.5">
-                    <div className="font-bold flex items-center gap-1.5 text-amber-900 text-xs">
-                      <Scissors className="w-4 h-4 text-amber-600" />
-                      <span>Piece-Rate Wage System Activated</span>
-                    </div>
-                    <p className="text-[11px] text-amber-800 leading-relaxed">
-                      No fixed monthly salary structure required. Monthly earnings will be computed directly from daily logged units and approved piece rates.
-                    </p>
-                  </div>
-                ) : (
-                  /* Fixed Salary Inputs (shown ONLY for Monthly Fixed Salary) */
-                  <div className="space-y-4 pt-1">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div>
-                        <label className="block font-semibold text-slate-700 mb-1">Basic Salary (₹) *</label>
-                        <input
-                          type="number"
-                          required
-                          value={basicSalary}
-                          onChange={(e) => setBasicSalary(e.target.value)}
-                          className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-semibold text-slate-700 mb-1">HRA (₹)</label>
-                        <input
-                          type="number"
-                          value={hra}
-                          onChange={(e) => setHra(e.target.value)}
-                          className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-semibold text-slate-700 mb-1">Special Allowance (₹)</label>
-                        <input
-                          type="number"
-                          value={specialAllowance}
-                          onChange={(e) => setSpecialAllowance(e.target.value)}
-                          className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-semibold text-slate-700 mb-1">Conveyance (₹)</label>
-                        <input
-                          type="number"
-                          value={conveyanceAllowance}
-                          onChange={(e) => setConveyanceAllowance(e.target.value)}
-                          className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div>
-                        <label className="block font-semibold text-slate-700 mb-1">PF Deduction (₹)</label>
-                        <input
-                          type="number"
-                          value={pfDeduction}
-                          onChange={(e) => setPfDeduction(e.target.value)}
-                          className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-semibold text-slate-700 mb-1">Tax Deduction (₹)</label>
-                        <input
-                          type="number"
-                          value={taxDeduction}
-                          onChange={(e) => setTaxDeduction(e.target.value)}
-                          className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <CompensationFields
+                  allowedTypes={tenantSalaryTypes}
+                  salaryType={salaryType}
+                  onSalaryTypeChange={(nextType) => {
+                    setSalaryType(nextType);
+                    if (nextType === SalaryType.HOURLY) {
+                      setStandardHours('160');
+                    } else if (nextType === SalaryType.DAILY_WAGE) {
+                      setStandardHours('26');
+                    }
+                  }}
+                  values={{
+                    basicSalary,
+                    hra,
+                    specialAllowance,
+                    conveyanceAllowance,
+                    hourlyRate,
+                    dailyRate,
+                    standardHours,
+                    overtimeMultiplier,
+                    pfDeduction,
+                    taxDeduction,
+                  }}
+                  onChange={(field, val) => {
+                    if (field === 'basicSalary') setBasicSalary(val);
+                    else if (field === 'hra') setHra(val);
+                    else if (field === 'specialAllowance') setSpecialAllowance(val);
+                    else if (field === 'conveyanceAllowance') setConveyanceAllowance(val);
+                    else if (field === 'hourlyRate') setHourlyRate(val);
+                    else if (field === 'dailyRate') setDailyRate(val);
+                    else if (field === 'standardHours') setStandardHours(val);
+                    else if (field === 'overtimeMultiplier') setOvertimeMultiplier(val);
+                    else if (field === 'pfDeduction') setPfDeduction(val);
+                    else if (field === 'taxDeduction') setTaxDeduction(val);
+                  }}
+                />
               </div>
 
               {/* Action Buttons */}
@@ -1188,58 +1395,64 @@ export default function EmployeesPage() {
                 </div>
               </div>
 
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Reporting Manager <span className="text-slate-400 font-normal">(Leave Approver)</span>
+                </label>
+                <select
+                  value={editReportingManagerId}
+                  onChange={(e) => setEditReportingManagerId(e.target.value)}
+                  className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-slate-800 text-xs font-semibold focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                >
+                  <option value="">No Reporting Manager (Routes to HR / Admin)</option>
+                  {employees
+                    .filter((emp) => emp.id !== editingEmpId && emp.status !== 'TERMINATED')
+                    .map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.employeeCode} — {emp.firstName} {emp.lastName} ({emp.designation})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
               {/* Salary System Selector */}
               <div className="space-y-3 pt-2">
-                <label className="block font-bold text-slate-700">Salary System</label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer font-semibold">
-                    <input
-                      type="radio"
-                      name="editSalaryType"
-                      value="MONTHLY_FIXED"
-                      checked={editSalaryType === 'MONTHLY_FIXED'}
-                      onChange={() => setEditSalaryType('MONTHLY_FIXED')}
-                    />
-                    <span>Monthly Fixed</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer font-semibold">
-                    <input
-                      type="radio"
-                      name="editSalaryType"
-                      value="PIECE_RATE"
-                      checked={editSalaryType === 'PIECE_RATE'}
-                      onChange={() => setEditSalaryType('PIECE_RATE')}
-                    />
-                    <span>Piece-Rate Output</span>
-                  </label>
-                </div>
-
-                {editSalaryType === 'PIECE_RATE' ? (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs">
-                    Piece-rate worker: Compensated per verified output unit. Fixed salary fields are disabled.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-4 pt-1">
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Basic Salary (₹)</label>
-                      <input
-                        type="number"
-                        value={editBasicSalary}
-                        onChange={(e) => setEditBasicSalary(e.target.value)}
-                        className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">HRA (₹)</label>
-                      <input
-                        type="number"
-                        value={editHra}
-                        onChange={(e) => setEditHra(e.target.value)}
-                        className="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 text-xs"
-                      />
-                    </div>
-                  </div>
-                )}
+                <label className="block font-bold text-slate-700">Salary System &amp; Compensation Rate</label>
+                <CompensationFields
+                  compact
+                  allowedTypes={tenantSalaryTypes}
+                  salaryType={editSalaryType}
+                  onSalaryTypeChange={(nextType) => {
+                    setEditSalaryType(nextType);
+                    if (nextType === SalaryType.HOURLY && (!editStandardHours || editStandardHours === '26' || editStandardHours === '0')) {
+                      setEditStandardHours('160');
+                    } else if (nextType === SalaryType.DAILY_WAGE && (!editStandardHours || editStandardHours === '160' || editStandardHours === '0')) {
+                      setEditStandardHours('26');
+                    }
+                  }}
+                  values={{
+                    basicSalary: editBasicSalary,
+                    hra: editHra,
+                    specialAllowance: '0',
+                    conveyanceAllowance: '0',
+                    hourlyRate: editHourlyRate,
+                    dailyRate: editDailyRate,
+                    standardHours: editStandardHours,
+                    overtimeMultiplier: editOvertimeMultiplier,
+                    pfDeduction: editPfDeduction,
+                    taxDeduction: editTaxDeduction,
+                  }}
+                  onChange={(field, val) => {
+                    if (field === 'basicSalary') setEditBasicSalary(val);
+                    else if (field === 'hra') setEditHra(val);
+                    else if (field === 'hourlyRate') setEditHourlyRate(val);
+                    else if (field === 'dailyRate') setEditDailyRate(val);
+                    else if (field === 'standardHours') setEditStandardHours(val);
+                    else if (field === 'overtimeMultiplier') setEditOvertimeMultiplier(val);
+                    else if (field === 'pfDeduction') setEditPfDeduction(val);
+                    else if (field === 'taxDeduction') setEditTaxDeduction(val);
+                  }}
+                />
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">

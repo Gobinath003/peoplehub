@@ -47,7 +47,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
             'Payslip',
             'PieceRateActivity',
             'PieceRateLog',
-            'AccountTransaction'
+            'AccountTransaction',
+            'LeaveType',
+            'EmployeeLeaveBalance',
+            'LeaveRequest',
+            'HourlyWorkLog'
           ];
 
           // Modify arguments for queries on tenant-scoped models if a tenant context exists

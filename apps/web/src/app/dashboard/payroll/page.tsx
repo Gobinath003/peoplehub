@@ -7,9 +7,10 @@ import {
   FileText, DollarSign, Calendar, Check, X, 
   Printer, Play, Search, Filter, Building2, 
   Briefcase, ArrowUpRight, Award, ShieldCheck, 
-  ChevronRight, ChevronLeft, Edit3, Scissors, AlertCircle, Download, Clock
+  ChevronRight, ChevronLeft, Edit3, Scissors, AlertCircle, Download, Clock,
+  Banknote, Plus, Trash2
 } from 'lucide-react';
-import { PayslipDto, SalaryStructureDto } from '@people-hub/shared-types';
+import { PayslipDto, SalaryStructureDto, SalaryType, HourlyWorkLogDto } from '@people-hub/shared-types';
 import { exportToExcel } from '../../../utils/excelExport';
 import {
   EnterpriseToolbar,
@@ -36,11 +37,48 @@ interface EmployeeSalaryRow {
   salaryStructure: SalaryStructureDto | null;
 }
 
+function renderSalaryTypeBadge(salaryType?: string, extra?: string) {
+  if (salaryType === SalaryType.PIECE_RATE) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+        <Scissors className="w-2.5 h-2.5 text-amber-600 mr-1" />
+        Piece-Rate{extra ? ` ${extra}` : ''}
+      </span>
+    );
+  }
+  if (salaryType === SalaryType.HOURLY) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+        <Clock className="w-2.5 h-2.5 text-indigo-600 mr-1" />
+        Hourly Rate{extra ? ` ${extra}` : ''}
+      </span>
+    );
+  }
+  if (salaryType === SalaryType.DAILY_WAGE) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+        <Banknote className="w-2.5 h-2.5 text-emerald-600 mr-1" />
+        Daily Wage{extra ? ` ${extra}` : ''}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">
+      <DollarSign className="w-2.5 h-2.5 text-sky-600 mr-1" />
+      Monthly Fixed{extra ? ` ${extra}` : ''}
+    </span>
+  );
+}
+
 export default function PayrollPage() {
-  const { activeTenant, accessToken, activeBranchScope } = useApp();
-  const [activeTab, setActiveTab] = useState<'structures' | 'generate' | 'history'>('structures');
+  const { activeTenant, accessToken, activeBranchScope, enabledSalaryTypes } = useApp();
+  const [activeTab, setActiveTab] = useState<'structures' | 'hourly' | 'generate' | 'history'>('structures');
   const [structures, setStructures] = useState<EmployeeSalaryRow[]>([]);
   const [payslips, setPayslips] = useState<PayslipDto[]>([]);
+  const [hourlyLogs, setHourlyLogs] = useState<HourlyWorkLogDto[]>([]);
+  const [tenantSalaryTypes, setTenantSalaryTypes] = useState<string[]>(
+    enabledSalaryTypes.length > 0 ? enabledSalaryTypes : [SalaryType.MONTHLY_FIXED]
+  );
   const [loading, setLoading] = useState(true);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -52,9 +90,22 @@ export default function PayrollPage() {
   const [hra, setHra] = useState('10000');
   const [specialAllowance, setSpecialAllowance] = useState('3000');
   const [conveyanceAllowance, setConveyanceAllowance] = useState('2000');
+  const [hourlyRate, setHourlyRate] = useState('500');
+  const [dailyRate, setDailyRate] = useState('800');
+  const [standardHours, setStandardHours] = useState('160');
+  const [overtimeMultiplier, setOvertimeMultiplier] = useState('1.5');
   const [pfDeduction, setPfDeduction] = useState('1800');
   const [taxDeduction, setTaxDeduction] = useState('1200');
   const [savingSalary, setSavingSalary] = useState(false);
+
+  // Hourly Timesheet Quick Entry State
+  const [hrEmployeeId, setHrEmployeeId] = useState('');
+  const [hrLogDate, setHrLogDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [hrRegularHours, setHrRegularHours] = useState('8');
+  const [hrOvertimeHours, setHrOvertimeHours] = useState('0');
+  const [hrProjectOrTask, setHrProjectOrTask] = useState('');
+  const [hrRemarks, setHrRemarks] = useState('');
+  const [savingHourly, setSavingHourly] = useState(false);
 
   // Generate Payslip State
   const [cycleType, setCycleType] = useState<'MONTHLY' | 'WEEKLY'>('MONTHLY');
@@ -81,35 +132,84 @@ export default function PayrollPage() {
   const preRunSalaries = useMemo(() => {
     const isWeekly = cycleType === 'WEEKLY';
     const ratio = isWeekly ? (6 / 30) : 1;
+    const workingDays = isWeekly ? 6 : 30;
+    const periodStart = isWeekly
+      ? weekDateRange.startStr
+      : `${genYear}-${String(genMonth).padStart(2, '0')}-01`;
+    const lastDay = new Date(genYear, genMonth, 0).getDate();
+    const periodEnd = isWeekly
+      ? weekDateRange.endStr
+      : `${genYear}-${String(genMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
     return structures.map(emp => {
       const st = emp.salaryStructure;
-      const isPieceRate = emp.salaryType === 'PIECE_RATE';
-      const base = st ? Math.round(st.basicSalary * ratio) : (isPieceRate ? Math.round(22000 * ratio) : 0);
-      const hra = st ? Math.round(st.hra * ratio) : 0;
+      const isPieceRate = emp.salaryType === SalaryType.PIECE_RATE;
+      const isHourly = emp.salaryType === SalaryType.HOURLY;
+      const isDaily = emp.salaryType === SalaryType.DAILY_WAGE;
+
+      let base = 0;
+      let isConfigured = !!st;
+
+      if (isHourly) {
+        const rate = st?.hourlyRate || 0;
+        const otMult = st?.overtimeMultiplier || 1.5;
+        const empLogs = hourlyLogs.filter((l) => {
+          if (l.employeeId !== emp.employeeId) return false;
+          const d = l.logDate.split('T')[0];
+          return d >= periodStart && d <= periodEnd;
+        });
+
+        if (empLogs.length > 0) {
+          base = Math.round(
+            empLogs.reduce((sum, l) => {
+              const effRate = l.hourlyRate > 0 ? l.hourlyRate : rate;
+              const effMult = l.overtimeMultiplier > 0 ? l.overtimeMultiplier : otMult;
+              return sum + l.regularHours * effRate + l.overtimeHours * effRate * effMult;
+            }, 0)
+          );
+          isConfigured = true;
+        } else {
+          const baselineHours = Math.round((st?.standardHours || 160) * ratio);
+          base = rate > 0 ? Math.round(rate * baselineHours) : (st ? Math.round(st.basicSalary * ratio) : 0);
+          isConfigured = !!st && (rate > 0 || st.basicSalary > 0);
+        }
+      } else if (isDaily) {
+        const dRate = st?.dailyRate || 0;
+        base = dRate > 0 ? Math.round(dRate * workingDays) : (st ? Math.round(st.basicSalary * ratio) : 0);
+        isConfigured = !!st && (dRate > 0 || st.basicSalary > 0);
+      } else if (isPieceRate) {
+        base = st ? Math.round(st.basicSalary * ratio) : Math.round(22000 * ratio);
+        isConfigured = true;
+      } else {
+        base = st ? Math.round(st.basicSalary * ratio) : 0;
+        isConfigured = !!st;
+      }
+
+      const hraVal = st ? Math.round(st.hra * ratio) : 0;
       const allowances = st ? Math.round((st.specialAllowance + st.conveyanceAllowance) * ratio) : 0;
       const pf = st ? Math.round(st.pfDeduction * ratio) : 0;
       const tax = st ? Math.round(st.taxDeduction * ratio) : 0;
       const other = st ? Math.round(st.otherDeductions * ratio) : 0;
 
-      const grossEarnings = base + hra + allowances;
+      const grossEarnings = base + hraVal + allowances;
       const totalDeductions = pf + tax + other;
       const netPayable = grossEarnings - totalDeductions;
 
       return {
         ...emp,
         base,
-        hra,
+        hra: hraVal,
         allowances,
-        totalAllowances: hra + allowances,
+        totalAllowances: hraVal + allowances,
         pf,
         tax,
         totalDeductions,
         grossEarnings,
         netPayable,
-        isConfigured: !!st || isPieceRate
+        isConfigured
       };
     });
-  }, [structures, cycleType]);
+  }, [structures, cycleType, genMonth, genYear, weekDateRange, hourlyLogs]);
 
   const preRunTotals = useMemo(() => {
     const eligible = preRunSalaries.filter(s => s.isConfigured);
@@ -143,26 +243,35 @@ export default function PayrollPage() {
     if (!activeTenant) return;
     setLoading(true);
     try {
-      const [structRes, slipsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/v1/payroll/structures`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'x-tenant-id': activeTenant.id
-          }
-        }),
-        fetch(`${API_BASE_URL}/api/v1/payroll/payslips`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'x-tenant-id': activeTenant.id
-          }
-        })
+      const headers = {
+        'Authorization': `Bearer ${accessToken}`,
+        'x-tenant-id': activeTenant.id
+      };
+      const [structRes, slipsRes, hourlyRes, stTypesRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/v1/payroll/structures`, { headers }),
+        fetch(`${API_BASE_URL}/api/v1/payroll/payslips`, { headers }),
+        fetch(`${API_BASE_URL}/api/v1/payroll/hourly-logs`, { headers }),
+        fetch(`${API_BASE_URL}/api/v1/tenants/salary-types`, { headers })
       ]);
 
       if (structRes.ok && slipsRes.ok) {
-        const structs = await structRes.json();
+        const structs: EmployeeSalaryRow[] = await structRes.json();
         const slips = await slipsRes.json();
         setStructures(structs);
         setPayslips(slips);
+        if (hourlyRes.ok) {
+          setHourlyLogs(await hourlyRes.json());
+        }
+        if (stTypesRes.ok) {
+          const typesData = await stTypesRes.json();
+          if (Array.isArray(typesData.enabledSalaryTypes) && typesData.enabledSalaryTypes.length > 0) {
+            setTenantSalaryTypes(typesData.enabledSalaryTypes);
+          }
+        }
+        if (!hrEmployeeId && structs.length > 0) {
+          const firstHourly = structs.find(s => s.salaryType === SalaryType.HOURLY);
+          setHrEmployeeId((firstHourly || structs[0]).employeeId);
+        }
         setLoading(false);
         return;
       }
@@ -172,12 +281,18 @@ export default function PayrollPage() {
 
     setStructures([]);
     setPayslips([]);
+    setHourlyLogs([]);
     setLoading(false);
   };
 
   useEffect(() => {
     fetchPayrollData();
   }, [activeTenant, accessToken]);
+
+  const hourlyEmployees = useMemo(
+    () => structures.filter(s => s.salaryType === SalaryType.HOURLY),
+    [structures]
+  );
 
   const openEditSalary = (emp: EmployeeSalaryRow) => {
     setSelectedEmp(emp);
@@ -186,6 +301,10 @@ export default function PayrollPage() {
       setHra(emp.salaryStructure.hra.toString());
       setSpecialAllowance(emp.salaryStructure.specialAllowance.toString());
       setConveyanceAllowance(emp.salaryStructure.conveyanceAllowance.toString());
+      setHourlyRate((emp.salaryStructure.hourlyRate ?? 500).toString());
+      setDailyRate((emp.salaryStructure.dailyRate ?? 800).toString());
+      setStandardHours((emp.salaryStructure.standardHours ?? 160).toString());
+      setOvertimeMultiplier((emp.salaryStructure.overtimeMultiplier ?? 1.5).toString());
       setPfDeduction(emp.salaryStructure.pfDeduction.toString());
       setTaxDeduction(emp.salaryStructure.taxDeduction.toString());
     } else {
@@ -193,6 +312,10 @@ export default function PayrollPage() {
       setHra('8000');
       setSpecialAllowance('2000');
       setConveyanceAllowance('1000');
+      setHourlyRate('500');
+      setDailyRate('800');
+      setStandardHours('160');
+      setOvertimeMultiplier('1.5');
       setPfDeduction('1800');
       setTaxDeduction('500');
     }
@@ -204,11 +327,31 @@ export default function PayrollPage() {
     if (!selectedEmp) return;
     setSavingSalary(true);
 
+    const hRate = Number(hourlyRate) || 0;
+    const dRate = Number(dailyRate) || 0;
+    const stdHrs = Number(standardHours) || 160;
+    const otMult = Number(overtimeMultiplier) || 1.5;
+
+    let computedBasic = Number(basicSalary) || 0;
+    if (selectedEmp.salaryType === SalaryType.HOURLY) {
+      computedBasic = Math.round(hRate * stdHrs);
+    } else if (selectedEmp.salaryType === SalaryType.DAILY_WAGE) {
+      computedBasic = Math.round(dRate * 30);
+    }
+
+    const isHourlyOrDaily =
+      selectedEmp.salaryType === SalaryType.HOURLY ||
+      selectedEmp.salaryType === SalaryType.DAILY_WAGE;
+
     const payload = {
-      basicSalary: Number(basicSalary) || 0,
-      hra: Number(hra) || 0,
+      basicSalary: computedBasic,
+      hra: isHourlyOrDaily ? 0 : (Number(hra) || 0),
       specialAllowance: Number(specialAllowance) || 0,
       conveyanceAllowance: Number(conveyanceAllowance) || 0,
+      hourlyRate: selectedEmp.salaryType === SalaryType.HOURLY ? hRate : 0,
+      dailyRate: selectedEmp.salaryType === SalaryType.DAILY_WAGE ? dRate : 0,
+      standardHours: selectedEmp.salaryType === SalaryType.HOURLY ? stdHrs : 160,
+      overtimeMultiplier: selectedEmp.salaryType === SalaryType.HOURLY ? otMult : 1.5,
       pfDeduction: Number(pfDeduction) || 0,
       taxDeduction: Number(taxDeduction) || 0,
       otherDeductions: 0
@@ -238,6 +381,67 @@ export default function PayrollPage() {
 
     setErrorMsg('Failed to update salary structure via API');
     setSavingSalary(false);
+  };
+
+  const handleAddHourlyLog = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hrEmployeeId || !activeTenant) return;
+    setSavingHourly(true);
+    setErrorMsg(null);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/payroll/hourly-logs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+          'x-tenant-id': activeTenant.id
+        },
+        body: JSON.stringify({
+          employeeId: hrEmployeeId,
+          logDate: hrLogDate,
+          regularHours: Number(hrRegularHours) || 0,
+          overtimeHours: Number(hrOvertimeHours) || 0,
+          projectOrTask: hrProjectOrTask.trim() || undefined,
+          remarks: hrRemarks.trim() || undefined
+        })
+      });
+
+      if (res.ok) {
+        setSuccessMsg('Hourly timesheet entry logged successfully.');
+        setHrOvertimeHours('0');
+        setHrProjectOrTask('');
+        setHrRemarks('');
+        await fetchPayrollData();
+      } else {
+        const err = await res.json();
+        setErrorMsg(err.message || 'Failed to log hourly work entry');
+      }
+    } catch (err) {
+      console.warn('API error creating hourly log', err);
+      setErrorMsg('Failed to connect to hourly timesheet service');
+    } finally {
+      setSavingHourly(false);
+    }
+  };
+
+  const handleDeleteHourlyLog = async (id: string) => {
+    if (!activeTenant) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/payroll/hourly-logs/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'x-tenant-id': activeTenant.id
+        }
+      });
+      if (res.ok) {
+        setSuccessMsg('Hourly timesheet entry removed.');
+        await fetchPayrollData();
+      }
+    } catch (err) {
+      console.warn('API error deleting hourly log', err);
+    }
   };
 
   const handleGeneratePayslips = async () => {
@@ -302,8 +506,16 @@ export default function PayrollPage() {
   const totalHistoryPages = Math.max(1, Math.ceil(payslips.length / pageSize));
   const paginatedPayslips = payslips.slice((historyPage - 1) * pageSize, historyPage * pageSize);
 
-  const payrollTabs: EnterpriseTabItem<'structures' | 'generate' | 'history'>[] = [
+  const showHourlyTab =
+    tenantSalaryTypes.includes(SalaryType.HOURLY) ||
+    hourlyEmployees.length > 0 ||
+    hourlyLogs.length > 0;
+
+  const payrollTabs: EnterpriseTabItem<'structures' | 'hourly' | 'generate' | 'history'>[] = [
     { key: 'structures', label: 'Salary Structures', count: structures.length, icon: DollarSign },
+    ...(showHourlyTab
+      ? [{ key: 'hourly' as const, label: 'Hourly Timesheets', count: hourlyLogs.length, icon: Clock }]
+      : []),
     { key: 'generate', label: 'Run Payroll', icon: Play },
     { key: 'history', label: 'Payslips', count: payslips.length, icon: FileText },
   ];
@@ -321,6 +533,8 @@ export default function PayrollPage() {
           { header: 'Employee Code', accessor: 'employeeCode' },
           { header: 'Employee Name', accessor: 'employeeName' },
           { header: 'Pay Period', accessor: (r) => `${r.month}/${r.year}` },
+          { header: 'Salary Type', accessor: 'salaryType' },
+          { header: 'Hours Worked', accessor: (r) => r.hoursWorked ?? 0 },
           { header: 'Gross Salary (₹)', accessor: 'grossEarnings' },
           { header: 'Total Deductions (₹)', accessor: 'totalDeductions' },
           { header: 'Net Salary (₹)', accessor: 'netPayable' },
@@ -328,6 +542,24 @@ export default function PayrollPage() {
           { header: 'Payment Date', accessor: (r) => r.paymentDate ? r.paymentDate.split('T')[0] : '-' },
         ],
         data: payslips,
+      });
+    } else if (activeTab === 'hourly') {
+      if (hourlyLogs.length === 0) return;
+      exportToExcel({
+        filename: `Hourly_Timesheets_${tenantSlug}_${dateStr}`,
+        sheetName: 'Hourly Logs',
+        columns: [
+          { header: 'Employee Code', accessor: 'employeeCode' },
+          { header: 'Employee Name', accessor: 'employeeName' },
+          { header: 'Date', accessor: (r) => r.logDate.split('T')[0] },
+          { header: 'Regular Hours', accessor: 'regularHours' },
+          { header: 'Overtime Hours', accessor: 'overtimeHours' },
+          { header: 'Hourly Rate (₹)', accessor: 'hourlyRate' },
+          { header: 'OT Multiplier', accessor: 'overtimeMultiplier' },
+          { header: 'Earned Pay (₹)', accessor: 'totalAmount' },
+          { header: 'Project / Task', accessor: (r) => r.projectOrTask || '-' },
+        ],
+        data: hourlyLogs,
       });
     } else {
       if (structures.length === 0) return;
@@ -340,6 +572,8 @@ export default function PayrollPage() {
           { header: 'Department', accessor: 'department' },
           { header: 'Designation', accessor: 'designation' },
           { header: 'Salary Type', accessor: 'salaryType' },
+          { header: 'Hourly Rate (₹)', accessor: (r) => r.salaryStructure?.hourlyRate ?? 0 },
+          { header: 'Daily Rate (₹)', accessor: (r) => r.salaryStructure?.dailyRate ?? 0 },
           { header: 'Basic Salary (₹)', accessor: (r) => r.salaryStructure?.basicSalary ?? 0 },
           { header: 'HRA (₹)', accessor: (r) => r.salaryStructure?.hra ?? 0 },
           { header: 'Gross Salary (₹)', accessor: (r) => r.salaryStructure?.grossSalary ?? 0 },
@@ -357,7 +591,15 @@ export default function PayrollPage() {
       <EnterpriseToolbar
         title="Payroll & Compensation"
         tenantName={activeTenant?.name}
-        totalCount={activeTab === 'structures' ? structures.length : activeTab === 'history' ? payslips.length : undefined}
+        totalCount={
+          activeTab === 'structures'
+            ? structures.length
+            : activeTab === 'hourly'
+              ? hourlyLogs.length
+              : activeTab === 'history'
+                ? payslips.length
+                : undefined
+        }
         filters={
           activeTab !== 'generate' && (
             <button
@@ -427,10 +669,10 @@ export default function PayrollPage() {
             <EnterpriseTableHeader>
               <EnterpriseTableTh>Employee</EnterpriseTableTh>
               <EnterpriseTableTh>Payroll Type</EnterpriseTableTh>
-              <EnterpriseTableTh>Basic Salary</EnterpriseTableTh>
+              <EnterpriseTableTh>Base / Unit Rate</EnterpriseTableTh>
               <EnterpriseTableTh>Allowances (HRA + Special)</EnterpriseTableTh>
               <EnterpriseTableTh>Deductions (PF + Tax)</EnterpriseTableTh>
-              <EnterpriseTableTh>Gross / Net Monthly</EnterpriseTableTh>
+              <EnterpriseTableTh>Est. Gross / Net Monthly</EnterpriseTableTh>
               <EnterpriseTableTh align="right">Action</EnterpriseTableTh>
             </EnterpriseTableHeader>
             <EnterpriseTableBody>
@@ -448,13 +690,34 @@ export default function PayrollPage() {
                     </EnterpriseTableTd>
 
                     <EnterpriseTableTd>
-                      <EnterpriseBadge variant={emp.salaryType === 'PIECE_RATE' ? 'warning' : 'info'}>
-                        {emp.salaryType === 'PIECE_RATE' ? 'Piece-Rate' : 'Monthly Fixed'}
-                      </EnterpriseBadge>
+                      {renderSalaryTypeBadge(emp.salaryType)}
                     </EnterpriseTableTd>
 
                     <EnterpriseTableTd className="font-semibold text-slate-800">
-                      {st ? `₹${st.basicSalary.toLocaleString()}` : '—'}
+                      {emp.salaryType === SalaryType.HOURLY ? (
+                        <div>
+                          <span>₹{(st?.hourlyRate || 0).toLocaleString()}/hr</span>
+                          <span className="text-[10px] text-slate-400 font-normal block">
+                            Std: {st?.standardHours || 160}h • {st?.overtimeMultiplier || 1.5}x OT
+                          </span>
+                        </div>
+                      ) : emp.salaryType === SalaryType.DAILY_WAGE ? (
+                        <div>
+                          <span>₹{(st?.dailyRate || 0).toLocaleString()}/day</span>
+                          <span className="text-[10px] text-slate-400 font-normal block">
+                            30d Est: ₹{((st?.dailyRate || 0) * 30).toLocaleString()}
+                          </span>
+                        </div>
+                      ) : emp.salaryType === SalaryType.PIECE_RATE ? (
+                        <div>
+                          <span>Output Based</span>
+                          <span className="text-[10px] text-slate-400 font-normal block">
+                            {st?.basicSalary ? `Ref: ₹${st.basicSalary.toLocaleString()}` : 'Garment Operations'}
+                          </span>
+                        </div>
+                      ) : (
+                        st ? `₹${st.basicSalary.toLocaleString()}` : '—'
+                      )}
                     </EnterpriseTableTd>
 
                     <EnterpriseTableTd className="text-slate-700">
@@ -507,6 +770,176 @@ export default function PayrollPage() {
             </EnterpriseTableBody>
           </table>
         </EnterpriseTable>
+      )}
+
+      {/* TAB: HOURLY TIMESHEETS */}
+      {activeTab === 'hourly' && (
+        <div className="space-y-3">
+          {/* Quick Daily Hours Entry Form */}
+          <form
+            onSubmit={handleAddHourlyLog}
+            className="bg-white rounded-xl border border-indigo-200/80 shadow-2xs p-3.5 space-y-3"
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900">Log Daily Hourly Timesheet</h3>
+                  <p className="text-[11px] text-slate-500">
+                    Record regular &amp; overtime hours for hourly-paid employees, consultants, and contractors.
+                  </p>
+                </div>
+              </div>
+              {hourlyEmployees.length === 0 && (
+                <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md">
+                  No Hourly employees found yet — assign Hourly Rate on Employee Directory
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-6 gap-2.5 text-xs">
+              <div className="sm:col-span-2">
+                <label className="block font-semibold text-slate-700 mb-1">Employee *</label>
+                <select
+                  required
+                  value={hrEmployeeId}
+                  onChange={(e) => setHrEmployeeId(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  {(hourlyEmployees.length > 0 ? hourlyEmployees : structures).map((emp) => (
+                    <option key={emp.employeeId} value={emp.employeeId}>
+                      {emp.employeeName} ({emp.employeeCode}) — ₹{emp.salaryStructure?.hourlyRate || 0}/hr
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Work Date *</label>
+                <input
+                  type="date"
+                  required
+                  value={hrLogDate}
+                  onChange={(e) => setHrLogDate(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Regular Hrs *</label>
+                <input
+                  type="number"
+                  step="0.25"
+                  min="0"
+                  max="24"
+                  required
+                  value={hrRegularHours}
+                  onChange={(e) => setHrRegularHours(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Overtime Hrs</label>
+                <input
+                  type="number"
+                  step="0.25"
+                  min="0"
+                  max="24"
+                  value={hrOvertimeHours}
+                  onChange={(e) => setHrOvertimeHours(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Project / Task</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Cloud Migration"
+                  value={hrProjectOrTask}
+                  onChange={(e) => setHrProjectOrTask(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <input
+                type="text"
+                placeholder="Optional timesheet notes / work description..."
+                value={hrRemarks}
+                onChange={(e) => setHrRemarks(e.target.value)}
+                className="flex-1 min-w-[220px] border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={savingHourly || !hrEmployeeId}
+                className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs rounded-lg transition shadow-2xs inline-flex items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{savingHourly ? 'Saving...' : 'Log Hours'}</span>
+              </button>
+            </div>
+          </form>
+
+          {/* Recorded Hourly Work Logs Table */}
+          <EnterpriseTable
+            loading={loading}
+            isEmpty={hourlyLogs.length === 0}
+            emptyMessage="No hourly timesheet entries recorded yet. Use the form above to log employee hours."
+          >
+            <table className="w-full text-left border-collapse text-xs">
+              <EnterpriseTableHeader>
+                <EnterpriseTableTh>Employee</EnterpriseTableTh>
+                <EnterpriseTableTh>Work Date</EnterpriseTableTh>
+                <EnterpriseTableTh>Project / Task</EnterpriseTableTh>
+                <EnterpriseTableTh align="right">Regular Hrs</EnterpriseTableTh>
+                <EnterpriseTableTh align="right">Overtime Hrs</EnterpriseTableTh>
+                <EnterpriseTableTh align="right">Rate / OT</EnterpriseTableTh>
+                <EnterpriseTableTh align="right">Earned Pay</EnterpriseTableTh>
+                <EnterpriseTableTh align="right">Action</EnterpriseTableTh>
+              </EnterpriseTableHeader>
+              <EnterpriseTableBody>
+                {hourlyLogs.map((log) => (
+                  <EnterpriseTableRow key={log.id}>
+                    <EnterpriseTableTd>
+                      <div className="font-semibold text-slate-900 text-xs">{log.employeeName}</div>
+                      <div className="text-slate-500 text-[10px] font-mono">{log.employeeCode}</div>
+                    </EnterpriseTableTd>
+                    <EnterpriseTableTd className="font-mono text-slate-700">
+                      {log.logDate.split('T')[0]}
+                    </EnterpriseTableTd>
+                    <EnterpriseTableTd className="text-slate-700">
+                      <div className="font-medium">{log.projectOrTask || 'General Billable Work'}</div>
+                      {log.remarks && <div className="text-[10px] text-slate-400">{log.remarks}</div>}
+                    </EnterpriseTableTd>
+                    <EnterpriseTableTd align="right" className="font-mono font-semibold text-slate-800">
+                      {log.regularHours} hrs
+                    </EnterpriseTableTd>
+                    <EnterpriseTableTd align="right" className="font-mono text-indigo-700 font-semibold">
+                      {log.overtimeHours > 0 ? `+${log.overtimeHours} hrs` : '—'}
+                    </EnterpriseTableTd>
+                    <EnterpriseTableTd align="right" className="font-mono text-slate-600">
+                      ₹{log.hourlyRate.toLocaleString()}/hr ({log.overtimeMultiplier}x)
+                    </EnterpriseTableTd>
+                    <EnterpriseTableTd align="right" className="font-mono font-bold text-emerald-700">
+                      ₹{log.totalAmount.toLocaleString()}
+                    </EnterpriseTableTd>
+                    <EnterpriseTableTd align="right">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteHourlyLog(log.id)}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition"
+                        title="Delete Timesheet Entry"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </EnterpriseTableTd>
+                  </EnterpriseTableRow>
+                ))}
+              </EnterpriseTableBody>
+            </table>
+          </EnterpriseTable>
+        </div>
       )}
 
       {/* TAB 2: RUN PAYROLL (COMPACT HIGH-DENSITY WORKBENCH) */}
@@ -679,16 +1112,7 @@ export default function PayrollPage() {
                       </EnterpriseTableTd>
 
                       <EnterpriseTableTd>
-                        <EnterpriseBadge variant={s.salaryType === 'PIECE_RATE' ? 'warning' : 'info'}>
-                          {s.salaryType === 'PIECE_RATE' ? (
-                            <>
-                              <Scissors className="w-2.5 h-2.5 text-amber-600 inline mr-0.5" />
-                              Piece-Rate
-                            </>
-                          ) : (
-                            'Monthly Fixed'
-                          )}
-                        </EnterpriseBadge>
+                        {renderSalaryTypeBadge(s.salaryType)}
                       </EnterpriseTableTd>
 
                       <EnterpriseTableTd align="right" className="font-mono text-slate-800 font-semibold">
@@ -710,10 +1134,17 @@ export default function PayrollPage() {
                       </EnterpriseTableTd>
 
                       <EnterpriseTableTd align="center">
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
-                          <Check className="w-3 h-3 text-emerald-600" />
-                          Ready
-                        </span>
+                        {s.isConfigured ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
+                            <Check className="w-3 h-3 text-emerald-600" />
+                            Ready
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700">
+                            <AlertCircle className="w-3 h-3 text-amber-600" />
+                            Needs Setup
+                          </span>
+                        )}
                       </EnterpriseTableTd>
                     </EnterpriseTableRow>
                   ))}
@@ -766,13 +1197,15 @@ export default function PayrollPage() {
                   </EnterpriseTableTd>
 
                   <EnterpriseTableTd>
-                    {ps.salaryType === 'PIECE_RATE' ? (
-                      <EnterpriseBadge variant="warning">
-                        <Scissors className="w-2.5 h-2.5 text-amber-600 inline mr-0.5" />
-                        Piece-Rate {ps.pieceRateUnits ? `(${ps.pieceRateUnits} pcs)` : ''}
-                      </EnterpriseBadge>
-                    ) : (
-                      <EnterpriseBadge variant="info">Monthly Fixed</EnterpriseBadge>
+                    {renderSalaryTypeBadge(
+                      ps.salaryType,
+                      ps.salaryType === SalaryType.PIECE_RATE && ps.pieceRateUnits
+                        ? `(${ps.pieceRateUnits} pcs)`
+                        : ps.salaryType === SalaryType.HOURLY && ps.hoursWorked
+                          ? `(${ps.hoursWorked} hrs)`
+                          : ps.salaryType === SalaryType.DAILY_WAGE
+                            ? `(${ps.workingDays} days)`
+                            : undefined
                     )}
                   </EnterpriseTableTd>
 
@@ -834,27 +1267,81 @@ export default function PayrollPage() {
             </div>
 
             <form onSubmit={handleSaveSalary} className="p-6 space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Basic Salary (₹) *</label>
-                  <input
-                    type="number"
-                    required
-                    value={basicSalary}
-                    onChange={(e) => setBasicSalary(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg p-2 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">HRA (₹)</label>
-                  <input
-                    type="number"
-                    value={hra}
-                    onChange={(e) => setHra(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg p-2 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                  />
-                </div>
+              <div className="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Pay Model</span>
+                {renderSalaryTypeBadge(selectedEmp.salaryType)}
               </div>
+
+              {selectedEmp.salaryType === SalaryType.HOURLY ? (
+                <div className="grid grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Hourly Rate (₹/hr) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      value={hourlyRate}
+                      onChange={(e) => setHourlyRate(e.target.value)}
+                      className="w-full border border-indigo-300 rounded-lg p-2 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Std. Hours / Mo</label>
+                    <input
+                      type="number"
+                      value={standardHours}
+                      onChange={(e) => setStandardHours(e.target.value)}
+                      className="w-full border border-slate-300 rounded-lg p-2 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">OT Multiplier</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={overtimeMultiplier}
+                      onChange={(e) => setOvertimeMultiplier(e.target.value)}
+                      className="w-full border border-slate-300 rounded-lg p-2 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              ) : selectedEmp.salaryType === SalaryType.DAILY_WAGE ? (
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Daily Wage Rate (₹/day) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={dailyRate}
+                    onChange={(e) => setDailyRate(e.target.value)}
+                    className="w-full border border-emerald-300 rounded-lg p-2 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      {selectedEmp.salaryType === SalaryType.PIECE_RATE ? 'Reference Base (₹)' : 'Basic Salary (₹) *'}
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      value={basicSalary}
+                      onChange={(e) => setBasicSalary(e.target.value)}
+                      className="w-full border border-slate-300 rounded-lg p-2 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">HRA (₹)</label>
+                    <input
+                      type="number"
+                      value={hra}
+                      onChange={(e) => setHra(e.target.value)}
+                      className="w-full border border-slate-300 rounded-lg p-2 font-mono text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -899,26 +1386,36 @@ export default function PayrollPage() {
               </div>
 
               {/* Calculated Preview */}
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1">
-                <div className="flex justify-between text-emerald-900 font-medium">
-                  <span>Gross Earnings:</span>
-                  <span className="font-mono font-bold">
-                    ₹{(Number(basicSalary) + Number(hra) + Number(specialAllowance) + Number(conveyanceAllowance)).toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between text-emerald-900 font-medium">
-                  <span>Total Deductions:</span>
-                  <span className="font-mono text-red-600">
-                    -₹{(Number(pfDeduction) + Number(taxDeduction)).toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between text-emerald-950 font-bold border-t border-emerald-200 pt-1 text-sm">
-                  <span>Net Take Home:</span>
-                  <span className="font-mono">
-                    ₹{((Number(basicSalary) + Number(hra) + Number(specialAllowance) + Number(conveyanceAllowance)) - (Number(pfDeduction) + Number(taxDeduction))).toLocaleString()}
-                  </span>
-                </div>
-              </div>
+              {(() => {
+                const effectiveBase =
+                  selectedEmp.salaryType === SalaryType.HOURLY
+                    ? Math.round((Number(hourlyRate) || 0) * (Number(standardHours) || 160))
+                    : selectedEmp.salaryType === SalaryType.DAILY_WAGE
+                      ? Math.round((Number(dailyRate) || 0) * 30)
+                      : Number(basicSalary) || 0;
+                const hraEff =
+                  selectedEmp.salaryType === SalaryType.HOURLY || selectedEmp.salaryType === SalaryType.DAILY_WAGE
+                    ? 0
+                    : Number(hra) || 0;
+                const estGross = effectiveBase + hraEff + (Number(specialAllowance) || 0) + (Number(conveyanceAllowance) || 0);
+                const estDed = (Number(pfDeduction) || 0) + (Number(taxDeduction) || 0);
+                return (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1">
+                    <div className="flex justify-between text-emerald-900 font-medium">
+                      <span>Est. Monthly Gross:</span>
+                      <span className="font-mono font-bold">₹{estGross.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-emerald-900 font-medium">
+                      <span>Total Deductions:</span>
+                      <span className="font-mono text-red-600">-₹{estDed.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-emerald-950 font-bold border-t border-emerald-200 pt-1 text-sm">
+                      <span>Est. Net Take Home:</span>
+                      <span className="font-mono">₹{(estGross - estDed).toLocaleString()}</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
                 <button
@@ -1025,12 +1522,8 @@ export default function PayrollPage() {
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-bold">Salary System:</span>
-                    <span className={`ml-2 px-2 py-0.5 rounded text-[10px] font-bold ${
-                      viewPayslip.salaryType === 'PIECE_RATE'
-                        ? 'bg-indigo-100 text-indigo-800 border border-indigo-200'
-                        : 'bg-slate-200 text-slate-700'
-                    }`}>
-                      {viewPayslip.salaryType === 'PIECE_RATE' ? 'Piece-Rate (Garment Skills)' : 'Monthly Fixed Salary'}
+                    <span className="ml-2">
+                      {renderSalaryTypeBadge(viewPayslip.salaryType)}
                     </span>
                   </div>
                 </div>
@@ -1042,12 +1535,22 @@ export default function PayrollPage() {
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase font-bold">
-                      {viewPayslip.salaryType === 'PIECE_RATE' ? 'Total Units Done:' : 'Working Days:'}
+                      {viewPayslip.salaryType === SalaryType.PIECE_RATE
+                        ? 'Total Units Done:'
+                        : viewPayslip.salaryType === SalaryType.HOURLY
+                          ? 'Hours Worked:'
+                          : viewPayslip.salaryType === SalaryType.DAILY_WAGE
+                            ? 'Paid Days:'
+                            : 'Working Days:'}
                     </span>
                     <span className="font-bold font-mono text-slate-800 ml-2">
-                      {viewPayslip.salaryType === 'PIECE_RATE'
+                      {viewPayslip.salaryType === SalaryType.PIECE_RATE
                         ? `${(viewPayslip.pieceRateUnits || 0).toLocaleString()} pcs`
-                        : `${viewPayslip.workingDays} days`}
+                        : viewPayslip.salaryType === SalaryType.HOURLY
+                          ? `${(viewPayslip.hoursWorked || 0).toLocaleString()} hrs${viewPayslip.hourlyRate ? ` (@ ₹${viewPayslip.hourlyRate.toLocaleString()}/hr)` : ''}`
+                          : viewPayslip.salaryType === SalaryType.DAILY_WAGE
+                            ? `${viewPayslip.workingDays} days${viewPayslip.dailyRate ? ` (@ ₹${viewPayslip.dailyRate.toLocaleString()}/day)` : ''}`
+                            : `${viewPayslip.workingDays} days`}
                     </span>
                   </div>
                   <div>
@@ -1058,6 +1561,62 @@ export default function PayrollPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Hourly Work Breakdown Table (For Hourly / Time-Based Staff) */}
+              {viewPayslip.salaryType === SalaryType.HOURLY && (
+                <div className="border border-indigo-200 rounded-xl overflow-hidden bg-indigo-50/20">
+                  <div className="bg-indigo-50 px-4 py-2 font-bold text-indigo-900 text-[11px] uppercase border-b border-indigo-100 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                      Hourly Time-Based Earnings Breakdown
+                    </span>
+                    <span className="font-mono text-xs text-indigo-700 font-bold">
+                      {viewPayslip.hoursWorked || 0} Total Hours
+                    </span>
+                  </div>
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-100/75 text-slate-600 text-[10px] uppercase tracking-wider">
+                      <tr>
+                        <th className="px-3 py-1.5">Date</th>
+                        <th className="px-3 py-1.5">Project / Task</th>
+                        <th className="px-3 py-1.5 text-right">Reg. Hrs</th>
+                        <th className="px-3 py-1.5 text-right">OT Hrs</th>
+                        <th className="px-3 py-1.5 text-right">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-mono">
+                      {viewPayslip.hourlyDetails && viewPayslip.hourlyDetails.length > 0 ? (
+                        viewPayslip.hourlyDetails.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/50">
+                            <td className="px-3 py-1.5 text-slate-700">{item.logDate}</td>
+                            <td className="px-3 py-1.5 font-sans font-medium text-slate-800">
+                              {item.projectOrTask || 'Billable Time Entry'}
+                            </td>
+                            <td className="px-3 py-1.5 text-right text-slate-800">{item.regularHours}h</td>
+                            <td className="px-3 py-1.5 text-right text-indigo-700 font-semibold">
+                              {item.overtimeHours > 0 ? `${item.overtimeHours}h` : '—'}
+                            </td>
+                            <td className="px-3 py-1.5 text-right font-bold text-slate-900">
+                              ₹{item.total.toLocaleString()}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="px-3 py-2 text-center text-slate-500 font-sans italic">
+                            Calculated from baseline contracted hours ({viewPayslip.hoursWorked || 0} hrs @ ₹{(viewPayslip.hourlyRate || 0).toLocaleString()}/hr).
+                          </td>
+                        </tr>
+                      )}
+                      <tr className="bg-indigo-100/50 font-bold text-indigo-950">
+                        <td className="px-3 py-2 font-sans" colSpan={2}>Total Hourly Wage Earnings</td>
+                        <td className="px-3 py-2 text-right" colSpan={2}>{(viewPayslip.hoursWorked || 0).toLocaleString()} hrs</td>
+                        <td className="px-3 py-2 text-right text-indigo-900">₹{viewPayslip.basicSalary.toLocaleString()}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
               {/* Piece-Rate Activity Breakdown Table (For Piece-Rate Garment Workers) */}
               {viewPayslip.salaryType === 'PIECE_RATE' && (
@@ -1118,7 +1677,13 @@ export default function PayrollPage() {
                   <div className="divide-y divide-slate-100 p-2 text-xs space-y-1">
                     <div className="flex justify-between py-1 px-2">
                       <span className="text-slate-600">
-                        {viewPayslip.salaryType === 'PIECE_RATE' ? 'Piece Production Wage' : 'Basic Salary'}
+                        {viewPayslip.salaryType === SalaryType.PIECE_RATE
+                          ? 'Piece Production Wage'
+                          : viewPayslip.salaryType === SalaryType.HOURLY
+                            ? 'Hourly Time Wage'
+                            : viewPayslip.salaryType === SalaryType.DAILY_WAGE
+                              ? 'Daily Wage Earnings'
+                              : 'Basic Salary'}
                       </span>
                       <span className="font-mono font-semibold">₹{viewPayslip.basicSalary.toLocaleString()}</span>
                     </div>

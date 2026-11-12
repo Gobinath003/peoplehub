@@ -18,7 +18,8 @@ model Tenant {
   email          String?
   website        String?
   taxId          String?        @map("tax_id")
-  registrationNo String?        @map("registration_no")
+  registrationNo     String?        @map("registration_no")
+  enabledSalaryTypes String[]       @default(["MONTHLY_FIXED", "HOURLY", "PIECE_RATE", "DAILY_WAGE"]) @map("enabled_salary_types")
   createdAt DateTime       @default(now()) @map("created_at")
   updatedAt DateTime       @updatedAt @map("updated_at")
 
@@ -38,6 +39,10 @@ model Tenant {
   pieceRateActivities  PieceRateActivity[]
   pieceRateLogs        PieceRateLog[]
   accountTransactions  AccountTransaction[]
+  leaveTypes           LeaveType[]
+  leaveBalances        EmployeeLeaveBalance[]
+  leaveRequests        LeaveRequest[]
+  hourlyWorkLogs       HourlyWorkLog[]
 
   @@map("tenants")
 }
@@ -214,8 +219,9 @@ model Employee {
   designationId    String?          @map("designation_id") @db.Uuid
   branchId         String?          @map("branch_id") @db.Uuid
   shiftId          String?          @map("shift_id") @db.Uuid
-  employmentTypeId String?          @map("employment_type_id") @db.Uuid
-  salaryType       String           @default("MONTHLY_FIXED") @map("salary_type") // MONTHLY_FIXED, PIECE_RATE
+  employmentTypeId   String?          @map("employment_type_id") @db.Uuid
+  reportingManagerId String?          @map("reporting_manager_id") @db.Uuid
+  salaryType       String           @default("MONTHLY_FIXED") @map("salary_type") // MONTHLY_FIXED, PIECE_RATE, HOURLY, DAILY_WAGE
   joiningDate      DateTime         @map("joining_date")
   status           String           @default("ACTIVE") // ACTIVE, PROBATION, TERMINATED, ON_LEAVE
   createdAt        DateTime         @default(now()) @map("created_at")
@@ -232,11 +238,18 @@ model Employee {
   payslips          Payslip[]
   pieceRateLogs     PieceRateLog[]
   accountTransactions AccountTransaction[]
+  reportingManager  Employee?       @relation("EmployeeManager", fields: [reportingManagerId], references: [id], onDelete: SetNull)
+  directReports     Employee[]      @relation("EmployeeManager")
+  leaveBalances     EmployeeLeaveBalance[]
+  leaveRequests     LeaveRequest[]  @relation("LeaveApplicant")
+  leaveApprovalsToReview LeaveRequest[] @relation("LeaveApprover")
+  hourlyWorkLogs         HourlyWorkLog[]
 
   @@unique([tenantId, employeeCode])
   @@index([tenantId])
   @@index([tenantId, branch])
   @@index([tenantId, department])
+  @@index([tenantId, reportingManagerId])
   @@map("employees")
 }
 
@@ -248,6 +261,10 @@ model SalaryStructure {
   hra                 Float    @default(0)
   specialAllowance    Float    @default(0) @map("special_allowance")
   conveyanceAllowance Float    @default(0) @map("conveyance_allowance")
+  hourlyRate          Float    @default(0) @map("hourly_rate")
+  dailyRate           Float    @default(0) @map("daily_rate")
+  standardHours       Float    @default(160) @map("standard_hours")
+  overtimeMultiplier  Float    @default(1.5) @map("overtime_multiplier")
   pfDeduction         Float    @default(0) @map("pf_deduction")
   taxDeduction        Float    @default(0) @map("tax_deduction")
   otherDeductions     Float    @default(0) @map("other_deductions")
@@ -278,6 +295,10 @@ model Payslip {
   paidDays         Float     @default(30) @map("paid_days")
   pieceRateUnits   Float?    @map("piece_rate_units")
   pieceRateDetails Json?     @map("piece_rate_details")
+  hoursWorked      Float?    @map("hours_worked")
+  hourlyRate       Float?    @map("hourly_rate")
+  dailyRate        Float?    @map("daily_rate")
+  hourlyDetails    Json?     @map("hourly_details")
   basicSalary      Float     @map("basic_salary")
   hra              Float     @default(0)
   allowances       Float     @default(0)
@@ -477,3 +498,112 @@ model AccountTransaction {
   @@map("account_transactions")
 }
 
+
+model LeaveType {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tenantId           String   @map("tenant_id") @db.Uuid
+  code               String
+  name               String
+  description        String?
+  annualQuota        Float    @default(12) @map("annual_quota")
+  accrualType        String   @default("ANNUAL_UPFRONT") @map("accrual_type")
+  carryForwardLimit  Float    @default(0) @map("carry_forward_limit")
+  maxConsecutiveDays Int?     @map("max_consecutive_days")
+  minNoticeDays      Int      @default(0) @map("min_notice_days")
+  allowHalfDay       Boolean  @default(true) @map("allow_half_day")
+  isPaid             Boolean  @default(true) @map("is_paid")
+  requiresDocument   Boolean  @default(false) @map("requires_document")
+  applicableGender   String   @default("ALL") @map("applicable_gender")
+  colorHex           String   @default("#10B981") @map("color_hex")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  balances EmployeeLeaveBalance[]
+  requests LeaveRequest[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("leave_types")
+}
+
+model EmployeeLeaveBalance {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  employeeId   String   @map("employee_id") @db.Uuid
+  leaveTypeId  String   @map("leave_type_id") @db.Uuid
+  year         Int
+  allocated    Float    @default(0)
+  carryForward Float    @default(0) @map("carry_forward")
+  used         Float    @default(0)
+  pending      Float    @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee  Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, employeeId, leaveTypeId, year])
+  @@index([tenantId, employeeId, year])
+  @@map("employee_leave_balances")
+}
+
+model LeaveRequest {
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  employeeId       String    @map("employee_id") @db.Uuid
+  leaveTypeId      String    @map("leave_type_id") @db.Uuid
+  approverId       String?   @map("approver_id") @db.Uuid
+  actionedByUserId String?   @map("actioned_by_user_id") @db.Uuid
+  startDate        DateTime  @map("start_date")
+  endDate          DateTime  @map("end_date")
+  totalDays        Float     @map("total_days")
+  isHalfDay        Boolean   @default(false) @map("is_half_day")
+  halfDaySession   String?   @map("half_day_session")
+  reason           String
+  handoverNotes    String?   @map("handover_notes")
+  emergencyContact String?   @map("emergency_contact")
+  status           String    @default("PENDING")
+  approverRemarks  String?   @map("approver_remarks")
+  appliedAt        DateTime  @default(now()) @map("applied_at")
+  actionedAt       DateTime? @map("actioned_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee  Employee  @relation("LeaveApplicant", fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Restrict)
+  approver  Employee? @relation("LeaveApprover", fields: [approverId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, employeeId])
+  @@index([tenantId, approverId, status])
+  @@index([tenantId, status])
+  @@map("leave_requests")
+}
+
+model HourlyWorkLog {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tenantId           String   @map("tenant_id") @db.Uuid
+  employeeId         String   @map("employee_id") @db.Uuid
+  logDate            DateTime @map("log_date")
+  regularHours       Float    @map("regular_hours")
+  overtimeHours      Float    @default(0) @map("overtime_hours")
+  hourlyRate         Float    @map("hourly_rate")
+  overtimeMultiplier Float    @default(1.5) @map("overtime_multiplier")
+  totalAmount        Float    @map("total_amount")
+  projectOrTask      String?  @map("project_or_task")
+  remarks            String?
+  recordedBy         String?  @map("recorded_by") @db.Uuid
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, logDate])
+  @@index([tenantId, employeeId, logDate])
+  @@map("hourly_work_logs")
+}

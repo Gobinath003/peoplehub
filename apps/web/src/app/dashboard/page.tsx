@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useApp } from '../../context/AppContext';
 import { API_BASE_URL } from '../../config/api';
 import { 
@@ -9,14 +10,21 @@ import {
 import { EmployeeDto, PieceRateLogDto } from '@people-hub/shared-types';
 
 export default function DashboardHome() {
-  const { user, activeTenant, accessToken, isSuperAdmin, activeBranchScope, enabledModules } = useApp();
+  const router = useRouter();
+  const { user, activeTenant, accessToken, isSuperAdmin, isEmployeeOnly, hasPermission, hasModule, activeBranchScope, enabledModules } = useApp();
+
+  useEffect(() => {
+    if (isEmployeeOnly && hasModule('LEAVE')) {
+      router.replace('/dashboard/leave');
+    }
+  }, [isEmployeeOnly, enabledModules, router]);
 
   const [employees, setEmployees] = useState<EmployeeDto[]>([]);
   const [recentLogs, setRecentLogs] = useState<PieceRateLogDto[]>([]);
   const [totalEarnings, setTotalEarnings] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const isGarments = activeTenant?.industry === 'GARMENTS' || enabledModules?.includes('PIECE_RATE');
+  const isGarments = Boolean(enabledModules?.includes('PIECE_RATE'));
 
   // Current Formatted Date & Month
   const now = new Date();
@@ -41,8 +49,12 @@ export default function DashboardHome() {
         };
 
         const [empRes, logsRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/v1/employees`, { headers }).catch(() => null),
-          isGarments ? fetch(`${API_BASE_URL}/api/v1/piece-rate/logs`, { headers }).catch(() => null) : Promise.resolve(null)
+          hasPermission('EMPLOYEE_VIEW') && hasModule('EMPLOYEES')
+            ? fetch(`${API_BASE_URL}/api/v1/employees`, { headers }).catch(() => null)
+            : Promise.resolve(null),
+          isGarments && hasPermission('ATTENDANCE_VIEW')
+            ? fetch(`${API_BASE_URL}/api/v1/piece-rate/logs`, { headers }).catch(() => null)
+            : Promise.resolve(null)
         ]);
 
         if (empRes && empRes.ok) {

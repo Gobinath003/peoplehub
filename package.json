@@ -18,7 +18,10 @@
     "test": "npm run test --workspaces --if-present",
     "test:engine": "node scripts/test-engine.js",
     "test:pre-push": "node scripts/test-engine.js",
+    "test:noltrion": "node scripts/test-noltrion-automation.js",
+    "test:leave": "node scripts/test-leave-automation.js",
     "prisma:generate": "npm run prisma:generate --workspace=@people-hub/api",
+    "prisma:push": "npm run prisma:push --workspace=@people-hub/api",
     "prisma:migrate": "npm run prisma:migrate --workspace=@people-hub/api",
     "prisma:migrate:deploy": "npm run prisma:migrate:deploy --workspace=@people-hub/api",
     "prisma:seed": "npm run prisma:seed --workspace=@people-hub/api"

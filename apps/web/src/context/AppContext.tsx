@@ -18,16 +18,21 @@ interface AppContextProps {
   roles: ActiveRoleContext[];
   permissions: string[];
   enabledModules: string[];
+  enabledSalaryTypes: string[];
   accessToken: string | null;
   loading: boolean;
   isSuperAdmin: boolean;
   isTenantAdmin: boolean;
   isHRManager: boolean;
+  isEmployeeOnly: boolean;
+  hasPermission: (code: string) => boolean;
+  hasModule: (code: string) => boolean;
   activeBranchScope: string | null;
   login: (email: string, passwordHash: string) => Promise<boolean>;
   logout: () => void;
   switchTenant: (tenantId: string) => Promise<void>;
   updateEnabledModules: (modules: string[]) => void;
+  updateTenantSalaryTypes: (tenantId: string, salaryTypes: string[]) => void;
   refreshTenants: () => Promise<void>;
 }
 
@@ -50,6 +55,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   ) || Boolean(Array.isArray(roles) && roles.some(r => r?.roleCode === 'SUPER_ADMIN' || r?.roleCode === 'PLATFORM_ADMIN'));
   const isTenantAdmin = Boolean(Array.isArray(roles) && roles.some(r => r?.roleCode === 'TENANT_ADMIN')) || isSuperAdmin;
   const isHRManager = Boolean(Array.isArray(roles) && roles.some(r => r?.roleCode === 'HR_MANAGER')) || isTenantAdmin;
+  const isEmployeeOnly = !isSuperAdmin && !isTenantAdmin && !isHRManager && Boolean(Array.isArray(roles) && roles.some(r => r?.roleCode === 'EMPLOYEE'));
+  const hasPermission = (code: string) => isSuperAdmin || isTenantAdmin || permissions.includes(code);
+  const hasModule = (code: string) => Array.isArray(enabledModules) && enabledModules.includes(code);
+  const enabledSalaryTypes =
+    Array.isArray(activeTenant?.enabledSalaryTypes) && activeTenant.enabledSalaryTypes.length > 0
+      ? activeTenant.enabledSalaryTypes
+      : ['MONTHLY_FIXED', 'HOURLY', 'PIECE_RATE', 'DAILY_WAGE'];
   const branchRole = Array.isArray(roles) ? roles.find(r => r?.scopeType === ScopeType.BRANCH) : null;
   const activeBranchScope = branchRole ? branchRole.scopeId : null;
 
@@ -131,13 +143,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         router.push('/dashboard');
         return true;
       }
-    } catch (e) {
-      console.warn('Backend API connection failed during login', e);
+
+      const errorData = await response.json().catch(() => null);
+      const message = errorData?.message || 'Invalid corporate credentials. Please check your email or password.';
+      throw new Error(Array.isArray(message) ? message.join(', ') : message);
+    } catch (e: any) {
+      console.warn('Backend API connection during login error:', e);
+      if (e?.message && (e.message.includes('credentials') || e.message.includes('Password') || e.message.includes('Invalid'))) {
+        throw e;
+      }
+      throw new Error(`Cannot connect to backend API server at ${API_BASE_URL}. Please ensure 'npm run dev:api' is running.`);
     } finally {
       setLoading(false);
     }
-
-    return false;
   };
 
   const logout = () => {
@@ -212,7 +230,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           id: t.id,
           name: t.name,
           slug: t.slug,
-          industry: t.industry
+          industry: t.industry,
+          enabledSalaryTypes: t.enabledSalaryTypes
         }));
         setTenants(mappedTenants);
         localStorage.setItem('ph_tenants', JSON.stringify(mappedTenants));
@@ -225,6 +244,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateEnabledModules = (modules: string[]) => {
     setEnabledModules(modules);
     localStorage.setItem('ph_modules', JSON.stringify(modules));
+  };
+
+  const updateTenantSalaryTypes = (tenantId: string, salaryTypes: string[]) => {
+    setTenants((prev) => {
+      const next = prev.map((t) => (t.id === tenantId ? { ...t, enabledSalaryTypes: salaryTypes } : t));
+      localStorage.setItem('ph_tenants', JSON.stringify(next));
+      return next;
+    });
+    if (activeTenant?.id === tenantId) {
+      const updatedActive = { ...activeTenant, enabledSalaryTypes: salaryTypes };
+      setActiveTenant(updatedActive);
+      localStorage.setItem('ph_active_tenant', JSON.stringify(updatedActive));
+    }
   };
 
   const saveSession = (data: any) => {
@@ -253,16 +285,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       roles,
       permissions,
       enabledModules,
+      enabledSalaryTypes,
       accessToken,
       loading,
       isSuperAdmin,
       isTenantAdmin,
       isHRManager,
+      isEmployeeOnly,
+      hasPermission,
+      hasModule,
       activeBranchScope,
       login,
       logout,
       switchTenant,
       updateEnabledModules,
+      updateTenantSalaryTypes,
       refreshTenants
     }}>
       {children}

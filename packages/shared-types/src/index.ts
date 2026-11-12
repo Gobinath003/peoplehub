@@ -63,6 +63,7 @@ export enum PermissionCode {
   LEAVE_VIEW = 'LEAVE_VIEW',
   LEAVE_APPLY = 'LEAVE_APPLY',
   LEAVE_APPROVE = 'LEAVE_APPROVE',
+  LEAVE_MANAGE = 'LEAVE_MANAGE',
 
   // Payroll permissions
   PAYROLL_VIEW = 'PAYROLL_VIEW',
@@ -108,6 +109,7 @@ export interface TenantContext {
   website?: string | null;
   taxId?: string | null;
   registrationNo?: string | null;
+  enabledSalaryTypes?: string[];
 }
 
 export interface ActiveRoleContext {
@@ -155,6 +157,8 @@ export interface TenantResponse {
   employeeCount?: number;
   userCount?: number;
   managers?: any[];
+  enabledModules?: string[];
+  enabledSalaryTypes?: string[];
 }
 
 export interface TenantModuleResponse {
@@ -213,6 +217,16 @@ export interface CreateTenantWithAdminRequest {
   adminPassword: string;
   adminFirstName: string;
   adminLastName: string;
+  enabledModules?: string[];
+  enabledSalaryTypes?: string[];
+}
+
+export interface UpdateTenantModulesRequest {
+  enabledModules: string[];
+}
+
+export interface UpdateTenantSalaryTypesRequest {
+  enabledSalaryTypes: string[];
 }
 
 // Employee Contracts
@@ -223,6 +237,10 @@ export interface SalaryStructureDto {
   hra: number;
   specialAllowance: number;
   conveyanceAllowance: number;
+  hourlyRate?: number;
+  dailyRate?: number;
+  standardHours?: number;
+  overtimeMultiplier?: number;
   pfDeduction: number;
   taxDeduction: number;
   otherDeductions: number;
@@ -234,7 +252,9 @@ export interface SalaryStructureDto {
 
 export enum SalaryType {
   MONTHLY_FIXED = 'MONTHLY_FIXED',
-  PIECE_RATE = 'PIECE_RATE'
+  PIECE_RATE = 'PIECE_RATE',
+  HOURLY = 'HOURLY',
+  DAILY_WAGE = 'DAILY_WAGE'
 }
 
 export interface EmployeeDto {
@@ -254,6 +274,9 @@ export interface EmployeeDto {
   branchId?: string | null;
   shiftId?: string | null;
   employmentTypeId?: string | null;
+  reportingManagerId?: string | null;
+  reportingManagerName?: string | null;
+  reportingManagerCode?: string | null;
   salaryType: SalaryType | string;
   joiningDate: string;
   status: string;
@@ -275,14 +298,23 @@ export interface CreateEmployeeRequest {
   branchId?: string;
   shiftId?: string;
   employmentTypeId?: string;
+  reportingManagerId?: string;
   salaryType?: SalaryType | string;
   joiningDate: string;
   status?: string;
+  // Optional portal login provisioning
+  createPortalLogin?: boolean;
+  portalPassword?: string;
+  roleCode?: SystemRole | string;
   // Optional initial salary configuration
   basicSalary?: number;
   hra?: number;
   specialAllowance?: number;
   conveyanceAllowance?: number;
+  hourlyRate?: number;
+  dailyRate?: number;
+  standardHours?: number;
+  overtimeMultiplier?: number;
   pfDeduction?: number;
   taxDeduction?: number;
 }
@@ -300,9 +332,26 @@ export interface UpdateEmployeeRequest {
   branchId?: string;
   shiftId?: string;
   employmentTypeId?: string;
+  reportingManagerId?: string | null;
   salaryType?: SalaryType | string;
   joiningDate?: string;
   status?: string;
+  basicSalary?: number;
+  hra?: number;
+  specialAllowance?: number;
+  conveyanceAllowance?: number;
+  hourlyRate?: number;
+  dailyRate?: number;
+  standardHours?: number;
+  overtimeMultiplier?: number;
+  pfDeduction?: number;
+  taxDeduction?: number;
+}
+
+export interface ProvisionEmployeeLoginRequest {
+  email?: string;
+  password: string;
+  roleCode?: SystemRole | string;
 }
 
 export interface UpsertSalaryStructureRequest {
@@ -310,6 +359,10 @@ export interface UpsertSalaryStructureRequest {
   hra?: number;
   specialAllowance?: number;
   conveyanceAllowance?: number;
+  hourlyRate?: number;
+  dailyRate?: number;
+  standardHours?: number;
+  overtimeMultiplier?: number;
   pfDeduction?: number;
   taxDeduction?: number;
   otherDeductions?: number;
@@ -320,6 +373,15 @@ export interface PieceRateDetailItem {
   activityName: string;
   units: number;
   rate: number;
+  total: number;
+}
+
+export interface HourlyDetailItem {
+  logDate: string;
+  projectOrTask: string;
+  regularHours: number;
+  overtimeHours: number;
+  hourlyRate: number;
   total: number;
 }
 
@@ -342,6 +404,10 @@ export interface PayslipDto {
   paidDays: number;
   pieceRateUnits?: number | null;
   pieceRateDetails?: PieceRateDetailItem[] | null;
+  hoursWorked?: number | null;
+  hourlyRate?: number | null;
+  dailyRate?: number | null;
+  hourlyDetails?: HourlyDetailItem[] | null;
   basicSalary: number;
   hra: number;
   allowances: number;
@@ -428,6 +494,36 @@ export interface PieceRateEmployeeSummaryDto {
   totalEarnings: number;
   activitiesCount: number;
   breakdown: PieceRateDetailItem[];
+}
+
+export interface HourlyWorkLogDto {
+  id: string;
+  tenantId: string;
+  employeeId: string;
+  employeeCode?: string;
+  employeeName?: string;
+  department?: string;
+  logDate: string;
+  regularHours: number;
+  overtimeHours: number;
+  hourlyRate: number;
+  overtimeMultiplier: number;
+  totalAmount: number;
+  projectOrTask?: string | null;
+  remarks?: string | null;
+  recordedBy?: string | null;
+  createdAt: string;
+}
+
+export interface CreateHourlyWorkLogRequest {
+  employeeId: string;
+  logDate: string;
+  regularHours: number;
+  overtimeHours?: number;
+  hourlyRate?: number;
+  overtimeMultiplier?: number;
+  projectOrTask?: string;
+  remarks?: string;
 }
 
 // Master Data Management Contracts
@@ -664,6 +760,180 @@ export interface AccountsSummaryDto {
   netCashflow: number;
   transactionCount: number;
 }
+
+// ==========================================
+// Corporate Leave Management Contracts
+// ==========================================
+
+export enum LeaveAccrualType {
+  ANNUAL_UPFRONT = 'ANNUAL_UPFRONT',
+  MONTHLY_ACCRUAL = 'MONTHLY_ACCRUAL',
+  ON_DEMAND = 'ON_DEMAND'
+}
+
+export enum LeaveRequestStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  CANCELLED = 'CANCELLED'
+}
+
+export enum HalfDaySession {
+  FIRST_HALF = 'FIRST_HALF',
+  SECOND_HALF = 'SECOND_HALF'
+}
+
+export interface LeaveTypeDto {
+  id: string;
+  tenantId: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  annualQuota: number;
+  accrualType: LeaveAccrualType | string;
+  carryForwardLimit: number;
+  isPaid: boolean;
+  requiresApproval: boolean;
+  allowHalfDay: boolean;
+  minNoticeDays: number;
+  maxConsecutiveDays?: number | null;
+  applicableGender: string;
+  color: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateLeaveTypeRequest {
+  code: string;
+  name: string;
+  description?: string;
+  annualQuota: number;
+  accrualType?: LeaveAccrualType | string;
+  carryForwardLimit?: number;
+  isPaid?: boolean;
+  requiresApproval?: boolean;
+  allowHalfDay?: boolean;
+  minNoticeDays?: number;
+  maxConsecutiveDays?: number | null;
+  applicableGender?: string;
+  color?: string;
+}
+
+export interface UpdateLeaveTypeRequest {
+  code?: string;
+  name?: string;
+  description?: string;
+  annualQuota?: number;
+  accrualType?: LeaveAccrualType | string;
+  carryForwardLimit?: number;
+  isPaid?: boolean;
+  requiresApproval?: boolean;
+  allowHalfDay?: boolean;
+  minNoticeDays?: number;
+  maxConsecutiveDays?: number | null;
+  applicableGender?: string;
+  color?: string;
+  isActive?: boolean;
+  syncExistingBalances?: boolean;
+}
+
+export interface EmployeeLeaveBalanceDto {
+  id: string;
+  tenantId: string;
+  employeeId: string;
+  employeeCode?: string;
+  employeeName?: string;
+  department?: string;
+  leaveTypeId: string;
+  leaveTypeCode: string;
+  leaveTypeName: string;
+  leaveTypeColor: string;
+  isPaid: boolean;
+  allowHalfDay: boolean;
+  year: number;
+  allocated: number;
+  carryForward: number;
+  used: number;
+  pending: number;
+  available: number;
+}
+
+export interface AdjustLeaveBalanceRequest {
+  employeeId: string;
+  leaveTypeId: string;
+  year: number;
+  allocated?: number;
+  carryForward?: number;
+}
+
+export interface LeaveRequestDto {
+  id: string;
+  tenantId: string;
+  employeeId: string;
+  employeeCode?: string;
+  employeeName?: string;
+  employeeDepartment?: string;
+  employeeDesignation?: string;
+  leaveTypeId: string;
+  leaveTypeCode: string;
+  leaveTypeName: string;
+  leaveTypeColor: string;
+  isPaid: boolean;
+  approverId?: string | null;
+  approverName?: string | null;
+  approverCode?: string | null;
+  startDate: string;
+  endDate: string;
+  isHalfDay: boolean;
+  halfDaySession?: HalfDaySession | string | null;
+  totalDays: number;
+  reason: string;
+  handoverNotes?: string | null;
+  emergencyContact?: string | null;
+  status: LeaveRequestStatus | string;
+  approverRemarks?: string | null;
+  actionedByUserId?: string | null;
+  actionedAt?: string | null;
+  appliedAt: string;
+  createdAt: string;
+}
+
+export interface ApplyLeaveRequest {
+  employeeId?: string; // Optional override for HR/Admin applying on behalf
+  leaveTypeId: string;
+  startDate: string;
+  endDate: string;
+  isHalfDay?: boolean;
+  halfDaySession?: HalfDaySession | string;
+  reason: string;
+  handoverNotes?: string;
+  emergencyContact?: string;
+}
+
+export interface ActionLeaveRequest {
+  remarks?: string;
+}
+
+export interface LeaveWorkspaceSummaryDto {
+  year: number;
+  currentEmployee: EmployeeDto | null;
+  reportingManager: {
+    id: string;
+    employeeCode: string;
+    name: string;
+    designation: string;
+  } | null;
+  isManager: boolean;
+  isAdmin: boolean;
+  directReportsCount: number;
+  leaveTypes: LeaveTypeDto[];
+  balances: EmployeeLeaveBalanceDto[];
+  myRequests: LeaveRequestDto[];
+  teamRequests: LeaveRequestDto[];
+  allRequests: LeaveRequestDto[];
+}
+
 
 
 

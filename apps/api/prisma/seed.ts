@@ -11,6 +11,7 @@ async function main() {
   console.log('--- SEEDING ENTERPRISE PRODUCTION DATA INTO PEOPLEHUB DATABASE ---');
 
   // 1. Clean existing records in correct foreign key order
+  await prisma.hourlyWorkLog.deleteMany({});
   await prisma.pieceRateLog.deleteMany({});
   await prisma.pieceRateActivity.deleteMany({});
   await prisma.payslip.deleteMany({});
@@ -80,7 +81,8 @@ async function main() {
       name: 'ABC Garments Ltd',
       slug: 'abc-garments',
       industry: 'GARMENTS',
-      status: 'ACTIVE'
+      status: 'ACTIVE',
+      enabledSalaryTypes: ['MONTHLY_FIXED', 'PIECE_RATE', 'HOURLY']
     }
   });
 
@@ -89,7 +91,8 @@ async function main() {
       name: 'Chennai Logistics Co',
       slug: 'chennai-logistics',
       industry: 'LOGISTICS',
-      status: 'ACTIVE'
+      status: 'ACTIVE',
+      enabledSalaryTypes: ['MONTHLY_FIXED', 'HOURLY', 'DAILY_WAGE']
     }
   });
 
@@ -1374,6 +1377,65 @@ async function main() {
   await prisma.auditLog.createMany({
     data: auditLogsData
   });
+
+  // Ensure Leave & Accounts permissions, EMPLOYEE role, and default leave types exist across all seeded tenants
+  const extraModules = [
+    { code: 'ACCOUNTS', name: 'Accounts & Ledger', description: 'Company income, expenses, petty cash, and employee advance recovery' },
+    { code: 'TIMESHEET', name: 'Timesheets', description: 'Billable project and task hours logging' },
+    { code: 'MUSTER_ROLL', name: 'Muster Roll', description: 'Factory and labour muster roll management' },
+  ];
+  for (const mod of extraModules) {
+    await prisma.module.upsert({ where: { code: mod.code }, update: mod, create: mod });
+  }
+  const extraPerms = [
+    { code: 'LEAVE_VIEW', name: 'Leave View', moduleCode: 'LEAVE', description: 'View personal leave balances and applications' },
+    { code: 'LEAVE_APPLY', name: 'Leave Apply', moduleCode: 'LEAVE', description: 'Apply for and cancel own leave requests' },
+    { code: 'LEAVE_APPROVE', name: 'Leave Approve', moduleCode: 'LEAVE', description: 'Approve or reject employee leave requests' },
+    { code: 'LEAVE_MANAGE', name: 'Leave Manage', moduleCode: 'LEAVE', description: 'Configure leave type masters and allocate balances' },
+    { code: 'ACCOUNTS_VIEW', name: 'Accounts View', moduleCode: 'ACCOUNTS', description: 'View company ledger transactions and advances' },
+    { code: 'ACCOUNTS_CREATE', name: 'Accounts Create', moduleCode: 'ACCOUNTS', description: 'Record income, expense, and advance entries' },
+    { code: 'ACCOUNTS_EDIT', name: 'Accounts Edit', moduleCode: 'ACCOUNTS', description: 'Update ledger entries and settlements' },
+    { code: 'ACCOUNTS_DELETE', name: 'Accounts Delete', moduleCode: 'ACCOUNTS', description: 'Delete financial ledger entries' },
+  ];
+  for (const perm of extraPerms) {
+    await prisma.permission.upsert({ where: { code: perm.code }, update: perm, create: perm });
+  }
+
+  for (const t of [tenantGarments, tenantLogistics]) {
+    const empRole = await prisma.role.upsert({
+      where: { tenantId_code: { tenantId: t.id, code: 'EMPLOYEE' } },
+      update: {},
+      create: {
+        tenantId: t.id,
+        code: 'EMPLOYEE',
+        name: 'Employee',
+        description: 'Employee self-service access',
+        isSystem: true,
+      },
+    });
+    await prisma.rolePermission.createMany({
+      data: ['LEAVE_VIEW', 'LEAVE_APPLY'].map((code) => ({ roleId: empRole.id, permissionCode: code })),
+      skipDuplicates: true,
+    });
+    await prisma.tenantModule.upsert({
+      where: { tenantId_moduleCode: { tenantId: t.id, moduleCode: 'ACCOUNTS' } },
+      update: {},
+      create: { tenantId: t.id, moduleCode: 'ACCOUNTS', isEnabled: t.id === tenantGarments.id },
+    });
+    const leaveTypesSeed = [
+      { code: 'CL', name: 'Casual Leave', annualQuota: 12, accrualType: 'ANNUAL_UPFRONT', carryForwardLimit: 0, maxConsecutiveDays: 5, minNoticeDays: 0, allowHalfDay: true, isPaid: true, colorHex: '#0EA5E9' },
+      { code: 'SL', name: 'Sick Leave', annualQuota: 8, accrualType: 'ANNUAL_UPFRONT', carryForwardLimit: 4, maxConsecutiveDays: 10, minNoticeDays: 0, allowHalfDay: true, isPaid: true, colorHex: '#F43F5E' },
+      { code: 'EL', name: 'Earned Leave', annualQuota: 15, accrualType: 'MONTHLY_ACCRUAL', carryForwardLimit: 15, maxConsecutiveDays: 15, minNoticeDays: 3, allowHalfDay: false, isPaid: true, colorHex: '#10B981' },
+      { code: 'LOP', name: 'Loss of Pay (Unpaid)', annualQuota: 0, accrualType: 'ON_DEMAND', carryForwardLimit: 0, maxConsecutiveDays: 30, minNoticeDays: 0, allowHalfDay: true, isPaid: false, colorHex: '#64748B' },
+    ];
+    for (const lt of leaveTypesSeed) {
+      await prisma.leaveType.upsert({
+        where: { tenantId_code: { tenantId: t.id, code: lt.code } },
+        update: {},
+        create: { tenantId: t.id, ...lt },
+      });
+    }
+  }
 
   console.log(`Step 12: Seeded ${auditLogsData.length} corporate immutable System Audit Logs.`);
   console.log('=== ENTERPRISE SEEDING COMPLETE WITH 100% HEALTHY REAL-TIME RECORDS ===');

@@ -13,6 +13,7 @@ import {
   ModuleCode
 } from '@people-hub/shared-types';
 import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -94,7 +95,10 @@ export class AuthService {
       email: tu.tenant.email,
       website: tu.tenant.website,
       taxId: tu.tenant.taxId,
-      registrationNo: tu.tenant.registrationNo
+      registrationNo: tu.tenant.registrationNo,
+      enabledSalaryTypes: Array.isArray(tu.tenant.enabledSalaryTypes) && tu.tenant.enabledSalaryTypes.length > 0
+        ? tu.tenant.enabledSalaryTypes
+        : ['MONTHLY_FIXED', 'HOURLY', 'PIECE_RATE', 'DAILY_WAGE']
     }));
 
     const activeTenantContext = tenants.length > 0 ? tenants[0] : null;
@@ -170,7 +174,10 @@ export class AuthService {
       email: tu.tenant.email,
       website: tu.tenant.website,
       taxId: tu.tenant.taxId,
-      registrationNo: tu.tenant.registrationNo
+      registrationNo: tu.tenant.registrationNo,
+      enabledSalaryTypes: Array.isArray(tu.tenant.enabledSalaryTypes) && tu.tenant.enabledSalaryTypes.length > 0
+        ? tu.tenant.enabledSalaryTypes
+        : ['MONTHLY_FIXED', 'HOURLY', 'PIECE_RATE', 'DAILY_WAGE']
     }));
 
     const activeTenant = tenants.find((t: any) => t.id === tenantId)!;
@@ -361,7 +368,7 @@ export class AuthService {
 
   private async generateRefreshToken(userId: string): Promise<string> {
     const token = this.jwtService.sign(
-      { sub: userId, type: 'refresh' },
+      { sub: userId, type: 'refresh', jti: randomUUID() },
       { secret: process.env.JWT_REFRESH_SECRET || 'refresh-secret', expiresIn: '7d' }
     );
 

@@ -10,6 +10,7 @@ import { PayrollModule } from './payroll/payroll.module';
 import { PieceRateModule } from './piece-rate/piece-rate.module';
 import { MastersModule } from './masters/masters.module';
 import { AccountsModule } from './accounts/accounts.module';
+import { LeaveModule } from './leave/leave.module';
 import { TenantMiddleware } from './prisma/tenant.middleware';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditInterceptor } from './audit/audit.interceptor';
@@ -27,6 +28,7 @@ import { AuditInterceptor } from './audit/audit.interceptor';
     PieceRateModule,
     MastersModule,
     AccountsModule,
+    LeaveModule,
   ],
   providers: [
     {

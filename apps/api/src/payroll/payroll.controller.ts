@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { PayrollService } from './payroll.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -6,11 +6,14 @@ import { TenantGuard } from '../auth/tenant.guard';
 import { PermissionGuard } from '../auth/permission.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
 import { CurrentTenantId } from '../auth/current-tenant.decorator';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { 
   PermissionCode, 
   ScopeType, 
   UpsertSalaryStructureRequest, 
   GeneratePayslipRequest, 
+  CreateHourlyWorkLogRequest,
+  HourlyWorkLogDto,
   PayslipDto 
 } from '@people-hub/shared-types';
 
@@ -31,6 +34,22 @@ class UpsertSalaryStructureDto implements UpsertSalaryStructureRequest {
   @IsOptional()
   @IsNumber()
   conveyanceAllowance?: number;
+
+  @IsOptional()
+  @IsNumber()
+  hourlyRate?: number;
+
+  @IsOptional()
+  @IsNumber()
+  dailyRate?: number;
+
+  @IsOptional()
+  @IsNumber()
+  standardHours?: number;
+
+  @IsOptional()
+  @IsNumber()
+  overtimeMultiplier?: number;
 
   @IsOptional()
   @IsNumber()
@@ -57,11 +76,58 @@ class GeneratePayslipDto implements GeneratePayslipRequest {
 
   @IsOptional()
   @IsString()
+  cycleType?: 'MONTHLY' | 'WEEKLY';
+
+  @IsOptional()
+  @IsNumber()
+  weekNumber?: number;
+
+  @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @IsOptional()
+  @IsString()
+  endDate?: string;
+
+  @IsOptional()
+  @IsString()
   employeeId?: string;
 
   @IsOptional()
   @IsNumber()
   workingDays?: number;
+}
+
+class CreateHourlyWorkLogDto implements CreateHourlyWorkLogRequest {
+  @IsString()
+  employeeId!: string;
+
+  @IsString()
+  logDate!: string;
+
+  @IsNumber()
+  regularHours!: number;
+
+  @IsOptional()
+  @IsNumber()
+  overtimeHours?: number;
+
+  @IsOptional()
+  @IsNumber()
+  hourlyRate?: number;
+
+  @IsOptional()
+  @IsNumber()
+  overtimeMultiplier?: number;
+
+  @IsOptional()
+  @IsString()
+  projectOrTask?: string;
+
+  @IsOptional()
+  @IsString()
+  remarks?: string;
 }
 
 @ApiTags('Payroll & Payslips')
@@ -133,5 +199,39 @@ export class PayrollController {
     @Body() dto: GeneratePayslipDto
   ) {
     return this.payrollService.generatePayslips(tenantId, dto);
+  }
+
+  @Get('hourly-logs')
+  @RequirePermissions(PermissionCode.PAYROLL_VIEW)
+  @ApiOperation({ summary: 'List hourly work logs for hourly-paid workforce' })
+  async listHourlyLogs(
+    @CurrentTenantId() tenantId: string,
+    @Query('employeeId') employeeId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string
+  ): Promise<HourlyWorkLogDto[]> {
+    return this.payrollService.listHourlyLogs(tenantId, { employeeId, startDate, endDate });
+  }
+
+  @Post('hourly-logs')
+  @RequirePermissions(PermissionCode.PAYROLL_PROCESS)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Record daily work hours and overtime for an employee' })
+  async createHourlyLog(
+    @CurrentTenantId() tenantId: string,
+    @CurrentUser() user: any,
+    @Body() dto: CreateHourlyWorkLogDto
+  ): Promise<HourlyWorkLogDto> {
+    return this.payrollService.createHourlyLog(tenantId, user?.userId || user?.id, dto);
+  }
+
+  @Delete('hourly-logs/:id')
+  @RequirePermissions(PermissionCode.PAYROLL_PROCESS)
+  @ApiOperation({ summary: 'Delete an hourly work log entry' })
+  async deleteHourlyLog(
+    @CurrentTenantId() tenantId: string,
+    @Param('id') id: string
+  ) {
+    return this.payrollService.deleteHourlyLog(tenantId, id);
   }
 }

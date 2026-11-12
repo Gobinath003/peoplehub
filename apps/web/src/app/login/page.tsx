@@ -27,10 +27,7 @@ function LoginContent() {
     setError(null);
     setIsSubmitting(true);
     try {
-      const success = await login(loginEmail, loginPass);
-      if (!success) {
-        setError('Invalid corporate credentials. Please check your email or password.');
-      }
+      await login(loginEmail, loginPass);
     } catch (err: any) {
       setError(err?.message || 'Unable to connect to the authentication server.');
     } finally {

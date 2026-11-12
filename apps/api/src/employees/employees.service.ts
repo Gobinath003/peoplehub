@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateEmployeeRequest, UpdateEmployeeRequest, EmployeeDto } from '@people-hub/shared-types';
+import { CreateEmployeeRequest, UpdateEmployeeRequest, ProvisionEmployeeLoginRequest, EmployeeDto, SalaryType } from '@people-hub/shared-types';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class EmployeesService {
@@ -15,7 +16,8 @@ export class EmployeesService {
     const employees = await this.prisma.tenantClient.employee.findMany({
       where: whereClause,
       include: {
-        salaryStructure: true
+        salaryStructure: true,
+        reportingManager: { select: { id: true, employeeCode: true, firstName: true, lastName: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -28,6 +30,7 @@ export class EmployeesService {
       where: { id, tenantId },
       include: {
         salaryStructure: true,
+        reportingManager: { select: { id: true, employeeCode: true, firstName: true, lastName: true } },
         payslips: {
           orderBy: { year: 'desc' },
           take: 6
@@ -85,6 +88,24 @@ export class EmployeesService {
       }
 
       // Create Employee
+      const tenantRecord = await tx.tenant.findUnique({
+        where: { id: tenantId },
+        select: { enabledSalaryTypes: true }
+      });
+      const allowedTypes = Array.isArray(tenantRecord?.enabledSalaryTypes) && tenantRecord.enabledSalaryTypes.length > 0
+        ? tenantRecord.enabledSalaryTypes
+        : Object.values(SalaryType);
+      const effectiveSalaryType = (dto.salaryType || allowedTypes[0] || SalaryType.MONTHLY_FIXED).toUpperCase();
+      if (!allowedTypes.includes(effectiveSalaryType)) {
+        throw new BadRequestException(
+          `Compensation category "${effectiveSalaryType}" is not enabled for this tenant. Enable it under Tenant Management.`
+        );
+      }
+
+      if (dto.reportingManagerId) {
+        await this.validateReportingManager(tenantId, null, dto.reportingManagerId, tx);
+      }
+
       const employee = await tx.employee.create({
         data: {
           tenantId,
@@ -101,54 +122,91 @@ export class EmployeesService {
           branchId: dto.branchId || null,
           shiftId: dto.shiftId || null,
           employmentTypeId: dto.employmentTypeId || null,
-          salaryType: dto.salaryType || 'MONTHLY_FIXED',
+          reportingManagerId: dto.reportingManagerId || null,
+          salaryType: effectiveSalaryType,
           joiningDate: new Date(dto.joiningDate),
           status: dto.status || 'ACTIVE',
         }
       });
 
-      // 3. Create SalaryStructure if basicSalary is provided
+      // 3. Create SalaryStructure when rate or salary components are provided
       let salaryStructure = null;
-      if (dto.basicSalary && dto.basicSalary > 0) {
-        const basic = Number(dto.basicSalary);
-        const hra = Number(dto.hra || 0);
-        const special = Number(dto.specialAllowance || 0);
-        const conveyance = Number(dto.conveyanceAllowance || 0);
-        const pf = Number(dto.pfDeduction || 0);
-        const tax = Number(dto.taxDeduction || 0);
-
-        const gross = basic + hra + special + conveyance;
-        const net = gross - (pf + tax);
-
+      const salaryData = this.buildSalaryData(effectiveSalaryType, dto);
+      if (salaryData) {
         salaryStructure = await tx.salaryStructure.create({
           data: {
             tenantId,
             employeeId: employee.id,
-            basicSalary: basic,
-            hra,
-            specialAllowance: special,
-            conveyanceAllowance: conveyance,
-            pfDeduction: pf,
-            taxDeduction: tax,
-            otherDeductions: 0,
-            grossSalary: gross,
-            netSalary: net,
+            ...salaryData,
             currency: 'INR',
           }
         });
       }
 
-      return this.mapToDto({ ...employee, salaryStructure });
+      const currentYear = new Date().getFullYear();
+      const activeLeaveTypes = await tx.leaveType.findMany({
+        where: { tenantId, isActive: true }
+      });
+      if (activeLeaveTypes.length > 0) {
+        await tx.employeeLeaveBalance.createMany({
+          data: activeLeaveTypes.map((lt: any) => ({
+            tenantId,
+            employeeId: employee.id,
+            leaveTypeId: lt.id,
+            year: currentYear,
+            allocated: lt.annualQuota,
+            carryForward: 0,
+            used: 0,
+            pending: 0
+          })),
+          skipDuplicates: true
+        });
+      }
+
+      let finalEmployee = employee;
+      if (dto.createPortalLogin) {
+        finalEmployee = await this.attachPortalUserInTx(tx, tenantId, employee, {
+          email: dto.email || undefined,
+          password: dto.portalPassword || 'Welcome@123',
+          roleCode: dto.roleCode || 'EMPLOYEE'
+        });
+      }
+
+      const reportingManager = finalEmployee.reportingManagerId
+        ? await tx.employee.findUnique({
+            where: { id: finalEmployee.reportingManagerId },
+            select: { id: true, employeeCode: true, firstName: true, lastName: true }
+          })
+        : null;
+
+      return this.mapToDto({ ...finalEmployee, salaryStructure, reportingManager });
     });
   }
 
   async update(tenantId: string, id: string, dto: UpdateEmployeeRequest): Promise<EmployeeDto> {
     const existing = await this.prisma.tenantClient.employee.findFirst({
-      where: { id, tenantId }
+      where: { id, tenantId },
+      include: { salaryStructure: true }
     });
 
     if (!existing) {
       throw new NotFoundException(`Employee with ID ${id} not found`);
+    }
+
+    const nextSalaryType = dto.salaryType ? dto.salaryType.toUpperCase() : existing.salaryType;
+    if (dto.salaryType !== undefined && nextSalaryType !== existing.salaryType) {
+      const tenantRecord = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { enabledSalaryTypes: true }
+      });
+      const allowedTypes = Array.isArray(tenantRecord?.enabledSalaryTypes) && tenantRecord.enabledSalaryTypes.length > 0
+        ? tenantRecord.enabledSalaryTypes
+        : Object.values(SalaryType);
+      if (!allowedTypes.includes(nextSalaryType)) {
+        throw new BadRequestException(
+          `Compensation category "${nextSalaryType}" is not enabled for this tenant. Enable it under Tenant Management.`
+        );
+      }
     }
 
     const data: any = {};
@@ -164,16 +222,51 @@ export class EmployeesService {
     if (dto.branchId !== undefined) data.branchId = dto.branchId;
     if (dto.shiftId !== undefined) data.shiftId = dto.shiftId;
     if (dto.employmentTypeId !== undefined) data.employmentTypeId = dto.employmentTypeId;
-    if (dto.salaryType !== undefined) data.salaryType = dto.salaryType;
+    if (dto.reportingManagerId !== undefined) {
+      const cleanedMgrId = dto.reportingManagerId ? dto.reportingManagerId.trim() : '';
+      if (cleanedMgrId) {
+        await this.validateReportingManager(tenantId, id, cleanedMgrId);
+        data.reportingManagerId = cleanedMgrId;
+      } else {
+        data.reportingManagerId = null;
+      }
+    }
+    if (dto.salaryType !== undefined) data.salaryType = nextSalaryType;
     if (dto.joiningDate !== undefined) data.joiningDate = new Date(dto.joiningDate);
     if (dto.status !== undefined) data.status = dto.status;
 
-    const updated = await this.prisma.tenantClient.employee.update({
-      where: { id },
-      data,
-      include: {
-        salaryStructure: true
+    const hasCompChange =
+      dto.basicSalary !== undefined ||
+      dto.hra !== undefined ||
+      dto.specialAllowance !== undefined ||
+      dto.conveyanceAllowance !== undefined ||
+      dto.hourlyRate !== undefined ||
+      dto.dailyRate !== undefined ||
+      dto.standardHours !== undefined ||
+      dto.overtimeMultiplier !== undefined ||
+      dto.pfDeduction !== undefined ||
+      dto.taxDeduction !== undefined;
+
+    const updated = await this.prisma.$transaction(async (tx: any) => {
+      if (hasCompChange) {
+        const salaryData = this.buildSalaryData(nextSalaryType, dto, existing.salaryStructure);
+        if (salaryData) {
+          await tx.salaryStructure.upsert({
+            where: { employeeId: id },
+            create: { tenantId, employeeId: id, ...salaryData, currency: 'INR' },
+            update: salaryData
+          });
+        }
       }
+
+      return tx.employee.update({
+        where: { id },
+        data,
+        include: {
+          salaryStructure: true,
+          reportingManager: { select: { id: true, employeeCode: true, firstName: true, lastName: true } }
+        }
+      });
     });
 
     return this.mapToDto(updated);
@@ -211,6 +304,11 @@ export class EmployeesService {
       branchId: emp.branchId,
       shiftId: emp.shiftId,
       employmentTypeId: emp.employmentTypeId,
+      reportingManagerId: emp.reportingManagerId || null,
+      reportingManagerName: emp.reportingManager
+        ? `${emp.reportingManager.firstName} ${emp.reportingManager.lastName}`
+        : null,
+      reportingManagerCode: emp.reportingManager?.employeeCode || null,
       salaryType: emp.salaryType || 'MONTHLY_FIXED',
       joiningDate: emp.joiningDate instanceof Date ? emp.joiningDate.toISOString() : emp.joiningDate,
       status: emp.status,
@@ -222,6 +320,10 @@ export class EmployeesService {
         hra: emp.salaryStructure.hra,
         specialAllowance: emp.salaryStructure.specialAllowance,
         conveyanceAllowance: emp.salaryStructure.conveyanceAllowance,
+        hourlyRate: emp.salaryStructure.hourlyRate ?? 0,
+        dailyRate: emp.salaryStructure.dailyRate ?? 0,
+        standardHours: emp.salaryStructure.standardHours ?? 160,
+        overtimeMultiplier: emp.salaryStructure.overtimeMultiplier ?? 1.5,
         pfDeduction: emp.salaryStructure.pfDeduction,
         taxDeduction: emp.salaryStructure.taxDeduction,
         otherDeductions: emp.salaryStructure.otherDeductions,
@@ -231,5 +333,293 @@ export class EmployeesService {
         effectiveDate: emp.salaryStructure.effectiveDate instanceof Date ? emp.salaryStructure.effectiveDate.toISOString() : emp.salaryStructure.effectiveDate
       } : null
     };
+  }
+
+  private buildSalaryData(
+    salaryType: string,
+    dto: Partial<CreateEmployeeRequest> | Partial<UpdateEmployeeRequest>,
+    existing?: any
+  ) {
+    const pf = Number(dto.pfDeduction ?? existing?.pfDeduction ?? 0);
+    const tax = Number(dto.taxDeduction ?? existing?.taxDeduction ?? 0);
+    const otherDeductions = Number(existing?.otherDeductions ?? 0);
+
+    if (salaryType === SalaryType.HOURLY) {
+      const hourlyRate = Number(dto.hourlyRate ?? existing?.hourlyRate ?? 0);
+      const standardHours = Number(dto.standardHours ?? existing?.standardHours ?? 160);
+      const overtimeMultiplier = Number(dto.overtimeMultiplier ?? existing?.overtimeMultiplier ?? 1.5);
+      if (hourlyRate <= 0 && !existing) return null;
+      const gross = Math.round(hourlyRate * standardHours);
+      return {
+        basicSalary: 0,
+        hra: 0,
+        specialAllowance: 0,
+        conveyanceAllowance: 0,
+        hourlyRate,
+        dailyRate: 0,
+        standardHours,
+        overtimeMultiplier,
+        pfDeduction: pf,
+        taxDeduction: tax,
+        otherDeductions,
+        grossSalary: gross,
+        netSalary: gross - (pf + tax + otherDeductions),
+      };
+    }
+
+    if (salaryType === SalaryType.DAILY_WAGE) {
+      const dailyRate = Number(dto.dailyRate ?? existing?.dailyRate ?? 0);
+      const standardHours = Number(dto.standardHours ?? existing?.standardHours ?? 26);
+      if (dailyRate <= 0 && !existing) return null;
+      const gross = Math.round(dailyRate * standardHours);
+      return {
+        basicSalary: 0,
+        hra: 0,
+        specialAllowance: 0,
+        conveyanceAllowance: 0,
+        hourlyRate: 0,
+        dailyRate,
+        standardHours,
+        overtimeMultiplier: 1.5,
+        pfDeduction: pf,
+        taxDeduction: tax,
+        otherDeductions,
+        grossSalary: gross,
+        netSalary: gross - (pf + tax + otherDeductions),
+      };
+    }
+
+    if (salaryType === SalaryType.PIECE_RATE) {
+      return null;
+    }
+
+    const basic = Number(dto.basicSalary ?? existing?.basicSalary ?? 0);
+    if (basic <= 0 && !existing) return null;
+    const hra = Number(dto.hra ?? existing?.hra ?? 0);
+    const special = Number(dto.specialAllowance ?? existing?.specialAllowance ?? 0);
+    const conveyance = Number(dto.conveyanceAllowance ?? existing?.conveyanceAllowance ?? 0);
+    const gross = basic + hra + special + conveyance;
+    return {
+      basicSalary: basic,
+      hra,
+      specialAllowance: special,
+      conveyanceAllowance: conveyance,
+      hourlyRate: 0,
+      dailyRate: 0,
+      standardHours: 0,
+      overtimeMultiplier: 1.5,
+      pfDeduction: pf,
+      taxDeduction: tax,
+      otherDeductions,
+      grossSalary: gross,
+      netSalary: gross - (pf + tax + otherDeductions),
+    };
+  }
+
+  private async validateReportingManager(
+    tenantId: string,
+    employeeId: string | null,
+    reportingManagerId: string,
+    txClient?: any
+  ) {
+    if (employeeId && employeeId === reportingManagerId) {
+      throw new BadRequestException('An employee cannot be assigned as their own reporting manager');
+    }
+
+    const client = txClient || this.prisma;
+    const manager = await client.employee.findFirst({
+      where: { id: reportingManagerId, tenantId },
+      select: { id: true, reportingManagerId: true }
+    });
+
+    if (!manager) {
+      throw new BadRequestException('Selected reporting manager does not belong to this tenant');
+    }
+
+    if (employeeId) {
+      const visited = new Set<string>([reportingManagerId]);
+      let cursor = manager.reportingManagerId;
+      for (let depth = 0; depth < 25 && cursor; depth++) {
+        if (cursor === employeeId) {
+          throw new BadRequestException('Invalid reporting hierarchy: circular reporting manager assignment detected');
+        }
+        if (visited.has(cursor)) break;
+        visited.add(cursor);
+        const parent = await client.employee.findFirst({
+          where: { id: cursor, tenantId },
+          select: { reportingManagerId: true }
+        });
+        cursor = parent?.reportingManagerId || null;
+      }
+    }
+  }
+
+  private async attachPortalUserInTx(
+    tx: any,
+    tenantId: string,
+    employee: any,
+    opts: { email?: string; password: string; roleCode?: string }
+  ) {
+    const tenant = await tx.tenant.findUnique({ where: { id: tenantId } });
+    const fallbackSlug = tenant?.slug || 'company';
+    const rawEmail = opts.email || employee.email || `${employee.employeeCode.toLowerCase()}@${fallbackSlug}.peoplehub.local`;
+    const loginEmail = rawEmail.trim().toLowerCase();
+
+    if (!opts.password || opts.password.length < 4) {
+      throw new BadRequestException('Portal password must be at least 4 characters');
+    }
+
+    const passwordHash = await bcrypt.hash(opts.password, 12);
+    let targetUserId = employee.userId;
+
+    if (targetUserId) {
+      const existingOwner = await tx.employee.findFirst({
+        where: { tenantId, userId: targetUserId, id: { not: employee.id } }
+      });
+      if (existingOwner) {
+        throw new ConflictException('This user account is already linked to another employee');
+      }
+      await tx.user.update({
+        where: { id: targetUserId },
+        data: {
+          passwordHash,
+          status: 'ACTIVE',
+          ...(opts.email ? { email: loginEmail } : {})
+        }
+      });
+    } else {
+      let user = await tx.user.findUnique({ where: { email: loginEmail } });
+      if (user) {
+        const linkedToAnotherEmp = await tx.employee.findFirst({
+          where: { tenantId, userId: user.id, id: { not: employee.id } }
+        });
+        if (linkedToAnotherEmp) {
+          throw new ConflictException(`Email ${loginEmail} is already linked to employee ${linkedToAnotherEmp.employeeCode}`);
+        }
+        user = await tx.user.update({
+          where: { id: user.id },
+          data: { passwordHash, status: 'ACTIVE' }
+        });
+      } else {
+        user = await tx.user.create({
+          data: {
+            email: loginEmail,
+            passwordHash,
+            firstName: employee.firstName,
+            lastName: employee.lastName,
+            status: 'ACTIVE'
+          }
+        });
+      }
+      targetUserId = user.id;
+    }
+
+    await tx.tenantUser.upsert({
+      where: {
+        tenantId_userId: {
+          tenantId,
+          userId: targetUserId
+        }
+      },
+      update: { status: 'ACTIVE' },
+      create: {
+        tenantId,
+        userId: targetUserId,
+        status: 'ACTIVE'
+      }
+    });
+
+    const desiredRoleCode = (opts.roleCode || 'EMPLOYEE').trim().toUpperCase();
+    let role = await tx.role.findFirst({
+      where: {
+        tenantId,
+        OR: [{ code: desiredRoleCode }, { name: desiredRoleCode }]
+      }
+    });
+
+    if (!role) {
+      role = await tx.role.create({
+        data: {
+          tenantId,
+          code: desiredRoleCode,
+          name: desiredRoleCode === 'EMPLOYEE' ? 'Employee' : desiredRoleCode,
+          description: 'Employee self-service role for leave availability, requests, and manager approvals',
+          isSystem: desiredRoleCode === 'EMPLOYEE'
+        }
+      });
+      const defaultEmpPerms = await tx.permission.findMany({
+        where: { code: { in: ['LEAVE_VIEW', 'LEAVE_APPLY'] } }
+      });
+      if (defaultEmpPerms.length > 0) {
+        await tx.rolePermission.createMany({
+          data: defaultEmpPerms.map((p: any) => ({ roleId: role.id, permissionCode: p.code })),
+          skipDuplicates: true
+        });
+      }
+    }
+
+    const existingAssignment = await tx.userRoleAssignment.findFirst({
+      where: {
+        tenantId,
+        userId: targetUserId,
+        roleId: role.id
+      }
+    });
+
+    if (!existingAssignment) {
+      await tx.userRoleAssignment.create({
+        data: {
+          tenantId,
+          userId: targetUserId,
+          roleId: role.id,
+          scopeType: 'TENANT',
+          scopeId: null
+        }
+      });
+    }
+
+    return tx.employee.update({
+      where: { id: employee.id },
+      data: {
+        userId: targetUserId,
+        email: employee.email || loginEmail
+      }
+    });
+  }
+
+  async provisionPortalLogin(
+    tenantId: string,
+    id: string,
+    dto: ProvisionEmployeeLoginRequest
+  ): Promise<EmployeeDto> {
+    const existing = await this.prisma.tenantClient.employee.findFirst({
+      where: { id, tenantId },
+      include: {
+        salaryStructure: true,
+        reportingManager: { select: { id: true, employeeCode: true, firstName: true, lastName: true } }
+      }
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Employee with ID ${id} not found`);
+    }
+
+    const updated = await this.prisma.$transaction(async (tx: any) => {
+      const emp = await this.attachPortalUserInTx(tx, tenantId, existing, {
+        email: dto.email,
+        password: dto.password,
+        roleCode: dto.roleCode || 'EMPLOYEE'
+      });
+
+      return tx.employee.findUnique({
+        where: { id: emp.id },
+        include: {
+          salaryStructure: true,
+          reportingManager: { select: { id: true, employeeCode: true, firstName: true, lastName: true } }
+        }
+      });
+    });
+
+    return this.mapToDto(updated);
   }
 }

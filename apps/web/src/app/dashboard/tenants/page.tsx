@@ -7,9 +7,9 @@ import { API_BASE_URL } from '../../../config/api';
 import { 
   Building, Landmark, Plus, Check, X, Users, 
   ExternalLink, Sparkles, Shield, AlertCircle, Search, Download,
-  MapPin, Phone, Mail, Globe, FileText
+  MapPin, Phone, Mail, Globe, FileText, SlidersHorizontal, DollarSign, Clock, Scissors, Banknote
 } from 'lucide-react';
-import { IndustryType } from '@people-hub/shared-types';
+import { IndustryType, SalaryType } from '@people-hub/shared-types';
 import { exportToExcel } from '../../../utils/excelExport';
 import {
   EnterpriseToolbar,
@@ -38,6 +38,8 @@ interface CompanyTenant {
   createdAt: string;
   employeeCount?: number;
   userCount?: number;
+  enabledModules?: string[];
+  enabledSalaryTypes?: string[];
   managers?: {
     id: string;
     email: string;
@@ -46,9 +48,57 @@ interface CompanyTenant {
   }[];
 }
 
+const PLATFORM_MODULE_CATALOG = [
+  { code: 'ORGANIZATION', name: 'Organization Masters', category: 'Core', description: 'Departments, designations, branches & shifts' },
+  { code: 'EMPLOYEES', name: 'Workforce & Employees', category: 'Core', description: 'Employee directory, reporting hierarchy & logins' },
+  { code: 'LEAVE', name: 'Leave Management', category: 'Core', description: 'Leave types, availability, requests & manager approvals' },
+  { code: 'PAYROLL', name: 'Payroll & Compensation', category: 'Core', description: 'Salary structures & automated monthly payslips' },
+  { code: 'ACCOUNTS', name: 'Accounts & Ledger', category: 'Finance', description: 'Income, expenses, petty cash & salary advances' },
+  { code: 'ATTENDANCE', name: 'Attendance Tracking', category: 'Workforce', description: 'Daily check-in/out logs & attendance tracking' },
+  { code: 'SHIFTS', name: 'Shift Scheduling', category: 'Workforce', description: 'Work shift rosters & timings' },
+  { code: 'AUDIT', name: 'Audit Trail', category: 'Compliance', description: 'Immutable security & change logs' },
+  { code: 'PIECE_RATE', name: 'Piece-Rate & Production', category: 'Industry', description: 'Garment activity rate masters & daily work sheets' },
+  { code: 'DRIVER_ROSTER', name: 'Driver Roster & Trips', category: 'Industry', description: 'Fleet logistics trips & driver roster' },
+  { code: 'TIMESHEET', name: 'Timesheets', category: 'Industry', description: 'Consultancy billable hours logging' },
+  { code: 'MUSTER_ROLL', name: 'Muster Roll', category: 'Industry', description: 'Industrial muster roll & contractor attendance' },
+];
+
+function getDefaultModulesForIndustry(industry: IndustryType): string[] {
+  const base = ['ORGANIZATION', 'EMPLOYEES', 'LEAVE', 'ATTENDANCE', 'SHIFTS', 'PAYROLL', 'ACCOUNTS', 'AUDIT'];
+  if (industry === IndustryType.GARMENTS) return [...base, 'PIECE_RATE'];
+  if (industry === IndustryType.LOGISTICS) return [...base, 'DRIVER_ROSTER'];
+  if (industry === IndustryType.CONSULTANCY) return [...base, 'TIMESHEET'];
+  if (industry === IndustryType.MANUFACTURING || industry === IndustryType.LABOUR) return [...base, 'MUSTER_ROLL'];
+  return base;
+}
+
+const SALARY_TYPE_CATALOG = [
+  { code: SalaryType.MONTHLY_FIXED, name: 'Monthly Fixed Salary', sector: 'IT & Corporate', description: 'Standard fixed monthly salary with Basic, HRA, Allowances & PF/TDS' },
+  { code: SalaryType.HOURLY, name: 'Hourly Rate Salary', sector: 'IT / Shift / Part-Time', description: 'Hourly rate billing with logged regular & overtime hours multiplier' },
+  { code: SalaryType.PIECE_RATE, name: 'Piece-Rate Output Salary', sector: 'Garments & Production', description: 'Computed from daily verified garment units / piece operations' },
+  { code: SalaryType.DAILY_WAGE, name: 'Daily Wage Salary', sector: 'Labour, Logistics & Field', description: 'Fixed per-day wage rate multiplied by days worked in pay cycle' },
+];
+
+function getDefaultSalaryTypesForIndustry(industry: IndustryType): string[] {
+  switch (industry) {
+    case IndustryType.GARMENTS:
+      return [SalaryType.MONTHLY_FIXED, SalaryType.PIECE_RATE];
+    case IndustryType.CONSULTANCY:
+    case IndustryType.CORPORATE:
+      return [SalaryType.MONTHLY_FIXED, SalaryType.HOURLY];
+    case IndustryType.MANUFACTURING:
+      return [SalaryType.MONTHLY_FIXED, SalaryType.HOURLY, SalaryType.PIECE_RATE, SalaryType.DAILY_WAGE];
+    case IndustryType.LABOUR:
+    case IndustryType.LOGISTICS:
+      return [SalaryType.MONTHLY_FIXED, SalaryType.HOURLY, SalaryType.DAILY_WAGE];
+    default:
+      return [SalaryType.MONTHLY_FIXED, SalaryType.HOURLY];
+  }
+}
+
 export default function TenantsManagementPage() {
   const router = useRouter();
-  const { accessToken, activeTenant, switchTenant, refreshTenants, isSuperAdmin, loading: authLoading } = useApp();
+  const { accessToken, activeTenant, switchTenant, refreshTenants, updateEnabledModules, updateTenantSalaryTypes, isSuperAdmin, loading: authLoading } = useApp();
   const [tenants, setTenants] = useState<CompanyTenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -81,6 +131,20 @@ export default function TenantsManagementPage() {
   const [adminLastName, setAdminLastName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('manager_pass');
+  const [selectedModules, setSelectedModules] = useState<string[]>(getDefaultModulesForIndustry(IndustryType.GARMENTS));
+  const [selectedSalaryTypes, setSelectedSalaryTypes] = useState<string[]>(getDefaultSalaryTypesForIndustry(IndustryType.GARMENTS));
+
+  // Existing Tenant Salary Category Configuration Modal State
+  const [salaryModalTenant, setSalaryModalTenant] = useState<CompanyTenant | null>(null);
+  const [modalSalaryTypes, setModalSalaryTypes] = useState<string[]>([]);
+  const [loadingSalaryTypes, setLoadingSalaryTypes] = useState(false);
+  const [savingSalaryTypes, setSavingSalaryTypes] = useState(false);
+
+  // Existing Tenant Module Configuration Modal State
+  const [moduleModalTenant, setModuleModalTenant] = useState<CompanyTenant | null>(null);
+  const [modalModules, setModalModules] = useState<string[]>([]);
+  const [loadingModules, setLoadingModules] = useState(false);
+  const [savingModules, setSavingModules] = useState(false);
 
   const fetchTenants = async () => {
     setLoading(true);
@@ -123,6 +187,133 @@ export default function TenantsManagementPage() {
     setAdminLastName('');
     setAdminEmail('');
     setAdminPassword('manager_pass');
+    setSelectedModules(getDefaultModulesForIndustry(IndustryType.GARMENTS));
+    setSelectedSalaryTypes(getDefaultSalaryTypesForIndustry(IndustryType.GARMENTS));
+  };
+
+  const toggleCreateSalaryType = (code: string) => {
+    setSelectedSalaryTypes((prev) => {
+      if (prev.includes(code)) {
+        if (prev.length <= 1) return prev; // keep at least one compensation model
+        return prev.filter((c) => c !== code);
+      }
+      return [...prev, code];
+    });
+  };
+
+  const handleOpenSalaryConfig = async (tenant: CompanyTenant) => {
+    setSalaryModalTenant(tenant);
+    setModalSalaryTypes(tenant.enabledSalaryTypes || getDefaultSalaryTypesForIndustry(tenant.industry));
+    setErrorMsg(null);
+    setLoadingSalaryTypes(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/tenants/${tenant.id}/salary-types`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data?.enabledSalaryTypes) && data.enabledSalaryTypes.length > 0) {
+          setModalSalaryTypes(data.enabledSalaryTypes);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load tenant salary types', e);
+    } finally {
+      setLoadingSalaryTypes(false);
+    }
+  };
+
+  const handleSaveSalaryConfig = async () => {
+    if (!salaryModalTenant || modalSalaryTypes.length === 0) return;
+    setSavingSalaryTypes(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/tenants/${salaryModalTenant.id}/salary-types`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ enabledSalaryTypes: modalSalaryTypes }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Failed to update tenant salary categories');
+      }
+      const data = await res.json();
+      const savedTypes = Array.isArray(data?.enabledSalaryTypes) ? data.enabledSalaryTypes : modalSalaryTypes;
+      updateTenantSalaryTypes(salaryModalTenant.id, savedTypes);
+      setSuccessMsg(`Updated salary categories for "${salaryModalTenant.name}" (${savedTypes.length} active pay models).`);
+      setSalaryModalTenant(null);
+      await fetchTenants();
+      await refreshTenants();
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Failed to update salary categories');
+    } finally {
+      setSavingSalaryTypes(false);
+    }
+  };
+
+  const toggleCreateModule = (code: string) => {
+    setSelectedModules((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+    );
+  };
+
+  const handleOpenModuleConfig = async (tenant: CompanyTenant) => {
+    setModuleModalTenant(tenant);
+    setModalModules(tenant.enabledModules || []);
+    setLoadingModules(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/tenants/${tenant.id}/modules`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+      if (res.ok) {
+        const list = await res.json();
+        setModalModules(
+          Array.isArray(list) ? list.filter((m: any) => m.isEnabled).map((m: any) => m.moduleCode) : []
+        );
+      }
+    } catch (e) {
+      console.warn('Failed to load tenant modules', e);
+    } finally {
+      setLoadingModules(false);
+    }
+  };
+
+  const handleSaveModuleConfig = async () => {
+    if (!moduleModalTenant) return;
+    setSavingModules(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/tenants/${moduleModalTenant.id}/modules`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ enabledModules: modalModules }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Failed to update tenant module visibility');
+      }
+      if (activeTenant?.id === moduleModalTenant.id) {
+        updateEnabledModules(modalModules);
+      }
+      setSuccessMsg(`Updated module visibility for "${moduleModalTenant.name}" (${modalModules.length} active modules).`);
+      setModuleModalTenant(null);
+      await fetchTenants();
+      await refreshTenants();
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Failed to update module visibility');
+    } finally {
+      setSavingModules(false);
+    }
   };
 
   // Automatically open creation modal if ?create=true is in URL
@@ -162,6 +353,8 @@ export default function TenantsManagementPage() {
       adminLastName: adminLastName.trim(),
       adminEmail: adminEmail.trim(),
       adminPassword: adminPassword.trim(),
+      enabledModules: selectedModules,
+      enabledSalaryTypes: selectedSalaryTypes,
     };
 
     try {
@@ -357,7 +550,7 @@ export default function TenantsManagementPage() {
             <EnterpriseTableTh>Headcount</EnterpriseTableTh>
             <EnterpriseTableTh>Primary HR Administrator</EnterpriseTableTh>
             <EnterpriseTableTh>Status</EnterpriseTableTh>
-            <EnterpriseTableTh align="right">Context Switch</EnterpriseTableTh>
+            <EnterpriseTableTh align="right">Modules & Context</EnterpriseTableTh>
           </EnterpriseTableHeader>
           <EnterpriseTableBody>
             {paginatedTenants.map((t) => {
@@ -458,21 +651,41 @@ export default function TenantsManagementPage() {
                   </EnterpriseTableTd>
 
                   <EnterpriseTableTd align="right">
-                    {isCurrent ? (
-                      <span className="inline-flex items-center gap-1 font-semibold text-[11px] text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-                        <Check className="w-3 h-3 text-emerald-600" />
-                        <span>Active Context</span>
-                      </span>
-                    ) : (
+                    <div className="inline-flex items-center justify-end gap-1.5">
                       <button
                         type="button"
-                        onClick={() => switchTenant(t.id)}
-                        className="text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 transition inline-flex items-center gap-1.5 shadow-2xs"
+                        onClick={() => handleOpenModuleConfig(t)}
+                        title="Configure Enabled Modules"
+                        className="text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 transition inline-flex items-center gap-1 shadow-2xs"
                       >
-                        <span>Switch</span>
-                        <ExternalLink className="w-3 h-3 text-slate-400" />
+                        <SlidersHorizontal className="w-3 h-3 text-emerald-600" />
+                        <span>{t.enabledModules ? `${t.enabledModules.length} Modules` : 'Modules'}</span>
                       </button>
-                    )}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenSalaryConfig(t)}
+                        title="Configure Allowed Employee Salary Categories"
+                        className="text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 transition inline-flex items-center gap-1 shadow-2xs"
+                      >
+                        <DollarSign className="w-3 h-3 text-indigo-600" />
+                        <span>{t.enabledSalaryTypes ? `${t.enabledSalaryTypes.length} Pay Models` : 'Pay Models'}</span>
+                      </button>
+                      {isCurrent ? (
+                        <span className="inline-flex items-center gap-1 font-semibold text-[11px] text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          <span>Active Context</span>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => switchTenant(t.id)}
+                          className="text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 transition inline-flex items-center gap-1.5 shadow-2xs"
+                        >
+                          <span>Switch</span>
+                          <ExternalLink className="w-3 h-3 text-slate-400" />
+                        </button>
+                      )}
+                    </div>
                   </EnterpriseTableTd>
                 </EnterpriseTableRow>
               );
@@ -545,7 +758,12 @@ export default function TenantsManagementPage() {
                     <label className="block font-semibold text-slate-700 mb-1">Industry Vertical *</label>
                     <select
                       value={industry}
-                      onChange={(e) => setIndustry(e.target.value as IndustryType)}
+                      onChange={(e) => {
+                        const nextInd = e.target.value as IndustryType;
+                        setIndustry(nextInd);
+                        setSelectedModules(getDefaultModulesForIndustry(nextInd));
+                        setSelectedSalaryTypes(getDefaultSalaryTypesForIndustry(nextInd));
+                      }}
                       className="w-full border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 text-xs focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     >
                       <option value={IndustryType.GARMENTS}>Garments & Apparel</option>
@@ -692,6 +910,134 @@ export default function TenantsManagementPage() {
                 </div>
               </div>
 
+              {/* Section 4: Feature & Module Visibility Controls */}
+              <div className="space-y-3 pt-4 border-t border-slate-200">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h4 className="font-extrabold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>4. Module Visibility for Tenant Admin & Users</span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Select which modules appear in navigation and features for this tenant&apos;s administrators and workforce ({selectedModules.length} of {PLATFORM_MODULE_CATALOG.length} active).
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedModules(PLATFORM_MODULE_CATALOG.map((m) => m.code))}
+                      className="px-2 py-1 text-[10px] font-bold rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50"
+                    >
+                      Enable All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedModules(getDefaultModulesForIndustry(industry))}
+                      className="px-2 py-1 text-[10px] font-bold rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50"
+                    >
+                      Industry Default
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedModules(['ORGANIZATION', 'EMPLOYEES', 'LEAVE'])}
+                      className="px-2 py-1 text-[10px] font-bold rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50"
+                    >
+                      Core + Leave Only
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {PLATFORM_MODULE_CATALOG.map((mod) => {
+                    const checked = selectedModules.includes(mod.code);
+                    return (
+                      <button
+                        key={mod.code}
+                        type="button"
+                        onClick={() => toggleCreateModule(mod.code)}
+                        className={`text-left p-2.5 rounded-xl border transition flex items-start gap-2.5 ${
+                          checked
+                            ? 'border-emerald-500 bg-emerald-50/60 text-slate-900 shadow-2xs'
+                            : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
+                          checked ? 'bg-slate-900 border-slate-900 text-emerald-400' : 'border-slate-300 bg-white'
+                        }`}>
+                          {checked && <Check className="w-3 h-3" />}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-bold text-[11px] truncate text-slate-800">{mod.name}</div>
+                          <div className="text-[10px] text-slate-500 truncate">{mod.description}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Section 5: Employee Compensation & Salary Categories */}
+              <div className="space-y-3 pt-4 border-t border-slate-200">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h4 className="font-extrabold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <DollarSign className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>5. Employee Compensation &amp; Salary Categories</span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Choose which salary options are available during Employee Creation &amp; Payroll ({selectedSalaryTypes.length} of {SALARY_TYPE_CATALOG.length} active).
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSalaryTypes(SALARY_TYPE_CATALOG.map((s) => s.code))}
+                      className="px-2 py-1 text-[10px] font-bold rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50"
+                    >
+                      Enable All 4
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSalaryTypes(getDefaultSalaryTypesForIndustry(industry))}
+                      className="px-2 py-1 text-[10px] font-bold rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50"
+                    >
+                      Industry Default
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {SALARY_TYPE_CATALOG.map((stype) => {
+                    const checked = selectedSalaryTypes.includes(stype.code);
+                    return (
+                      <button
+                        key={stype.code}
+                        type="button"
+                        onClick={() => toggleCreateSalaryType(stype.code)}
+                        className={`text-left p-2.5 rounded-xl border transition flex items-start gap-2.5 ${
+                          checked
+                            ? 'border-indigo-500 bg-indigo-50/70 text-slate-900 shadow-2xs'
+                            : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
+                          checked ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 bg-white'
+                        }`}>
+                          {checked && <Check className="w-3 h-3" />}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-[11px] text-slate-800">{stype.name}</span>
+                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">{stype.sector}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">{stype.description}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Actions */}
               <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200">
                 <button
@@ -715,6 +1061,240 @@ export default function TenantsManagementPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Configure Enabled Modules for Existing Tenant */}
+      {moduleModalTenant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full border border-slate-200 overflow-hidden my-8">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-slate-900 text-emerald-400 rounded-lg">
+                  <SlidersHorizontal className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm">
+                    Module Visibility — {moduleModalTenant.name}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Add or remove modules visible to Tenant Admin and employees in this tenant.
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setModuleModalTenant(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-slate-600 font-semibold">
+                  {modalModules.length} of {PLATFORM_MODULE_CATALOG.length} modules enabled
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setModalModules(PLATFORM_MODULE_CATALOG.map((m) => m.code))}
+                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                  >
+                    Enable All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalModules(getDefaultModulesForIndustry(moduleModalTenant.industry))}
+                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                  >
+                    Reset Industry Default
+                  </button>
+                </div>
+              </div>
+
+              {loadingModules ? (
+                <div className="py-10 text-center text-slate-400 font-medium">Loading registered tenant modules...</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[55vh] overflow-y-auto pr-1">
+                  {PLATFORM_MODULE_CATALOG.map((mod) => {
+                    const active = modalModules.includes(mod.code);
+                    return (
+                      <button
+                        key={mod.code}
+                        type="button"
+                        onClick={() =>
+                          setModalModules((prev) =>
+                            prev.includes(mod.code) ? prev.filter((c) => c !== mod.code) : [...prev, mod.code]
+                          )
+                        }
+                        className={`text-left p-3 rounded-xl border transition flex items-start gap-2.5 ${
+                          active
+                            ? 'border-emerald-500 bg-emerald-50/70 text-slate-900'
+                            : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
+                          active ? 'bg-slate-900 border-slate-900 text-emerald-400' : 'border-slate-300 bg-white'
+                        }`}>
+                          {active && <Check className="w-3 h-3" />}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-bold text-xs text-slate-800">{mod.name}</div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">{mod.description}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setModuleModalTenant(null)}
+                  className="px-4 py-2 border border-slate-300 text-slate-600 rounded-xl hover:bg-slate-50 font-semibold text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={savingModules || loadingModules}
+                  onClick={handleSaveModuleConfig}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold flex items-center gap-2 shadow text-xs transition"
+                >
+                  {savingModules ? (
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  ) : (
+                    <Check className="w-4 h-4 text-emerald-400" />
+                  )}
+                  <span>Save Module Configuration</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Configure Allowed Salary Categories for Existing Tenant */}
+      {salaryModalTenant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-xl w-full border border-slate-200 overflow-hidden my-8">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-indigo-600 text-white rounded-lg">
+                  <DollarSign className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm">
+                    Salary Categories — {salaryModalTenant.name}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Add or remove compensation models shown during Employee Creation &amp; Payroll.
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setSalaryModalTenant(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-slate-600 font-semibold">
+                  {modalSalaryTypes.length} of {SALARY_TYPE_CATALOG.length} pay models enabled
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setModalSalaryTypes(SALARY_TYPE_CATALOG.map((s) => s.code))}
+                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                  >
+                    Enable All 4
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalSalaryTypes([SalaryType.MONTHLY_FIXED, SalaryType.HOURLY])}
+                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                  >
+                    Fixed + Hourly
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalSalaryTypes(getDefaultSalaryTypesForIndustry(salaryModalTenant.industry))}
+                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                  >
+                    Industry Default
+                  </button>
+                </div>
+              </div>
+
+              {loadingSalaryTypes ? (
+                <div className="py-10 text-center text-slate-400 font-medium">Loading tenant compensation configuration...</div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2.5">
+                  {SALARY_TYPE_CATALOG.map((stype) => {
+                    const active = modalSalaryTypes.includes(stype.code);
+                    return (
+                      <button
+                        key={stype.code}
+                        type="button"
+                        onClick={() =>
+                          setModalSalaryTypes((prev) => {
+                            if (prev.includes(stype.code)) {
+                              if (prev.length <= 1) return prev;
+                              return prev.filter((c) => c !== stype.code);
+                            }
+                            return [...prev, stype.code];
+                          })
+                        }
+                        className={`text-left p-3.5 rounded-xl border transition flex items-start gap-3 ${
+                          active
+                            ? 'border-indigo-500 bg-indigo-50/70 text-slate-900'
+                            : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
+                          active ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 bg-white'
+                        }`}>
+                          {active && <Check className="w-3 h-3" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-xs text-slate-800">{stype.name}</span>
+                            <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-500">
+                              {stype.sector}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 mt-0.5">{stype.description}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setSalaryModalTenant(null)}
+                  className="px-4 py-2 border border-slate-300 text-slate-600 rounded-xl hover:bg-slate-50 font-semibold text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={savingSalaryTypes || loadingSalaryTypes || modalSalaryTypes.length === 0}
+                  onClick={handleSaveSalaryConfig}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold flex items-center gap-2 shadow text-xs transition"
+                >
+                  {savingSalaryTypes ? (
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  ) : (
+                    <Check className="w-4 h-4 text-white" />
+                  )}
+                  <span>Save Salary Categories</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

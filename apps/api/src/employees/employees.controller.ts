@@ -11,12 +11,43 @@ import {
   ScopeType, 
   EmployeeDto, 
   CreateEmployeeRequest, 
-  UpdateEmployeeRequest 
+  UpdateEmployeeRequest,
+  SalaryType
 } from '@people-hub/shared-types';
 
-import { IsString, IsOptional, IsNumber } from 'class-validator';
+import { ProvisionEmployeeLoginRequest } from '@people-hub/shared-types';
+
+import { IsString, IsOptional, IsNumber, IsBoolean, IsIn } from 'class-validator';
+
+class ProvisionPortalLoginDto implements ProvisionEmployeeLoginRequest {
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @IsString()
+  password!: string;
+
+  @IsOptional()
+  @IsString()
+  roleCode?: string;
+}
 
 class CreateEmployeeDto implements CreateEmployeeRequest {
+  @IsOptional()
+  @IsString()
+  reportingManagerId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  createPortalLogin?: boolean;
+
+  @IsOptional()
+  @IsString()
+  portalPassword?: string;
+
+  @IsOptional()
+  @IsString()
+  roleCode?: string;
   @IsOptional()
   @IsString()
   employeeCode?: string;
@@ -69,6 +100,7 @@ class CreateEmployeeDto implements CreateEmployeeRequest {
 
   @IsOptional()
   @IsString()
+  @IsIn(Object.values(SalaryType))
   salaryType?: string;
 
   @IsString()
@@ -96,6 +128,22 @@ class CreateEmployeeDto implements CreateEmployeeRequest {
 
   @IsOptional()
   @IsNumber()
+  hourlyRate?: number;
+
+  @IsOptional()
+  @IsNumber()
+  dailyRate?: number;
+
+  @IsOptional()
+  @IsNumber()
+  standardHours?: number;
+
+  @IsOptional()
+  @IsNumber()
+  overtimeMultiplier?: number;
+
+  @IsOptional()
+  @IsNumber()
   pfDeduction?: number;
 
   @IsOptional()
@@ -104,6 +152,9 @@ class CreateEmployeeDto implements CreateEmployeeRequest {
 }
 
 class UpdateEmployeeDto implements UpdateEmployeeRequest {
+  @IsOptional()
+  @IsString()
+  reportingManagerId?: string;
   @IsOptional()
   @IsString()
   firstName?: string;
@@ -154,6 +205,7 @@ class UpdateEmployeeDto implements UpdateEmployeeRequest {
 
   @IsOptional()
   @IsString()
+  @IsIn(Object.values(SalaryType))
   salaryType?: string;
 
   @IsOptional()
@@ -163,6 +215,46 @@ class UpdateEmployeeDto implements UpdateEmployeeRequest {
   @IsOptional()
   @IsString()
   status?: string;
+
+  @IsOptional()
+  @IsNumber()
+  basicSalary?: number;
+
+  @IsOptional()
+  @IsNumber()
+  hra?: number;
+
+  @IsOptional()
+  @IsNumber()
+  specialAllowance?: number;
+
+  @IsOptional()
+  @IsNumber()
+  conveyanceAllowance?: number;
+
+  @IsOptional()
+  @IsNumber()
+  hourlyRate?: number;
+
+  @IsOptional()
+  @IsNumber()
+  dailyRate?: number;
+
+  @IsOptional()
+  @IsNumber()
+  standardHours?: number;
+
+  @IsOptional()
+  @IsNumber()
+  overtimeMultiplier?: number;
+
+  @IsOptional()
+  @IsNumber()
+  pfDeduction?: number;
+
+  @IsOptional()
+  @IsNumber()
+  taxDeduction?: number;
 }
 
 @ApiTags('Employees')
@@ -239,5 +331,17 @@ export class EmployeesController {
     @Param('id') id: string
   ) {
     return this.employeesService.delete(tenantId, id);
+  }
+
+  @Post(':id/portal-login')
+  @RequirePermissions(PermissionCode.EMPLOYEE_EDIT)
+  @ApiOperation({ summary: 'Provision or reset portal login credentials for an employee' })
+  @ApiResponse({ status: 200, description: 'Portal login provisioned and linked to employee' })
+  async provisionPortalLogin(
+    @CurrentTenantId() tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: ProvisionPortalLoginDto
+  ): Promise<EmployeeDto> {
+    return this.employeesService.provisionPortalLogin(tenantId, id, dto);
   }
 }

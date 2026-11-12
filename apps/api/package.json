@@ -17,7 +17,7 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push --skip-generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:migrate:deploy": "prisma db push --skip-generate",
     "prisma:seed": "ts-node prisma/seed.ts"
   },
   "prisma": {

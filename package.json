@@ -18,6 +18,7 @@
     "test": "npm run test --workspaces --if-present",
     "test:engine": "node scripts/test-engine.js",
     "test:roles": "node scripts/test-roles-matrix.js",
+    "test:ui": "node scripts/test-ui-e2e.js",
     "test:pre-push": "node scripts/test-engine.js",
     "test:noltrion": "node scripts/test-noltrion-automation.js",
     "test:leave": "node scripts/test-leave-automation.js",

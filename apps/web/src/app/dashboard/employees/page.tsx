@@ -25,32 +25,16 @@ import {
   EnterpriseBadge,
 } from '../../../components/enterprise';
 
-const DEFAULT_GARMENT_MASTERS: MasterBundleDto = {
-  departments: [
-    { id: 'dept-cut', tenantId: '', code: 'DEPT-CUT', name: 'Cutting & Pattern Making', description: 'Fabric cutting and pattern master division', isActive: true, employeeCount: 1, createdAt: '' },
-    { id: 'dept-sew', tenantId: '', code: 'DEPT-SEW', name: 'Sewing & Stitching', description: 'Assembly line sewing and garment tailoring', isActive: true, employeeCount: 2, createdAt: '' },
-    { id: 'dept-qc', tenantId: '', code: 'DEPT-QC', name: 'Quality Control & Inspection', description: 'Fabric and finished garment defect inspection', isActive: true, employeeCount: 1, createdAt: '' },
-    { id: 'dept-hr', tenantId: '', code: 'DEPT-HR', name: 'Human Resources & Administration', description: 'Workforce management, attendance, and payroll', isActive: true, employeeCount: 1, createdAt: '' },
-  ],
-  designations: [
-    { id: 'desig-cm', tenantId: '', departmentId: 'dept-cut', departmentName: 'Cutting & Pattern Making', code: 'DESIG-CM', name: 'Cutting Master', description: 'Master fabric layout cutter & multi-skill artisan', isActive: true, employeeCount: 1, createdAt: '' },
-    { id: 'desig-pat', tenantId: '', departmentId: 'dept-cut', departmentName: 'Cutting & Pattern Making', code: 'DESIG-PAT', name: 'Pattern Specialist', description: 'CAD and manual pattern grading', isActive: true, employeeCount: 0, createdAt: '' },
-    { id: 'desig-tailor', tenantId: '', departmentId: 'dept-sew', departmentName: 'Sewing & Stitching', code: 'DESIG-STITCH', name: 'Senior Tailor Master', description: 'Overlock and single needle operator', isActive: true, employeeCount: 2, createdAt: '' },
-    { id: 'desig-qc', tenantId: '', departmentId: 'dept-qc', departmentName: 'Quality Control & Inspection', code: 'DESIG-QC', name: 'Fabric Quality Inspector', description: 'Quality inspection and defect auditor', isActive: true, employeeCount: 1, createdAt: '' },
-  ],
-  branches: [
-    { id: 'br-chn', tenantId: '', code: 'BR-CHN-HQ', name: 'Chennai Head Office', type: 'HEAD_OFFICE', city: 'Chennai', state: 'Tamil Nadu', address: 'Guindy Industrial Estate', isActive: true, employeeCount: 2, createdAt: '' },
-    { id: 'br-tpr', tenantId: '', code: 'BR-TPR-UNIT1', name: 'Tirupur Garment Unit 1', type: 'FACTORY_UNIT', city: 'Tirupur', state: 'Tamil Nadu', address: 'Avinashi Road Textile Hub', isActive: true, employeeCount: 1, createdAt: '' },
-  ],
-  shifts: [
-    { id: 'sh-morn', tenantId: '', code: 'SH-MORN', name: 'Morning Shift (Factory) (06:00 - 14:00)', startTime: '06:00', endTime: '14:00', breakMinutes: 30, isActive: true, employeeCount: 1, createdAt: '' },
-    { id: 'sh-gen', tenantId: '', code: 'SH-GEN', name: 'General Shift (09:00 - 18:00)', startTime: '09:00', endTime: '18:00', breakMinutes: 60, isActive: true, employeeCount: 2, createdAt: '' },
-  ],
-  employmentTypes: [
-    { id: 'et-perm', tenantId: '', code: 'ET-PERM', name: 'Permanent Full-Time', description: 'Standard regular on-roll employee', isActive: true, employeeCount: 2, createdAt: '' },
-    { id: 'et-cont', tenantId: '', code: 'ET-CONT', name: 'Contract / Piece-Rate Worker', description: 'Daily wage or piece-rate garment producer', isActive: true, employeeCount: 1, createdAt: '' },
-  ]
+const EMPTY_MASTER_BUNDLE: MasterBundleDto = {
+  departments: [],
+  designations: [],
+  branches: [],
+  shifts: [],
+  employmentTypes: [],
 };
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const asUuidOrUndefined = (val?: string) => (val && UUID_RE.test(val.trim()) ? val.trim() : undefined);
 
 const SALARY_TYPE_CATALOG = [
   { code: SalaryType.MONTHLY_FIXED, label: 'Monthly Fixed Salary', shortLabel: 'Monthly Fixed', desc: 'Fixed monthly salary with allowances and statutory deductions.' },
@@ -60,10 +44,13 @@ const SALARY_TYPE_CATALOG = [
 ];
 
 export default function EmployeesPage() {
-  const { activeTenant, accessToken, activeBranchScope, enabledSalaryTypes } = useApp();
+  const { activeTenant, accessToken, activeBranchScope, enabledSalaryTypes, hasPermission } = useApp();
+  const canCreateEmployee = hasPermission('EMPLOYEE_CREATE');
+  const canEditEmployee = hasPermission('EMPLOYEE_EDIT');
+  const canDeleteEmployee = hasPermission('EMPLOYEE_DELETE');
   const [tenantSalaryTypes, setTenantSalaryTypes] = useState<string[]>(enabledSalaryTypes);
   const [employees, setEmployees] = useState<EmployeeDto[]>([]);
-  const [masterBundle, setMasterBundle] = useState<MasterBundleDto>(DEFAULT_GARMENT_MASTERS);
+  const [masterBundle, setMasterBundle] = useState<MasterBundleDto>(EMPTY_MASTER_BUNDLE);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDept, setSelectedDept] = useState('ALL');
@@ -136,42 +123,44 @@ export default function EmployeesPage() {
   const [savingPortalLogin, setSavingPortalLogin] = useState(false);
 
   const fetchMasters = async () => {
+    if (!activeTenant || !accessToken) return;
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/masters/bundle`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
-          'x-tenant-id': activeTenant?.id || ''
+          'x-tenant-id': activeTenant.id
         }
       });
       if (res.ok) {
         const bundleData: MasterBundleDto = await res.json();
-        if (bundleData && bundleData.departments && bundleData.departments.length > 0) {
-          setMasterBundle(bundleData);
-          setSelectedDeptId(bundleData.departments[0].id);
-          setDepartment(bundleData.departments[0].name);
-          if (bundleData.designations.length > 0) {
-            setSelectedDesigId(bundleData.designations[0].id);
-            setDesignation(bundleData.designations[0].name);
-          }
-          if (bundleData.branches.length > 0) {
-            setSelectedBranchId(bundleData.branches[0].id);
-            setBranch(bundleData.branches[0].name);
-          }
-          if (bundleData.shifts.length > 0) {
-            setSelectedShiftId(bundleData.shifts[0].id);
-          }
-          if (bundleData.employmentTypes.length > 0) {
-            setSelectedEmpTypeId(bundleData.employmentTypes[0].id);
-          }
-        }
+        const normalized: MasterBundleDto = {
+          departments: Array.isArray(bundleData?.departments) ? bundleData.departments : [],
+          designations: Array.isArray(bundleData?.designations) ? bundleData.designations : [],
+          branches: Array.isArray(bundleData?.branches) ? bundleData.branches : [],
+          shifts: Array.isArray(bundleData?.shifts) ? bundleData.shifts : [],
+          employmentTypes: Array.isArray(bundleData?.employmentTypes) ? bundleData.employmentTypes : [],
+        };
+        setMasterBundle(normalized);
+        setSelectedDeptId(normalized.departments[0]?.id || '');
+        setDepartment(normalized.departments[0]?.name || '');
+        setSelectedDesigId(normalized.designations[0]?.id || '');
+        setDesignation(normalized.designations[0]?.name || '');
+        setSelectedBranchId(normalized.branches[0]?.id || '');
+        setBranch(normalized.branches[0]?.name || '');
+        setSelectedShiftId(normalized.shifts[0]?.id || '');
+        setSelectedEmpTypeId(normalized.employmentTypes[0]?.id || '');
       }
     } catch (e) {
-      console.warn('Could not fetch master bundle from API, using default masters', e);
+      console.warn('Could not fetch master bundle from API', e);
     }
   };
 
   const fetchEmployees = async () => {
-    if (!activeTenant) return;
+    if (!activeTenant || !accessToken) {
+      setEmployees([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/employees`, {
@@ -182,7 +171,7 @@ export default function EmployeesPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setEmployees(data);
+        setEmployees(Array.isArray(data) ? data : []);
         setLoading(false);
         return;
       }
@@ -225,6 +214,7 @@ export default function EmployeesPage() {
   };
 
   const handleOpenAddModal = () => {
+    setErrorMsg(null);
     const autoCode = getNextEmployeeCode();
     setEmployeeCode(autoCode);
     setFirstName('');
@@ -243,23 +233,16 @@ export default function EmployeesPage() {
     setConveyanceAllowance('1500');
     setPfDeduction('1800');
     setTaxDeduction('1000');
-    if (masterBundle.departments.length > 0) {
-      setSelectedDeptId(masterBundle.departments[0].id);
-      setDepartment(masterBundle.departments[0].name);
-    }
-    if (masterBundle.designations.length > 0) {
-      setSelectedDesigId(masterBundle.designations[0].id);
-      setDesignation(masterBundle.designations[0].name);
-    }
-    if (masterBundle.branches.length > 0) {
-      setSelectedBranchId(masterBundle.branches[0].id);
-      setBranch(masterBundle.branches[0].name);
-    }
-    if (masterBundle.shifts.length > 0) {
-      setSelectedShiftId(masterBundle.shifts[0].id);
-    }
-    if (masterBundle.employmentTypes.length > 0) {
-      setSelectedEmpTypeId(masterBundle.employmentTypes[0].id);
+    setSelectedDeptId(masterBundle.departments[0]?.id || '');
+    setDepartment(masterBundle.departments[0]?.name || '');
+    setSelectedDesigId(masterBundle.designations[0]?.id || '');
+    setDesignation(masterBundle.designations[0]?.name || '');
+    setSelectedBranchId(masterBundle.branches[0]?.id || '');
+    setBranch(masterBundle.branches[0]?.name || '');
+    setSelectedShiftId(masterBundle.shifts[0]?.id || '');
+    setSelectedEmpTypeId(masterBundle.employmentTypes[0]?.id || '');
+    if (masterBundle.departments.length === 0) {
+      fetchMasters();
     }
     setReportingManagerId('');
     setCreatePortalLogin(false);
@@ -270,6 +253,10 @@ export default function EmployeesPage() {
 
   const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!activeTenant || !accessToken) {
+      setErrorMsg('Session expired. Please sign in again.');
+      return;
+    }
     setSaving(true);
     setErrorMsg(null);
 
@@ -281,15 +268,15 @@ export default function EmployeesPage() {
       lastName: lastName.trim(),
       email: email.trim() ? email.trim() : undefined,
       phone: phone.trim() ? phone.trim() : undefined,
-      department: department.trim(),
-      designation: designation.trim(),
-      branch: branch.trim(),
-      departmentId: selectedDeptId || undefined,
-      designationId: selectedDesigId || undefined,
-      branchId: selectedBranchId || undefined,
-      shiftId: selectedShiftId || undefined,
-      employmentTypeId: selectedEmpTypeId || undefined,
-      reportingManagerId: reportingManagerId || undefined,
+      department: department.trim() || 'General',
+      designation: designation.trim() || 'Staff',
+      branch: branch.trim() || undefined,
+      departmentId: asUuidOrUndefined(selectedDeptId),
+      designationId: asUuidOrUndefined(selectedDesigId),
+      branchId: asUuidOrUndefined(selectedBranchId),
+      shiftId: asUuidOrUndefined(selectedShiftId),
+      employmentTypeId: asUuidOrUndefined(selectedEmpTypeId),
+      reportingManagerId: asUuidOrUndefined(reportingManagerId),
       createPortalLogin,
       portalPassword: createPortalLogin ? portalPassword : undefined,
       roleCode: createPortalLogin ? portalRoleCode : undefined,
@@ -314,70 +301,28 @@ export default function EmployeesPage() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
-          'x-tenant-id': activeTenant?.id || ''
+          'x-tenant-id': activeTenant.id
         },
         body: JSON.stringify(payload)
       });
 
       if (res.ok) {
-        setSuccessMsg(`Employee "${payload.firstName} ${payload.lastName}" (${payload.employeeCode}) created successfully!`);
+        const created: EmployeeDto = await res.json();
+        setSuccessMsg(`Employee "${created.firstName} ${created.lastName}" (${created.employeeCode}) created successfully!`);
         await fetchEmployees();
         setModalOpen(false);
         setSaving(false);
         return;
-      } else {
-        const err = await res.json();
-        setErrorMsg(err.message || 'Failed to create employee');
-        setSaving(false);
-        return;
       }
-    } catch (e) {
-      console.warn('API error, using local fallback', e);
+
+      const err = await res.json().catch(() => ({}));
+      const msg = Array.isArray(err?.message) ? err.message.join(', ') : (err?.message || `Failed to create employee (HTTP ${res.status})`);
+      setErrorMsg(msg);
+      setSaving(false);
+    } catch (e: any) {
+      setErrorMsg(e?.message || 'Unable to connect to the server to create employee. Please try again.');
+      setSaving(false);
     }
-
-    // Local fallback
-    const newEmp: EmployeeDto = {
-      id: `e-${Date.now()}`,
-      tenantId: activeTenant?.id || '',
-      userId: null,
-      employeeCode: payload.employeeCode,
-      firstName: payload.firstName,
-      lastName: payload.lastName,
-      email: payload.email || null,
-      phone: payload.phone || null,
-      department: payload.department,
-      designation: payload.designation,
-      branch: payload.branch || null,
-      departmentId: payload.departmentId || null,
-      designationId: payload.designationId || null,
-      branchId: payload.branchId || null,
-      shiftId: payload.shiftId || null,
-      employmentTypeId: payload.employmentTypeId || null,
-      salaryType: payload.salaryType,
-      joiningDate: payload.joiningDate,
-      status: 'ACTIVE',
-      createdAt: new Date().toISOString(),
-      salaryStructure: isPieceRate ? null : {
-        id: `s-${Date.now()}`,
-        employeeId: `e-${Date.now()}`,
-        basicSalary: payload.basicSalary,
-        hra: payload.hra,
-        specialAllowance: payload.specialAllowance,
-        conveyanceAllowance: payload.conveyanceAllowance,
-        pfDeduction: payload.pfDeduction,
-        taxDeduction: payload.taxDeduction,
-        otherDeductions: 0,
-        grossSalary: payload.basicSalary + payload.hra + payload.specialAllowance + payload.conveyanceAllowance,
-        netSalary: (payload.basicSalary + payload.hra + payload.specialAllowance + payload.conveyanceAllowance) - (payload.pfDeduction + payload.taxDeduction),
-        currency: 'INR',
-        effectiveDate: payload.joiningDate
-      }
-    };
-
-    setEmployees([newEmp, ...employees]);
-    setSuccessMsg(`Employee ${newEmp.employeeCode} (${newEmp.firstName} ${newEmp.lastName}) onboarded successfully!`);
-    setModalOpen(false);
-    setSaving(false);
   };
 
   // Open Edit Modal with Employee Data
@@ -426,19 +371,18 @@ export default function EmployeesPage() {
     setSaving(true);
     setErrorMsg(null);
 
-    const isPieceRate = editSalaryType === 'PIECE_RATE';
     const payload = {
       firstName: editFirstName.trim(),
       lastName: editLastName.trim(),
       phone: editPhone.trim() ? editPhone.trim() : undefined,
-      department: editDepartment.trim(),
-      designation: editDesignation.trim(),
+      department: editDepartment.trim() || 'General',
+      designation: editDesignation.trim() || 'Staff',
       branch: editBranch.trim() ? editBranch.trim() : undefined,
-      departmentId: editDeptId || undefined,
-      designationId: editDesigId || undefined,
-      branchId: editBranchId || undefined,
-      shiftId: editShiftId || undefined,
-      employmentTypeId: editEmpTypeId || undefined,
+      departmentId: asUuidOrUndefined(editDeptId),
+      designationId: asUuidOrUndefined(editDesigId),
+      branchId: asUuidOrUndefined(editBranchId),
+      shiftId: asUuidOrUndefined(editShiftId),
+      employmentTypeId: asUuidOrUndefined(editEmpTypeId),
       reportingManagerId: editReportingManagerId || '',
       salaryType: editSalaryType,
       status: editStatus,
@@ -469,52 +413,14 @@ export default function EmployeesPage() {
         setEditModalOpen(false);
         setSaving(false);
         return;
-      } else {
-        const err = await res.json().catch(() => ({}));
-        setErrorMsg(Array.isArray(err.message) ? err.message.join(', ') : (err.message || `Failed to update employee ${editEmpCode}`));
-        setSaving(false);
-        return;
       }
-    } catch (e) {
-      console.warn('API error updating employee, updating locally', e);
+      const err = await res.json().catch(() => ({}));
+      setErrorMsg(Array.isArray(err.message) ? err.message.join(', ') : (err.message || `Failed to update employee ${editEmpCode}`));
+      setSaving(false);
+    } catch (e: any) {
+      setErrorMsg(e?.message || `Unable to update employee ${editEmpCode}. Please try again.`);
+      setSaving(false);
     }
-
-    // Local fallback update
-    setEmployees(employees.map(emp => {
-      if (emp.id === editingEmpId) {
-        return {
-          ...emp,
-          firstName: payload.firstName,
-          lastName: payload.lastName,
-          phone: payload.phone || null,
-          department: payload.department,
-          designation: payload.designation,
-          branch: payload.branch || null,
-          salaryType: payload.salaryType,
-          status: payload.status,
-          salaryStructure: isPieceRate ? null : {
-            id: emp.salaryStructure?.id || 's-edit',
-            employeeId: emp.id,
-            basicSalary: payload.basicSalary,
-            hra: payload.hra,
-            specialAllowance: 0,
-            conveyanceAllowance: 0,
-            pfDeduction: 0,
-            taxDeduction: 0,
-            otherDeductions: 0,
-            grossSalary: payload.basicSalary + payload.hra,
-            netSalary: payload.basicSalary + payload.hra,
-            currency: 'INR',
-            effectiveDate: new Date().toISOString()
-          }
-        };
-      }
-      return emp;
-    }));
-
-    setSuccessMsg(`Employee ${editEmpCode} updated successfully!`);
-    setEditModalOpen(false);
-    setSaving(false);
   };
 
   const handleOpenPortalModal = (emp: EmployeeDto) => {
@@ -581,12 +487,11 @@ export default function EmployeesPage() {
         await fetchEmployees();
         return;
       }
-    } catch (e) {
-      console.warn('API error deleting employee, removing locally', e);
+      const err = await res.json().catch(() => ({}));
+      setErrorMsg(Array.isArray(err.message) ? err.message.join(', ') : (err.message || `Failed to delete employee (${res.status})`));
+    } catch (e: any) {
+      setErrorMsg(e?.message || 'Unable to delete employee due to a network error.');
     }
-
-    setEmployees(employees.filter(e => e.id !== emp.id));
-    setSuccessMsg(`Employee "${emp.firstName} ${emp.lastName}" (${emp.employeeCode}) deleted successfully.`);
   };
 
   // Pagination State
@@ -674,11 +579,11 @@ export default function EmployeesPage() {
             </button>
           </div>
         }
-        primaryActionLabel="Add Employee"
-        onPrimaryAction={handleOpenAddModal}
+        primaryActionLabel={canCreateEmployee ? 'Add Employee' : undefined}
+        onPrimaryAction={canCreateEmployee ? handleOpenAddModal : undefined}
       />
 
-      {/* Success Banner */}
+      {/* Success / Error Banner */}
       {successMsg && (
         <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs flex items-center justify-between font-medium">
           <div className="flex items-center gap-2">
@@ -686,6 +591,17 @@ export default function EmployeesPage() {
             <span>{successMsg}</span>
           </div>
           <button onClick={() => setSuccessMsg(null)} className="text-emerald-600 hover:text-emerald-800">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+      {errorMsg && !modalOpen && !editModalOpen && !portalModalEmp && (
+        <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs flex items-center justify-between font-medium">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600" />
+            <span>{errorMsg}</span>
+          </div>
+          <button onClick={() => setErrorMsg(null)} className="text-rose-600 hover:text-rose-800">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -789,34 +705,40 @@ export default function EmployeesPage() {
                 {/* Action Buttons: Edit and Delete */}
                 <EnterpriseTableTd align="right">
                   <div className="flex items-center justify-end gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenPortalModal(emp)}
-                      title={emp.userId ? 'Reset Portal Login Credentials' : 'Provision Portal Login'}
-                      className={`p-1 rounded transition ${
-                        emp.userId
-                          ? 'text-emerald-600 hover:bg-emerald-50'
-                          : 'text-amber-600 hover:bg-amber-50'
-                      }`}
-                    >
-                      <KeyRound className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEditModal(emp)}
-                      title="Edit Employee"
-                      className="p-1 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded transition"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteEmployee(emp)}
-                      title="Delete Employee"
-                      className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {canEditEmployee && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenPortalModal(emp)}
+                        title={emp.userId ? 'Reset Portal Login Credentials' : 'Provision Portal Login'}
+                        className={`p-1 rounded transition ${
+                          emp.userId
+                            ? 'text-emerald-600 hover:bg-emerald-50'
+                            : 'text-amber-600 hover:bg-amber-50'
+                        }`}
+                      >
+                        <KeyRound className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {canEditEmployee && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditModal(emp)}
+                        title="Edit Employee"
+                        className="p-1 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded transition"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {canDeleteEmployee && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteEmployee(emp)}
+                        title="Delete Employee"
+                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </EnterpriseTableTd>
               </EnterpriseTableRow>
@@ -1291,6 +1213,13 @@ export default function EmployeesPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {errorMsg && (
+              <div className="mx-8 mt-4 p-3.5 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs rounded-lg font-medium flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSaveEditEmployee} className="p-8 space-y-5 text-xs overflow-y-auto flex-1">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

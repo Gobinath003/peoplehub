@@ -121,7 +121,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const hasMod = (code: string) => hasModule(code);
   const isGarments = hasMod('PIECE_RATE');
 
-  // Top-level Navigation Items
+  // Top-level Navigation Items (aligned with backend PermissionGuard routes)
   const topNavItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutGrid, show: true },
     {
@@ -132,15 +132,15 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       quickCreate: true
     },
     { name: 'Leave Management', path: '/dashboard/leave', icon: CalendarDays, show: hasMod('LEAVE') },
-    { name: 'Attendance & Production', path: '/dashboard/piece-rate', icon: Scissors, show: isGarments && (!isEmployeeOnly || hasPermission('ATTENDANCE_VIEW')) },
-    { name: 'Payroll & Compensation', path: '/dashboard/payroll', icon: FileText, show: hasMod('PAYROLL') && (!isEmployeeOnly || hasPermission('PAYROLL_VIEW')) },
-    { name: 'Accounts', path: '/dashboard/accounts', icon: Wallet, show: hasMod('ACCOUNTS') && (!isEmployeeOnly || hasPermission('ACCOUNTS_VIEW')) },
+    { name: 'Attendance & Production', path: '/dashboard/piece-rate', icon: Scissors, show: isGarments && hasPermission('PAYROLL_VIEW') },
+    { name: 'Payroll & Compensation', path: '/dashboard/payroll', icon: FileText, show: hasMod('PAYROLL') && hasPermission('PAYROLL_VIEW') },
+    { name: 'Accounts', path: '/dashboard/accounts', icon: Wallet, show: hasMod('ACCOUNTS') && hasPermission('ACCOUNTS_VIEW') },
   ].filter(item => item.show);
 
   // Masters Sub-Items
   const masterSubItems = [
     { name: 'Workforce & Employees', path: '/dashboard/employees', icon: UserCheck, show: hasMod('EMPLOYEES') && (isSuperAdmin || isTenantAdmin || isHRManager || hasPermission('EMPLOYEE_VIEW')) },
-    { name: 'Organization Masters', path: '/dashboard/masters', icon: Landmark, show: hasMod('ORGANIZATION') && (isSuperAdmin || isTenantAdmin || isHRManager || hasPermission('TENANT_SETTINGS_VIEW')) },
+    { name: 'Organization Masters', path: '/dashboard/masters', icon: Landmark, show: hasMod('ORGANIZATION') && (isSuperAdmin || isTenantAdmin || isHRManager || hasPermission('EMPLOYEE_EDIT')) },
     { name: 'Tenants & RBAC', path: '/dashboard/tenants', icon: Building2, show: isSuperAdmin },
     { name: 'Module Visibility', path: '/dashboard/settings/modules', icon: SlidersHorizontal, show: isSuperAdmin },
     { name: 'Users & Roles', path: '/dashboard/users', icon: Shield, show: isSuperAdmin || isTenantAdmin || isHRManager || hasPermission('TENANT_SETTINGS_VIEW') },

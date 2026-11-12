@@ -3,9 +3,49 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateEmployeeRequest, UpdateEmployeeRequest, ProvisionEmployeeLoginRequest, EmployeeDto, SalaryType } from '@people-hub/shared-types';
 import * as bcrypt from 'bcrypt';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 @Injectable()
 export class EmployeesService {
   constructor(private prisma: PrismaService) {}
+
+  private isUuid(value?: string | null): value is string {
+    return typeof value === 'string' && UUID_RE.test(value.trim());
+  }
+
+  /**
+   * Resolves a master relation safely by UUID (scoped to tenantId) or falls back
+   * cleanly by name lookup without ever forwarding non-UUID fallback IDs to Postgres.
+   */
+  private async resolveNamedMaster(
+    delegate: any,
+    tenantId: string,
+    rawId?: string | null,
+    fallbackName?: string | null,
+  ): Promise<{ id: string | null; name: string | null }> {
+    const trimmedName = fallbackName?.trim() || null;
+    if (this.isUuid(rawId)) {
+      const rec = await delegate.findFirst({ where: { id: rawId.trim(), tenantId } });
+      if (rec) return { id: rec.id, name: rec.name };
+    }
+    if (trimmedName) {
+      const byName = await delegate.findFirst({
+        where: { tenantId, name: { equals: trimmedName, mode: 'insensitive' } },
+      });
+      if (byName) return { id: byName.id, name: byName.name };
+    }
+    return { id: null, name: trimmedName };
+  }
+
+  private async resolveOptionalMasterId(
+    delegate: any,
+    tenantId: string,
+    rawId?: string | null,
+  ): Promise<string | null> {
+    if (!this.isUuid(rawId)) return null;
+    const rec = await delegate.findFirst({ where: { id: rawId.trim(), tenantId }, select: { id: true } });
+    return rec?.id || null;
+  }
 
   async list(tenantId: string, branchScope?: string | null): Promise<EmployeeDto[]> {
     const whereClause: any = { tenantId };
@@ -70,22 +110,16 @@ export class EmployeesService {
     }
 
     return this.prisma.$transaction(async (tx: any) => {
-      // 2. Resolve master names if IDs provided
-      let deptName = dto.department?.trim() || '';
-      if (dto.departmentId) {
-        const dept = await tx.department.findUnique({ where: { id: dto.departmentId } });
-        if (dept) deptName = dept.name;
-      }
-      let desigName = dto.designation?.trim() || '';
-      if (dto.designationId) {
-        const desig = await tx.designation.findUnique({ where: { id: dto.designationId } });
-        if (desig) desigName = desig.name;
-      }
-      let branchName = dto.branch?.trim() || null;
-      if (dto.branchId) {
-        const br = await tx.branch.findUnique({ where: { id: dto.branchId } });
-        if (br) branchName = br.name;
-      }
+      // 2. Safely resolve master names and foreign keys (ignoring non-UUID fallback IDs)
+      const resolvedDept = await this.resolveNamedMaster(tx.department, tenantId, dto.departmentId, dto.department);
+      const resolvedDesig = await this.resolveNamedMaster(tx.designation, tenantId, dto.designationId, dto.designation);
+      const resolvedBranch = await this.resolveNamedMaster(tx.branch, tenantId, dto.branchId, dto.branch);
+      const shiftId = await this.resolveOptionalMasterId(tx.shift, tenantId, dto.shiftId);
+      const employmentTypeId = await this.resolveOptionalMasterId(tx.employmentType, tenantId, dto.employmentTypeId);
+
+      const deptName = resolvedDept.name || 'General';
+      const desigName = resolvedDesig.name || 'Staff';
+      const branchName = resolvedBranch.name || null;
 
       // Create Employee
       const tenantRecord = await tx.tenant.findUnique({
@@ -102,8 +136,14 @@ export class EmployeesService {
         );
       }
 
-      if (dto.reportingManagerId) {
-        await this.validateReportingManager(tenantId, null, dto.reportingManagerId, tx);
+      const parsedJoiningDate = dto.joiningDate ? new Date(dto.joiningDate) : new Date();
+      if (Number.isNaN(parsedJoiningDate.getTime())) {
+        throw new BadRequestException('Invalid date of joining');
+      }
+
+      const cleanReportingManagerId = this.isUuid(dto.reportingManagerId) ? dto.reportingManagerId.trim() : null;
+      if (cleanReportingManagerId) {
+        await this.validateReportingManager(tenantId, null, cleanReportingManagerId, tx);
       }
 
       const employee = await tx.employee.create({
@@ -117,14 +157,14 @@ export class EmployeesService {
           department: deptName,
           designation: desigName,
           branch: branchName,
-          departmentId: dto.departmentId || null,
-          designationId: dto.designationId || null,
-          branchId: dto.branchId || null,
-          shiftId: dto.shiftId || null,
-          employmentTypeId: dto.employmentTypeId || null,
-          reportingManagerId: dto.reportingManagerId || null,
+          departmentId: resolvedDept.id,
+          designationId: resolvedDesig.id,
+          branchId: resolvedBranch.id,
+          shiftId,
+          employmentTypeId,
+          reportingManagerId: cleanReportingManagerId,
           salaryType: effectiveSalaryType,
-          joiningDate: new Date(dto.joiningDate),
+          joiningDate: parsedJoiningDate,
           status: dto.status || 'ACTIVE',
         }
       });
@@ -217,14 +257,33 @@ export class EmployeesService {
     if (dto.department !== undefined) data.department = dto.department;
     if (dto.designation !== undefined) data.designation = dto.designation;
     if (dto.branch !== undefined) data.branch = dto.branch;
-    if (dto.departmentId !== undefined) data.departmentId = dto.departmentId;
-    if (dto.designationId !== undefined) data.designationId = dto.designationId;
-    if (dto.branchId !== undefined) data.branchId = dto.branchId;
-    if (dto.shiftId !== undefined) data.shiftId = dto.shiftId;
-    if (dto.employmentTypeId !== undefined) data.employmentTypeId = dto.employmentTypeId;
+    if (dto.departmentId !== undefined) {
+      const resolved = await this.resolveNamedMaster(this.prisma.department, tenantId, dto.departmentId, dto.department);
+      data.departmentId = resolved.id;
+      if (resolved.name) data.department = resolved.name;
+    }
+    if (dto.designationId !== undefined) {
+      const resolved = await this.resolveNamedMaster(this.prisma.designation, tenantId, dto.designationId, dto.designation);
+      data.designationId = resolved.id;
+      if (resolved.name) data.designation = resolved.name;
+    }
+    if (dto.branchId !== undefined) {
+      const resolved = await this.resolveNamedMaster(this.prisma.branch, tenantId, dto.branchId, dto.branch);
+      data.branchId = resolved.id;
+      if (resolved.name) data.branch = resolved.name;
+    }
+    if (dto.shiftId !== undefined) {
+      data.shiftId = await this.resolveOptionalMasterId(this.prisma.shift, tenantId, dto.shiftId);
+    }
+    if (dto.employmentTypeId !== undefined) {
+      data.employmentTypeId = await this.resolveOptionalMasterId(this.prisma.employmentType, tenantId, dto.employmentTypeId);
+    }
     if (dto.reportingManagerId !== undefined) {
       const cleanedMgrId = dto.reportingManagerId ? dto.reportingManagerId.trim() : '';
       if (cleanedMgrId) {
+        if (!this.isUuid(cleanedMgrId)) {
+          throw new BadRequestException('Invalid reporting manager identifier');
+        }
         await this.validateReportingManager(tenantId, id, cleanedMgrId);
         data.reportingManagerId = cleanedMgrId;
       } else {
@@ -232,7 +291,13 @@ export class EmployeesService {
       }
     }
     if (dto.salaryType !== undefined) data.salaryType = nextSalaryType;
-    if (dto.joiningDate !== undefined) data.joiningDate = new Date(dto.joiningDate);
+    if (dto.joiningDate !== undefined) {
+      const parsedJoin = new Date(dto.joiningDate);
+      if (Number.isNaN(parsedJoin.getTime())) {
+        throw new BadRequestException('Invalid date of joining');
+      }
+      data.joiningDate = parsedJoin;
+    }
     if (dto.status !== undefined) data.status = dto.status;
 
     const hasCompChange =

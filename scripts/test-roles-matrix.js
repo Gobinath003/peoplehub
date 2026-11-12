@@ -380,6 +380,56 @@ async function runSuite() {
       expectStatus: 200,
       validate: (r) => Array.isArray(r.data) && `${r.data.length} employees`,
     });
+    const createdEmpRes = await assertEndpoint({
+      roleLabel: 'TENANT_ADMIN',
+      moduleName: 'Workforce & Employees',
+      checkName: 'POST /employees (onboard + non-UUID master fallback resilience)',
+      url: `${API_BASE}/employees`,
+      method: 'POST',
+      headers: adminGarmentsHeaders,
+      body: {
+        employeeCode: `EMP-QA-${Date.now().toString().slice(-4)}`,
+        firstName: 'Matrix',
+        lastName: 'Onboarding',
+        phone: '9876543210',
+        department: bundleRes?.data?.departments?.[0]?.name || 'Cutting & Pattern Making',
+        designation: bundleRes?.data?.designations?.[0]?.name || 'Cutting Master',
+        branch: firstBranchName,
+        departmentId: 'dept-cut',
+        designationId: 'desig-cm',
+        branchId: 'br-chn',
+        shiftId: 'sh-morn',
+        employmentTypeId: 'et-perm',
+        salaryType: 'MONTHLY_FIXED',
+        joiningDate: '2026-01-15',
+        basicSalary: 20000,
+        hra: 5000,
+      },
+      expectStatus: 201,
+      validate: (r) => Boolean(r.data?.id) && `Created ${r.data.employeeCode} (deptId resolved cleanly)`,
+    });
+    if (createdEmpRes?.data?.id) {
+      await assertEndpoint({
+        roleLabel: 'TENANT_ADMIN',
+        moduleName: 'Workforce & Employees',
+        checkName: 'PUT /employees/:id (update onboarded employee)',
+        url: `${API_BASE}/employees/${createdEmpRes.data.id}`,
+        method: 'PUT',
+        headers: adminGarmentsHeaders,
+        body: { firstName: 'MatrixUpdated', basicSalary: 24000 },
+        expectStatus: 200,
+        validate: (r) => r.data?.firstName === 'MatrixUpdated' && 'Updated employee persisted',
+      });
+      await assertEndpoint({
+        roleLabel: 'TENANT_ADMIN',
+        moduleName: 'Workforce & Employees',
+        checkName: 'DELETE /employees/:id (cleanup)',
+        url: `${API_BASE}/employees/${createdEmpRes.data.id}`,
+        method: 'DELETE',
+        headers: adminGarmentsHeaders,
+        expectStatus: 200,
+      });
+    }
     await assertEndpoint({
       roleLabel: 'TENANT_ADMIN',
       moduleName: 'Piece-Rate Production',

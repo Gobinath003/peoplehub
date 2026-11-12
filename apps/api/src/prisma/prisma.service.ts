@@ -87,13 +87,20 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
                 if (currentWhere.tenantId) {
                   // Explicit tenantId filter provided, keep it
                 } else {
-                  args.where = {
-                    ...currentWhere,
+                  const tenantFilter = {
                     OR: [
                       { tenantId: tenantId },
                       { tenantId: null }
                     ]
                   };
+                  const existingAnd = Array.isArray(currentWhere.AND)
+                    ? currentWhere.AND
+                    : currentWhere.AND
+                      ? [currentWhere.AND]
+                      : [];
+                  args.where = currentWhere.OR
+                    ? { ...currentWhere, AND: [...existingAnd, tenantFilter] }
+                    : { ...currentWhere, ...tenantFilter };
                 }
               } else {
                 // Keep explicit tenantId if already specified, otherwise apply tenant context

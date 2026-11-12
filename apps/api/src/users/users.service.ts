@@ -1,10 +1,103 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ScopeType } from '@people-hub/shared-types';
+
+const STANDARD_ROLE_DEFINITIONS: Array<{
+  code: string;
+  name: string;
+  isSystem: boolean;
+  permissionFilter: (permCode: string) => boolean;
+}> = [
+  {
+    code: 'TENANT_ADMIN',
+    name: 'Tenant Administrator',
+    isSystem: true,
+    permissionFilter: () => true,
+  },
+  {
+    code: 'HR_MANAGER',
+    name: 'HR Manager',
+    isSystem: false,
+    permissionFilter: (c) =>
+      c.startsWith('EMPLOYEE_') ||
+      c.startsWith('ATTENDANCE_') ||
+      c.startsWith('LEAVE_') ||
+      c === 'PAYROLL_VIEW' ||
+      c === 'AUDIT_LOG_VIEW' ||
+      c === 'TENANT_SETTINGS_VIEW',
+  },
+  {
+    code: 'PAYROLL_MANAGER',
+    name: 'Payroll Manager',
+    isSystem: false,
+    permissionFilter: (c) =>
+      c === 'EMPLOYEE_VIEW' ||
+      c === 'ATTENDANCE_VIEW' ||
+      c === 'LEAVE_VIEW' ||
+      c.startsWith('PAYROLL_') ||
+      c.startsWith('ACCOUNTS_') ||
+      c === 'AUDIT_LOG_VIEW',
+  },
+  {
+    code: 'EMPLOYEE',
+    name: 'Employee',
+    isSystem: true,
+    permissionFilter: (c) => c === 'EMPLOYEE_VIEW' || c === 'ATTENDANCE_VIEW' || c === 'LEAVE_VIEW',
+  },
+];
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
+
+  private async ensureStandardRoles(tenantId: string) {
+    const existingRoles = await this.prisma.tenantClient.role.findMany({
+      where: { tenantId },
+      select: { code: true },
+    });
+    const existingCodes = new Set(existingRoles.map((r: any) => r.code));
+    const missingDefs = STANDARD_ROLE_DEFINITIONS.filter((d) => !existingCodes.has(d.code));
+    if (missingDefs.length === 0) return;
+
+    const allPerms = await this.prisma.permission.findMany({ select: { code: true } });
+    for (const def of missingDefs) {
+      const createdRole = await this.prisma.tenantClient.role.create({
+        data: {
+          tenantId,
+          code: def.code,
+          name: def.name,
+          isSystem: def.isSystem,
+        },
+      });
+      const matchedPerms = allPerms.filter((p: any) => def.permissionFilter(p.code));
+      if (matchedPerms.length > 0) {
+        await this.prisma.rolePermission.createMany({
+          data: matchedPerms.map((p: any) => ({
+            roleId: createdRole.id,
+            permissionCode: p.code,
+          })),
+          skipDuplicates: true,
+        });
+      }
+    }
+  }
+
+  async listTenantRoles(tenantId: string) {
+    await this.ensureStandardRoles(tenantId);
+    const roles = await this.prisma.tenantClient.role.findMany({
+      where: {
+        OR: [{ tenantId }, { tenantId: null }],
+      },
+      orderBy: [{ isSystem: 'desc' }, { name: 'asc' }],
+    });
+
+    return roles.map((r: any) => ({
+      id: r.id,
+      code: r.code,
+      name: r.name,
+      isSystem: r.isSystem,
+    }));
+  }
 
   async listTenantUsers(tenantId: string) {
     const tenantUsers = await this.prisma.tenantClient.tenantUser.findMany({
@@ -57,7 +150,8 @@ export class UsersService {
     userId: string,
     roleId: string,
     scopeType: ScopeType,
-    scopeId: string | null
+    scopeId: string | null,
+    roleCode?: string
   ) {
     // 1. Verify user is in tenant
     const membership = await this.prisma.tenantClient.tenantUser.findUnique({
@@ -73,13 +167,29 @@ export class UsersService {
       throw new NotFoundException('User is not a member of this tenant');
     }
 
-    // 2. Verify role exists
+    // 2. Ensure standard roles exist & resolve role by ID or Code
+    await this.ensureStandardRoles(tenantId);
+    const trimmedRoleId = roleId?.trim() || '';
+    const trimmedRoleCode = roleCode?.trim() || '';
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmedRoleId);
+    const lookupOr: any[] = [];
+    if (isUuid) lookupOr.push({ id: trimmedRoleId });
+    if (trimmedRoleCode) lookupOr.push({ code: trimmedRoleCode });
+
+    if (lookupOr.length === 0) {
+      throw new BadRequestException('Valid roleId or roleCode is required');
+    }
+
     const role = await this.prisma.tenantClient.role.findFirst({
       where: {
-        id: roleId,
-        OR: [
-          { tenantId },
-          { tenantId: null }
+        OR: lookupOr,
+        AND: [
+          {
+            OR: [
+              { tenantId },
+              { tenantId: null }
+            ]
+          }
         ]
       }
     });
@@ -88,14 +198,23 @@ export class UsersService {
       throw new NotFoundException('Role not found or unavailable in this tenant');
     }
 
+    const normalizedScopeId =
+      scopeType === ScopeType.TENANT || scopeType === ScopeType.OWN
+        ? null
+        : (scopeId?.trim() || null);
+
+    if ((scopeType === ScopeType.BRANCH || scopeType === ScopeType.DEPARTMENT) && !normalizedScopeId) {
+      throw new BadRequestException(`Scope Target Identifier is required for ${scopeType} scope`);
+    }
+
     // 3. Check for existing identical role assignment
     const existing = await this.prisma.tenantClient.userRoleAssignment.findFirst({
       where: {
         tenantId,
         userId,
-        roleId,
+        roleId: role.id,
         scopeType,
-        scopeId
+        scopeId: normalizedScopeId
       }
     });
 
@@ -104,15 +223,27 @@ export class UsersService {
     }
 
     // 4. Create assignment
-    return this.prisma.tenantClient.userRoleAssignment.create({
+    const created = await this.prisma.tenantClient.userRoleAssignment.create({
       data: {
         userId,
         tenantId,
-        roleId,
+        roleId: role.id,
         scopeType,
-        scopeId
+        scopeId: normalizedScopeId
+      },
+      include: {
+        role: true
       }
     });
+
+    return {
+      id: created.id,
+      roleId: created.roleId,
+      roleCode: created.role.code,
+      roleName: created.role.name,
+      scopeType: created.scopeType as ScopeType,
+      scopeId: created.scopeId,
+    };
   }
 
   async removeUserRole(tenantId: string, assignmentId: string) {

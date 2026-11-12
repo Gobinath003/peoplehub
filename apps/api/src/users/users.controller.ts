@@ -11,15 +11,20 @@ import { PermissionCode, ScopeType, UserResponse, UserRoleResponse } from '@peop
 import { IsString, IsOptional } from 'class-validator';
 
 class AssignRoleDto {
+  @IsOptional()
   @IsString()
-  roleId!: string;
+  roleId?: string;
+
+  @IsOptional()
+  @IsString()
+  roleCode?: string;
 
   @IsString()
   scopeType!: ScopeType;
 
   @IsOptional()
   @IsString()
-  scopeId!: string | null;
+  scopeId?: string | null;
 }
 
 @ApiTags('Users & RBAC')
@@ -36,6 +41,14 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'Users list retrieved successfully' })
   async getTenantUsers(@CurrentTenantId() tenantId: string): Promise<UserResponse[]> {
     return this.usersService.listTenantUsers(tenantId);
+  }
+
+  @Get('roles')
+  @RequirePermissions(PermissionCode.EMPLOYEE_VIEW)
+  @ApiOperation({ summary: 'List assignable roles for the active tenant' })
+  @ApiResponse({ status: 200, description: 'Tenant roles retrieved successfully' })
+  async getTenantRoles(@CurrentTenantId() tenantId: string) {
+    return this.usersService.listTenantRoles(tenantId);
   }
 
   @Get(':userId/roles')
@@ -58,7 +71,14 @@ export class UsersController {
     @Param('userId') userId: string,
     @Body() dto: AssignRoleDto
   ) {
-    return this.usersService.assignUserRole(tenantId, userId, dto.roleId, dto.scopeType, dto.scopeId);
+    return this.usersService.assignUserRole(
+      tenantId,
+      userId,
+      dto.roleId || '',
+      dto.scopeType,
+      dto.scopeId ?? null,
+      dto.roleCode
+    );
   }
 
   @Delete('roles/:assignmentId')

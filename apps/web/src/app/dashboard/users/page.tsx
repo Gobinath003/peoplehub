@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { API_BASE_URL } from '../../../config/api';
-import { Users, Key, Plus, Trash2, Shield, X, AlertTriangle, Check, Download } from 'lucide-react';
+import { Key, Plus, X, AlertTriangle, Check, Download } from 'lucide-react';
 import { ScopeType } from '@people-hub/shared-types';
 import { exportToExcel } from '../../../utils/excelExport';
 import {
@@ -35,6 +35,12 @@ interface MemberUser {
   }[];
 }
 
+interface RoleOption {
+  id: string;
+  code: string;
+  name: string;
+}
+
 export default function UserManagementPage() {
   const { activeTenant, accessToken } = useApp();
   const [users, setUsers] = useState<MemberUser[]>([]);
@@ -46,53 +52,56 @@ export default function UserManagementPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
   const pageSize = 10;
-  
-  // Form fields for assigning role
+
+  // Real tenant roles & assignment form state
+  const [availableRoles, setAvailableRoles] = useState<RoleOption[]>([]);
   const [roleCode, setRoleCode] = useState('HR_MANAGER');
   const [scopeType, setScopeType] = useState<ScopeType>(ScopeType.TENANT);
   const [scopeId, setScopeId] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Available roles database simulation for local selector
-  const availableRoles = [
-    { id: 'role-id-admin', code: 'TENANT_ADMIN', name: 'Tenant Administrator' },
-    { id: 'role-id-hrm', code: 'HR_MANAGER', name: 'HR Manager' },
-    { id: 'role-id-payroll', code: 'PAYROLL_MANAGER', name: 'Payroll Manager' },
-    { id: 'role-id-emp', code: 'EMPLOYEE', name: 'Employee' },
-  ];
-
   const fetchUsers = async () => {
+    if (!activeTenant || !accessToken) return;
     setLoading(true);
+    setErrorMsg(null);
     try {
-      // 1. Try backend API list
-      const response = await fetch(`${API_BASE_URL}/api/v1/users`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'x-tenant-id': activeTenant?.id || ''
+      const headers = {
+        'Authorization': `Bearer ${accessToken}`,
+        'x-tenant-id': activeTenant.id
+      };
+      const [response, rolesCatalogResp] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/v1/users`, { headers }),
+        fetch(`${API_BASE_URL}/api/v1/users/roles`, { headers }),
+      ]);
+
+      if (rolesCatalogResp.ok) {
+        const rolesCatalog = await rolesCatalogResp.json();
+        if (Array.isArray(rolesCatalog)) {
+          setAvailableRoles(rolesCatalog);
         }
-      });
+      }
 
       if (response.ok) {
         const usersList: MemberUser[] = await response.json();
-        // Load roles for each user
-        for (const user of usersList) {
-          const rolesResp = await fetch(`${API_BASE_URL}/api/v1/users/${user.id}/roles`, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'x-tenant-id': activeTenant?.id || ''
+        await Promise.all(
+          usersList.map(async (u) => {
+            const rolesResp = await fetch(`${API_BASE_URL}/api/v1/users/${u.id}/roles`, { headers });
+            if (rolesResp.ok) {
+              u.roles = await rolesResp.json();
             }
-          });
-          if (rolesResp.ok) {
-            user.roles = await rolesResp.json();
-          }
-        }
+          })
+        );
         setUsers(usersList);
         setLoading(false);
         return;
+      } else {
+        const errBody = await response.json().catch(() => ({}));
+        setErrorMsg(errBody?.message || `Failed to load tenant users (HTTP ${response.status})`);
       }
-    } catch (e) {
-      console.warn('API fetch users failed.', e);
+    } catch (e: any) {
+      setErrorMsg(e?.message || 'Unable to connect to the Users API.');
     }
 
     setUsers([]);
@@ -101,70 +110,90 @@ export default function UserManagementPage() {
 
   useEffect(() => {
     fetchUsers();
-  }, [activeTenant]);
+  }, [activeTenant, accessToken]);
 
   const handleAssignRole = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUser) return;
+    if (!selectedUser || !activeTenant || !accessToken) return;
     setSaving(true);
+    setModalError(null);
+    setErrorMsg(null);
 
-    const roleObj = availableRoles.find(r => r.code === roleCode)!;
+    const roleObj = availableRoles.find(r => r.code === roleCode);
+    const effectiveScopeId =
+      scopeType === ScopeType.TENANT || scopeType === ScopeType.OWN
+        ? null
+        : scopeId.trim() || null;
 
     try {
-      // Try backend
       const response = await fetch(`${API_BASE_URL}/api/v1/users/${selectedUser.id}/roles`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
-          'x-tenant-id': activeTenant?.id || ''
+          'x-tenant-id': activeTenant.id
         },
         body: JSON.stringify({
-          roleId: roleObj.id,
+          ...(roleObj?.id ? { roleId: roleObj.id } : {}),
+          roleCode,
           scopeType,
-          scopeId: scopeId || null
+          scopeId: effectiveScopeId
         })
       });
 
       if (response.ok) {
         await fetchUsers();
         setModalOpen(false);
+        setSuccessMsg(
+          `Assigned "${roleObj?.name || roleCode}" (${scopeType}${effectiveScopeId ? `: ${effectiveScopeId}` : ''}) to ${selectedUser.firstName} ${selectedUser.lastName}.`
+        );
         setSaving(false);
         return;
       }
-    } catch (e) {
-      console.warn('API role assignment failed, updates only simulated locally.', e);
+
+      const errBody = await response.json().catch(() => ({}));
+      const msg = Array.isArray(errBody?.message)
+        ? errBody.message.join(', ')
+        : errBody?.message || `Failed to assign role (HTTP ${response.status})`;
+      setModalError(msg);
+      setSaving(false);
+      return;
+    } catch (e: any) {
+      setModalError(e?.message || 'Network error while assigning role.');
     }
 
-    setErrorMsg('Failed to assign role via API');
     setSaving(false);
   };
 
   const handleRevokeRole = async (userToUpdate: MemberUser, assignmentId: string) => {
+    if (!activeTenant || !accessToken) return;
+    setErrorMsg(null);
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/users/roles/${assignmentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
-          'x-tenant-id': activeTenant?.id || ''
+          'x-tenant-id': activeTenant.id
         }
       });
       if (response.ok) {
         await fetchUsers();
+        setSuccessMsg(`Revoked role assignment from ${userToUpdate.firstName} ${userToUpdate.lastName}.`);
         return;
       }
-    } catch (e) {
-      console.warn('API revoke role failed, updating locally.', e);
+      const errBody = await response.json().catch(() => ({}));
+      setErrorMsg(errBody?.message || `Failed to revoke role (HTTP ${response.status})`);
+      return;
+    } catch (e: any) {
+      setErrorMsg(e?.message || 'Failed to revoke role via API');
     }
-
-    setErrorMsg('Failed to revoke role via API');
   };
 
   // Filtered users calculation
   const filteredUsers = users.filter(u => {
     const query = searchQuery.toLowerCase();
     const fullName = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
-    const matchesSearch = 
+    const matchesSearch =
       fullName.includes(query) ||
       (u.email || '').toLowerCase().includes(query) ||
       (u.roles || []).some(r => (r.roleCode || '').toLowerCase().includes(query) || (r.roleName || '').toLowerCase().includes(query));
@@ -174,7 +203,6 @@ export default function UserManagementPage() {
     return matchesSearch && matchesRole;
   });
 
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
   const paginatedUsers = filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const getRoleDisplayName = (code: string) => {
@@ -196,8 +224,8 @@ export default function UserManagementPage() {
         { header: 'First Name', accessor: 'firstName' },
         { header: 'Last Name', accessor: 'lastName' },
         { header: 'Email Address', accessor: 'email' },
-        { 
-          header: 'Assigned Roles', 
+        {
+          header: 'Assigned Roles',
           accessor: (r) => (r.roles || []).map((role: any) => `${role.roleName || role.roleCode}${role.scopeType && role.scopeType !== 'TENANT' ? ` (${role.scopeType}: ${role.scopeId || 'All'})` : ''}`).join('; ') || 'No Assigned Roles'
         },
         { header: 'Status', accessor: 'status' },
@@ -205,6 +233,15 @@ export default function UserManagementPage() {
       data: filteredUsers,
     });
   };
+
+  const roleSelectOptions = availableRoles.length > 0
+    ? availableRoles
+    : [
+        { id: '', code: 'TENANT_ADMIN', name: 'Tenant Administrator' },
+        { id: '', code: 'HR_MANAGER', name: 'HR Manager' },
+        { id: '', code: 'PAYROLL_MANAGER', name: 'Payroll Manager' },
+        { id: '', code: 'EMPLOYEE', name: 'Employee' },
+      ];
 
   return (
     <div className="space-y-3">
@@ -248,7 +285,7 @@ export default function UserManagementPage() {
         }
       />
 
-      {/* Success Notification */}
+      {/* Success / Error Notifications */}
       {successMsg && (
         <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs flex items-center justify-between font-medium">
           <div className="flex items-center gap-2">
@@ -256,6 +293,18 @@ export default function UserManagementPage() {
             <span>{successMsg}</span>
           </div>
           <button onClick={() => setSuccessMsg(null)} className="text-emerald-600 hover:text-emerald-800">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {errorMsg && (
+        <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs flex items-center justify-between font-medium">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-600" />
+            <span>{errorMsg}</span>
+          </div>
+          <button onClick={() => setErrorMsg(null)} className="text-rose-600 hover:text-rose-800">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -320,6 +369,7 @@ export default function UserManagementPage() {
                           {role.scopeType === 'TENANT' ? 'Tenant' : role.scopeId ? `${role.scopeType}: ${role.scopeId}` : role.scopeType}
                         </span>
                         <button
+                          type="button"
                           onClick={() => handleRevokeRole(u, role.id)}
                           className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-0.5 rounded transition"
                           title="Revoke Role"
@@ -335,8 +385,17 @@ export default function UserManagementPage() {
                 </EnterpriseTableTd>
                 <EnterpriseTableTd align="right">
                   <button
+                    type="button"
                     onClick={() => {
                       setSelectedUser(u);
+                      setModalError(null);
+                      setScopeType(ScopeType.TENANT);
+                      setScopeId('');
+                      const assignedCodes = new Set((u.roles || []).map(r => r.roleCode));
+                      const firstAvailable = roleSelectOptions.find(r => !assignedCodes.has(r.code)) || roleSelectOptions[0];
+                      if (firstAvailable) {
+                        setRoleCode(firstAvailable.code);
+                      }
                       setModalOpen(true);
                     }}
                     className="text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 transition inline-flex items-center gap-1 shadow-2xs"
@@ -355,20 +414,27 @@ export default function UserManagementPage() {
       {modalOpen && selectedUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
           <div className="bg-white rounded-xl shadow-lg max-w-md w-full border border-slate-200 overflow-hidden">
-            
+
             {/* Modal Header */}
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/80">
               <div className="flex items-center gap-2 font-bold text-slate-800 text-xs">
                 <Key className="w-4 h-4 text-slate-700" />
                 <span>Assign Scoped Role</span>
               </div>
-              <button onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <button type="button" onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Modal Form */}
             <form onSubmit={handleAssignRole} className="p-5 space-y-3.5 text-xs">
+              {modalError && (
+                <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs flex items-center gap-2 font-medium">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{modalError}</span>
+                </div>
+              )}
+
               <div className="text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200/60 leading-normal">
                 User: <strong className="text-slate-900">{selectedUser.firstName} {selectedUser.lastName}</strong> ({selectedUser.email})
               </div>
@@ -378,10 +444,13 @@ export default function UserManagementPage() {
                 <label className="block font-semibold text-slate-700 mb-1">Select Role</label>
                 <select
                   value={roleCode}
-                  onChange={(e) => setRoleCode(e.target.value)}
+                  onChange={(e) => {
+                    setRoleCode(e.target.value);
+                    setModalError(null);
+                  }}
                   className="w-full border border-slate-200 rounded-lg p-2 bg-white text-slate-800 text-xs focus:outline-none focus:ring-1 focus:ring-slate-400"
                 >
-                  {availableRoles.map(r => (
+                  {roleSelectOptions.map(r => (
                     <option key={r.code} value={r.code}>{r.name} ({r.code})</option>
                   ))}
                 </select>
@@ -392,7 +461,10 @@ export default function UserManagementPage() {
                 <label className="block font-semibold text-slate-700 mb-1">Data Scope Access</label>
                 <select
                   value={scopeType}
-                  onChange={(e) => setScopeType(e.target.value as ScopeType)}
+                  onChange={(e) => {
+                    setScopeType(e.target.value as ScopeType);
+                    setModalError(null);
+                  }}
                   className="w-full border border-slate-200 rounded-lg p-2 bg-white text-slate-800 text-xs focus:outline-none focus:ring-1 focus:ring-slate-400"
                 >
                   <option value={ScopeType.TENANT}>Entire Tenant (Full Access)</option>
@@ -429,7 +501,7 @@ export default function UserManagementPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="bg-slate-900 hover:bg-slate-800 text-white rounded-lg px-3.5 py-1.5 font-semibold flex items-center gap-1.5 shadow-2xs"
+                  className="bg-slate-900 hover:bg-slate-800 text-white rounded-lg px-3.5 py-1.5 font-semibold flex items-center gap-1.5 shadow-2xs disabled:opacity-60"
                 >
                   {saving ? 'Saving...' : 'Apply Scoped Role'}
                 </button>

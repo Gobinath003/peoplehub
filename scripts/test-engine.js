@@ -351,6 +351,91 @@ async function runTestEngine() {
     }
   }
 
+  // 3.8 Users & Scoped RBAC Role Assignment / Revocation
+  {
+    const t0 = Date.now();
+    let createdAssignmentId = null;
+    try {
+      const [usersRes, rolesRes] = await Promise.all([
+        request(`${apiBase}/users`, { headers: authHeaders }),
+        request(`${apiBase}/users/roles`, { headers: authHeaders }),
+      ]);
+
+      if (usersRes.status !== 200 || !Array.isArray(usersRes.data) || usersRes.data.length === 0) {
+        throw new Error(`GET /users returned ${usersRes.status}`);
+      }
+      if (rolesRes.status !== 200 || !Array.isArray(rolesRes.data) || rolesRes.data.length === 0) {
+        throw new Error(`GET /users/roles returned ${rolesRes.status}`);
+      }
+
+      let targetUser = null;
+      let candidateRole = null;
+      for (const u of usersRes.data) {
+        const userRolesRes = await request(`${apiBase}/users/${u.id}/roles`, { headers: authHeaders });
+        const existingAssignments = Array.isArray(userRolesRes.data) ? userRolesRes.data : [];
+        const assignedCodes = new Set(
+          existingAssignments
+            .filter((a) => a.scopeType === 'TENANT')
+            .map((a) => a.roleCode)
+        );
+        const unusedRole = rolesRes.data.find((r) => !assignedCodes.has(r.code));
+        if (unusedRole) {
+          targetUser = u;
+          candidateRole = unusedRole;
+          break;
+        }
+      }
+
+      if (!targetUser || !candidateRole) {
+        throw new Error('No unassigned TENANT role candidate available to test assignment');
+      }
+
+      const assignRes = await request(
+        `${apiBase}/users/${targetUser.id}/roles`,
+        {
+          method: 'POST',
+          headers: authHeaders,
+        },
+        { roleId: candidateRole.id, roleCode: candidateRole.code, scopeType: 'TENANT', scopeId: null }
+      );
+      if (![200, 201].includes(assignRes.status) || !assignRes.data?.id) {
+        throw new Error(`POST /users/:id/roles returned ${assignRes.status}: ${JSON.stringify(assignRes.data)}`);
+      }
+      createdAssignmentId = assignRes.data.id;
+
+      const verifyRes = await request(`${apiBase}/users/${targetUser.id}/roles`, { headers: authHeaders });
+      const found = Array.isArray(verifyRes.data) && verifyRes.data.some((a) => a.id === createdAssignmentId);
+      if (!found) {
+        throw new Error('Newly assigned scoped role missing from GET /users/:id/roles');
+      }
+
+      const revokeRes = await request(`${apiBase}/users/roles/${createdAssignmentId}`, {
+        method: 'DELETE',
+        headers: authHeaders,
+      });
+      if (revokeRes.status !== 200) {
+        throw new Error(`DELETE /users/roles/:id returned ${revokeRes.status}`);
+      }
+      createdAssignmentId = null;
+
+      recordResult(
+        'API',
+        'Users & Scoped RBAC Role Assign/Revoke',
+        true,
+        Date.now() - t0,
+        `${rolesRes.data.length} roles; assigned & revoked ${candidateRole.code} on ${targetUser.email}`
+      );
+    } catch (e) {
+      if (createdAssignmentId) {
+        await request(`${apiBase}/users/roles/${createdAssignmentId}`, {
+          method: 'DELETE',
+          headers: authHeaders,
+        }).catch(() => {});
+      }
+      recordResult('API', 'Users & Scoped RBAC Role Assign/Revoke', false, Date.now() - t0, e.message);
+    }
+  }
+
   // --------------------------------------------------------------------------
   // SUITE 4: REACT HYDRATION & RUNTIME RESILIENCE
   // --------------------------------------------------------------------------

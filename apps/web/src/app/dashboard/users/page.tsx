@@ -41,6 +41,13 @@ interface RoleOption {
   name: string;
 }
 
+interface ScopeTargetOption {
+  id: string;
+  code: string;
+  name: string;
+  isActive?: boolean;
+}
+
 export default function UserManagementPage() {
   const { activeTenant, accessToken } = useApp();
   const [users, setUsers] = useState<MemberUser[]>([]);
@@ -55,8 +62,10 @@ export default function UserManagementPage() {
   const [modalError, setModalError] = useState<string | null>(null);
   const pageSize = 10;
 
-  // Real tenant roles & assignment form state
+  // Real tenant roles, master scope targets & assignment form state
   const [availableRoles, setAvailableRoles] = useState<RoleOption[]>([]);
+  const [branchOptions, setBranchOptions] = useState<ScopeTargetOption[]>([]);
+  const [departmentOptions, setDepartmentOptions] = useState<ScopeTargetOption[]>([]);
   const [roleCode, setRoleCode] = useState('HR_MANAGER');
   const [scopeType, setScopeType] = useState<ScopeType>(ScopeType.TENANT);
   const [scopeId, setScopeId] = useState('');
@@ -71,9 +80,10 @@ export default function UserManagementPage() {
         'Authorization': `Bearer ${accessToken}`,
         'x-tenant-id': activeTenant.id
       };
-      const [response, rolesCatalogResp] = await Promise.all([
+      const [response, rolesCatalogResp, mastersBundleResp] = await Promise.all([
         fetch(`${API_BASE_URL}/api/v1/users`, { headers }),
         fetch(`${API_BASE_URL}/api/v1/users/roles`, { headers }),
+        fetch(`${API_BASE_URL}/api/v1/masters/bundle`, { headers }),
       ]);
 
       if (rolesCatalogResp.ok) {
@@ -81,6 +91,20 @@ export default function UserManagementPage() {
         if (Array.isArray(rolesCatalog)) {
           setAvailableRoles(rolesCatalog);
         }
+      }
+
+      if (mastersBundleResp.ok) {
+        const bundle = await mastersBundleResp.json();
+        setBranchOptions(
+          Array.isArray(bundle?.branches)
+            ? bundle.branches.filter((b: ScopeTargetOption) => b.isActive !== false)
+            : []
+        );
+        setDepartmentOptions(
+          Array.isArray(bundle?.departments)
+            ? bundle.departments.filter((d: ScopeTargetOption) => d.isActive !== false)
+            : []
+        );
       }
 
       if (response.ok) {
@@ -115,7 +139,6 @@ export default function UserManagementPage() {
   const handleAssignRole = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser || !activeTenant || !accessToken) return;
-    setSaving(true);
     setModalError(null);
     setErrorMsg(null);
 
@@ -124,6 +147,15 @@ export default function UserManagementPage() {
       scopeType === ScopeType.TENANT || scopeType === ScopeType.OWN
         ? null
         : scopeId.trim() || null;
+
+    if ((scopeType === ScopeType.BRANCH || scopeType === ScopeType.DEPARTMENT) && !effectiveScopeId) {
+      setModalError(
+        `Please select a ${scopeType === ScopeType.BRANCH ? 'Branch' : 'Department'} from the dropdown.`
+      );
+      return;
+    }
+
+    setSaving(true);
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/users/${selectedUser.id}/roles`, {
@@ -463,6 +495,7 @@ export default function UserManagementPage() {
                   value={scopeType}
                   onChange={(e) => {
                     setScopeType(e.target.value as ScopeType);
+                    setScopeId('');
                     setModalError(null);
                   }}
                   className="w-full border border-slate-200 rounded-lg p-2 bg-white text-slate-800 text-xs focus:outline-none focus:ring-1 focus:ring-slate-400"
@@ -474,20 +507,44 @@ export default function UserManagementPage() {
                 </select>
               </div>
 
-              {/* Scope ID */}
-              {(scopeType === ScopeType.BRANCH || scopeType === ScopeType.DEPARTMENT) && (
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Scope Target Identifier</label>
-                  <input
-                    type="text"
-                    value={scopeId}
-                    onChange={(e) => setScopeId(e.target.value)}
-                    className="w-full border border-slate-200 rounded-lg p-2 text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400 text-xs"
-                    placeholder="e.g. Chennai Branch, Engineering Dept"
-                    required
-                  />
-                </div>
-              )}
+              {/* Scope Target Dropdown */}
+              {(scopeType === ScopeType.BRANCH || scopeType === ScopeType.DEPARTMENT) && (() => {
+                const isBranch = scopeType === ScopeType.BRANCH;
+                const targetOptions = isBranch ? branchOptions : departmentOptions;
+                const targetLabel = isBranch ? 'Target Branch' : 'Target Department';
+                return (
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      {targetLabel}
+                    </label>
+                    <select
+                      value={scopeId}
+                      onChange={(e) => {
+                        setScopeId(e.target.value);
+                        setModalError(null);
+                      }}
+                      className="w-full border border-slate-200 rounded-lg p-2 bg-white text-slate-800 text-xs focus:outline-none focus:ring-1 focus:ring-slate-400"
+                      required
+                    >
+                      <option value="">
+                        {targetOptions.length > 0
+                          ? `Select a ${isBranch ? 'Branch' : 'Department'}...`
+                          : `No active ${isBranch ? 'branches' : 'departments'} configured`}
+                      </option>
+                      {targetOptions.map((opt) => (
+                        <option key={opt.id} value={opt.name}>
+                          {opt.name} ({opt.code})
+                        </option>
+                      ))}
+                    </select>
+                    {targetOptions.length === 0 && (
+                      <p className="mt-1 text-[11px] text-amber-700">
+                        Please add an active {isBranch ? 'branch' : 'department'} in Organization Masters first.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Actions */}
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">

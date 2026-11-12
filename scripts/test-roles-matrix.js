@@ -635,9 +635,19 @@ async function runSuite() {
       url: `${API_BASE}/payroll/hourly-logs`,
       method: 'POST',
       headers: payrollHeaders,
-      body: { employeeId: '00000000-0000-0000-0000-000000000000', date: '2026-11-12', regularHours: 8, overtimeHours: 0 },
+      body: { employeeId: '00000000-0000-0000-0000-000000000000', logDate: '2026-11-12', regularHours: 8, overtimeHours: 0 },
       expectStatus: [400, 404],
       validate: (r) => `Passed RBAC guard cleanly (${r.status} entity validation)`,
+    });
+    await assertEndpoint({
+      roleLabel: 'PAYROLL_MANAGER',
+      moduleName: 'Organization Masters',
+      checkName: 'POST /masters/departments denied (403 - no EMPLOYEE_EDIT)',
+      url: `${API_BASE}/masters/departments`,
+      method: 'POST',
+      headers: payrollHeaders,
+      body: { code: 'QADENIED', name: 'Denied Dept' },
+      expectStatus: 403,
     });
     await assertEndpoint({
       roleLabel: 'PAYROLL_MANAGER',
@@ -682,9 +692,11 @@ async function runSuite() {
     await assertEndpoint({ roleLabel: 'EMPLOYEE', moduleName: 'Tenants & Modules', checkName: 'GET /tenants/active denied (403)', url: `${API_BASE}/tenants/active`, headers: empHeaders, expectStatus: 403 });
     await assertEndpoint({ roleLabel: 'EMPLOYEE', moduleName: 'Tenants & Modules', checkName: 'GET /tenants/modules denied (403)', url: `${API_BASE}/tenants/modules`, headers: empHeaders, expectStatus: 403 });
     await assertEndpoint({ roleLabel: 'EMPLOYEE', moduleName: 'Organization Masters', checkName: 'GET /masters/bundle allowed (dropdown lookups)', url: `${API_BASE}/masters/bundle`, headers: empHeaders, expectStatus: 200 });
+    await assertEndpoint({ roleLabel: 'EMPLOYEE', moduleName: 'Organization Masters', checkName: 'POST /masters/departments denied (403)', url: `${API_BASE}/masters/departments`, method: 'POST', headers: empHeaders, body: { code: 'QADENIED', name: 'Denied Dept' }, expectStatus: 403 });
     await assertEndpoint({ roleLabel: 'EMPLOYEE', moduleName: 'Users & RBAC', checkName: 'POST /users/:id/roles denied (403)', url: `${API_BASE}/users/${employeeUser.id}/roles`, method: 'POST', headers: empHeaders, body: { roleCode: 'TENANT_ADMIN', scopeType: 'TENANT' }, expectStatus: 403 });
     await assertEndpoint({ roleLabel: 'EMPLOYEE', moduleName: 'Workforce & Employees', checkName: 'POST /employees denied (403)', url: `${API_BASE}/employees`, method: 'POST', headers: empHeaders, body: { firstName: 'Denied', lastName: 'Emp' }, expectStatus: 403 });
-    await assertEndpoint({ roleLabel: 'EMPLOYEE', moduleName: 'Piece-Rate Production', checkName: 'GET /piece-rate/activities', url: `${API_BASE}/piece-rate/activities`, headers: empHeaders, expectStatus: 200 });
+    await assertEndpoint({ roleLabel: 'EMPLOYEE', moduleName: 'Piece-Rate Production', checkName: 'GET /piece-rate/activities denied (403 - requires PAYROLL_VIEW)', url: `${API_BASE}/piece-rate/activities`, headers: empHeaders, expectStatus: 403 });
+    await assertEndpoint({ roleLabel: 'EMPLOYEE', moduleName: 'Piece-Rate Production', checkName: 'POST /piece-rate/activities denied (403 - requires PAYROLL_PROCESS)', url: `${API_BASE}/piece-rate/activities`, method: 'POST', headers: empHeaders, body: { code: 'QAPR', name: 'Denied Op', ratePerUnit: 5 }, expectStatus: 403 });
     await assertEndpoint({ roleLabel: 'EMPLOYEE', moduleName: 'Payroll & Payslips', checkName: 'GET /payroll/structures denied (403)', url: `${API_BASE}/payroll/structures`, headers: empHeaders, expectStatus: 403 });
     await assertEndpoint({ roleLabel: 'EMPLOYEE', moduleName: 'Payroll & Payslips', checkName: 'GET /payroll/payslips denied (403)', url: `${API_BASE}/payroll/payslips`, headers: empHeaders, expectStatus: 403 });
     await assertEndpoint({ roleLabel: 'EMPLOYEE', moduleName: 'Payroll & Payslips', checkName: 'GET /payroll/hourly-logs denied (403)', url: `${API_BASE}/payroll/hourly-logs`, headers: empHeaders, expectStatus: 403 });
@@ -707,20 +719,9 @@ async function runSuite() {
       body: { code: 'TESTL', name: 'Test Leave', annualQuota: 5, accrualType: 'ANNUAL_UPFRONT' },
       expectStatus: 403,
     });
+    await assertEndpoint({ roleLabel: 'EMPLOYEE', moduleName: 'Accounts Ledger', checkName: 'GET /accounts/summary denied (403 - requires ACCOUNTS_VIEW)', url: `${API_BASE}/accounts/summary`, headers: empHeaders, expectStatus: 403 });
+    await assertEndpoint({ roleLabel: 'EMPLOYEE', moduleName: 'Accounts Ledger', checkName: 'POST /accounts/transactions denied (403 - requires ACCOUNTS_CREATE)', url: `${API_BASE}/accounts/transactions`, method: 'POST', headers: empHeaders, body: { type: 'EXPENSE', amount: 10, description: 'Denied' }, expectStatus: 403 });
     await assertEndpoint({ roleLabel: 'EMPLOYEE', moduleName: 'Audit Trails', checkName: 'GET /audit-logs denied (403)', url: `${API_BASE}/audit-logs`, headers: empHeaders, expectStatus: 403 });
-
-    // Record Accounts accessibility observation transparently
-    await assertEndpoint({
-      roleLabel: 'EMPLOYEE',
-      moduleName: 'Accounts Ledger',
-      checkName: 'GET /accounts/summary reachability check',
-      url: `${API_BASE}/accounts/summary`,
-      headers: empHeaders,
-      expectStatus: [200, 403],
-      validate: (r) => r.status === 200
-        ? 'NOTE: HTTP 200 (AccountsController currently uses JwtAuthGuard+TenantGuard without PermissionGuard)'
-        : 'HTTP 403 Forbidden enforced',
-    });
 
     // ------------------------------------------------------------------------
     // Step 7: Cross-Tenant Isolation & Unauthenticated Boundaries

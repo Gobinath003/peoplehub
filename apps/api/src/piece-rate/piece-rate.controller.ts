@@ -4,13 +4,15 @@ import { PieceRateService } from './piece-rate.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { TenantGuard } from '../auth/tenant.guard';
 import { PermissionGuard } from '../auth/permission.guard';
+import { RequirePermissions } from '../auth/permissions.decorator';
 import { CurrentTenantId } from '../auth/current-tenant.decorator';
 import { 
   CreatePieceRateActivityRequest, 
   CreatePieceRateLogRequest, 
   PieceRateActivityDto, 
   PieceRateLogDto,
-  PieceRateEmployeeSummaryDto 
+  PieceRateEmployeeSummaryDto,
+  PermissionCode
 } from '@people-hub/shared-types';
 
 import { IsString, IsNumber, IsOptional, IsArray, ValidateNested } from 'class-validator';
@@ -95,6 +97,7 @@ export class PieceRateController {
   constructor(private pieceRateService: PieceRateService) {}
 
   @Get('activities')
+  @RequirePermissions(PermissionCode.PAYROLL_VIEW)
   @ApiOperation({ summary: 'List all garment piece-rate operations/skills' })
   @ApiResponse({ status: 200, description: 'Activities retrieved successfully' })
   async listActivities(@CurrentTenantId() tenantId: string): Promise<PieceRateActivityDto[]> {
@@ -102,6 +105,7 @@ export class PieceRateController {
   }
 
   @Post('activities')
+  @RequirePermissions(PermissionCode.PAYROLL_PROCESS)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Add a new garment operation or skill rate' })
   @ApiResponse({ status: 201, description: 'Activity created successfully' })
@@ -113,6 +117,7 @@ export class PieceRateController {
   }
 
   @Get('logs')
+  @RequirePermissions(PermissionCode.PAYROLL_VIEW)
   @ApiOperation({ summary: 'List daily piece-rate production logs' })
   @ApiResponse({ status: 200, description: 'Logs retrieved successfully' })
   async listLogs(
@@ -126,6 +131,7 @@ export class PieceRateController {
   }
 
   @Post('logs')
+  @RequirePermissions(PermissionCode.PAYROLL_PROCESS)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Record daily piece-rate activity entry for an employee' })
   @ApiResponse({ status: 201, description: 'Daily log recorded successfully' })
@@ -139,6 +145,7 @@ export class PieceRateController {
   }
 
   @Post('employee-day-logs')
+  @RequirePermissions(PermissionCode.PAYROLL_PROCESS)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Save multiple activity logs for an employee on a specific date' })
   @ApiResponse({ status: 200, description: 'Employee day logs saved successfully' })
@@ -152,6 +159,7 @@ export class PieceRateController {
   }
 
   @Delete('logs/:id')
+  @RequirePermissions(PermissionCode.PAYROLL_PROCESS)
   @ApiOperation({ summary: 'Delete a daily production log entry' })
   @ApiResponse({ status: 200, description: 'Log deleted successfully' })
   async deleteLog(
@@ -162,6 +170,7 @@ export class PieceRateController {
   }
 
   @Get('summary')
+  @RequirePermissions(PermissionCode.PAYROLL_VIEW)
   @ApiOperation({ summary: 'Get monthly piece-rate summary aggregated by worker' })
   @ApiResponse({ status: 200, description: 'Summary retrieved successfully' })
   async getSummary(

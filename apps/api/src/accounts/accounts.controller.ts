@@ -16,6 +16,8 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiHeader } from '@n
 import { AccountsService } from './accounts.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { TenantGuard } from '../auth/tenant.guard';
+import { PermissionGuard } from '../auth/permission.guard';
+import { RequirePermissions } from '../auth/permissions.decorator';
 import { CurrentTenantId } from '../auth/current-tenant.decorator';
 import { 
   AccountTransactionDto, 
@@ -25,7 +27,8 @@ import {
   AccountsSummaryDto,
   AccountTransactionType,
   PaymentMode,
-  AdvanceRecoveryStatus
+  AdvanceRecoveryStatus,
+  PermissionCode
 } from '@people-hub/shared-types';
 import { IsString, IsNumber, IsOptional, IsEnum } from 'class-validator';
 
@@ -111,12 +114,13 @@ class RecordRecoveryDto implements RecordAdvanceRecoveryRequest {
 @ApiTags('Accounts & Cashflow')
 @ApiBearerAuth()
 @ApiHeader({ name: 'x-tenant-id', required: true, description: 'Active Tenant ID' })
-@UseGuards(JwtAuthGuard, TenantGuard)
+@UseGuards(JwtAuthGuard, TenantGuard, PermissionGuard)
 @Controller('accounts')
 export class AccountsController {
   constructor(private readonly accountsService: AccountsService) {}
 
   @Get('summary')
+  @RequirePermissions(PermissionCode.ACCOUNTS_VIEW)
   @ApiOperation({ summary: 'Get overall financial metrics (Income, Expense, Advances, Net Cashflow)' })
   @ApiResponse({ status: 200, description: 'Accounts summary metrics' })
   async getSummary(
@@ -126,6 +130,7 @@ export class AccountsController {
   }
 
   @Get('transactions')
+  @RequirePermissions(PermissionCode.ACCOUNTS_VIEW)
   @ApiOperation({ summary: 'Get list of transactions with optional filtering' })
   @ApiResponse({ status: 200, description: 'List of account transactions' })
   async getTransactions(
@@ -146,6 +151,7 @@ export class AccountsController {
   }
 
   @Get('advances')
+  @RequirePermissions(PermissionCode.ACCOUNTS_VIEW)
   @ApiOperation({ summary: 'Get all employee salary advances with recovery statuses' })
   @ApiResponse({ status: 200, description: 'List of employee advances' })
   async getEmployeeAdvances(
@@ -155,6 +161,7 @@ export class AccountsController {
   }
 
   @Post('transactions')
+  @RequirePermissions(PermissionCode.ACCOUNTS_CREATE)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Record a new income, expense, or employee advance transaction' })
   @ApiResponse({ status: 201, description: 'Created transaction' })
@@ -168,6 +175,7 @@ export class AccountsController {
   }
 
   @Put('transactions/:id')
+  @RequirePermissions(PermissionCode.ACCOUNTS_EDIT)
   @ApiOperation({ summary: 'Update an existing transaction record' })
   @ApiResponse({ status: 200, description: 'Updated transaction' })
   async updateTransaction(
@@ -179,6 +187,7 @@ export class AccountsController {
   }
 
   @Post('advances/:id/recovery')
+  @RequirePermissions(PermissionCode.ACCOUNTS_EDIT)
   @ApiOperation({ summary: 'Record repayment or recovery against an employee advance' })
   @ApiResponse({ status: 200, description: 'Updated advance with recovery details' })
   async recordAdvanceRecovery(
@@ -190,6 +199,7 @@ export class AccountsController {
   }
 
   @Delete('transactions/:id')
+  @RequirePermissions(PermissionCode.ACCOUNTS_DELETE)
   @ApiOperation({ summary: 'Delete a transaction' })
   @ApiResponse({ status: 200, description: 'Transaction deleted' })
   async deleteTransaction(

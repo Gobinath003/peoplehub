@@ -4,6 +4,7 @@ import { MastersService } from './masters.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { TenantGuard } from '../auth/tenant.guard';
 import { PermissionGuard } from '../auth/permission.guard';
+import { RequirePermissions } from '../auth/permissions.decorator';
 import { CurrentTenantId } from '../auth/current-tenant.decorator';
 import {
   DepartmentDto,
@@ -22,6 +23,7 @@ import {
   CreateEmploymentTypeRequest,
   UpdateEmploymentTypeRequest,
   MasterBundleDto,
+  PermissionCode,
 } from '@people-hub/shared-types';
 import { IsString, IsOptional, IsBoolean, IsNumber } from 'class-validator';
 
@@ -247,6 +249,7 @@ export class MastersController {
   }
 
   @Post('departments')
+  @RequirePermissions(PermissionCode.EMPLOYEE_EDIT)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create department' })
   async createDepartment(@CurrentTenantId() tenantId: string, @Body() dto: CreateDepartmentDto): Promise<DepartmentDto> {
@@ -254,6 +257,7 @@ export class MastersController {
   }
 
   @Put('departments/:id')
+  @RequirePermissions(PermissionCode.EMPLOYEE_EDIT)
   @ApiOperation({ summary: 'Update department' })
   async updateDepartment(
     @CurrentTenantId() tenantId: string,
@@ -264,6 +268,7 @@ export class MastersController {
   }
 
   @Delete('departments/:id')
+  @RequirePermissions(PermissionCode.EMPLOYEE_EDIT)
   @ApiOperation({ summary: 'Delete department' })
   async deleteDepartment(@CurrentTenantId() tenantId: string, @Param('id') id: string) {
     return this.mastersService.deleteDepartment(tenantId, id);
@@ -280,6 +285,7 @@ export class MastersController {
   }
 
   @Post('designations')
+  @RequirePermissions(PermissionCode.EMPLOYEE_EDIT)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create designation' })
   async createDesignation(@CurrentTenantId() tenantId: string, @Body() dto: CreateDesignationDto): Promise<DesignationDto> {
@@ -287,6 +293,7 @@ export class MastersController {
   }
 
   @Put('designations/:id')
+  @RequirePermissions(PermissionCode.EMPLOYEE_EDIT)
   @ApiOperation({ summary: 'Update designation' })
   async updateDesignation(
     @CurrentTenantId() tenantId: string,
@@ -297,6 +304,7 @@ export class MastersController {
   }
 
   @Delete('designations/:id')
+  @RequirePermissions(PermissionCode.EMPLOYEE_EDIT)
   @ApiOperation({ summary: 'Delete designation' })
   async deleteDesignation(@CurrentTenantId() tenantId: string, @Param('id') id: string) {
     return this.mastersService.deleteDesignation(tenantId, id);
@@ -313,6 +321,7 @@ export class MastersController {
   }
 
   @Post('branches')
+  @RequirePermissions(PermissionCode.EMPLOYEE_EDIT)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create branch or factory unit' })
   async createBranch(@CurrentTenantId() tenantId: string, @Body() dto: CreateBranchDto): Promise<BranchDto> {
@@ -320,6 +329,7 @@ export class MastersController {
   }
 
   @Put('branches/:id')
+  @RequirePermissions(PermissionCode.EMPLOYEE_EDIT)
   @ApiOperation({ summary: 'Update branch or unit' })
   async updateBranch(
     @CurrentTenantId() tenantId: string,
@@ -330,6 +340,7 @@ export class MastersController {
   }
 
   @Delete('branches/:id')
+  @RequirePermissions(PermissionCode.EMPLOYEE_EDIT)
   @ApiOperation({ summary: 'Delete branch or unit' })
   async deleteBranch(@CurrentTenantId() tenantId: string, @Param('id') id: string) {
     return this.mastersService.deleteBranch(tenantId, id);
@@ -346,6 +357,7 @@ export class MastersController {
   }
 
   @Post('shifts')
+  @RequirePermissions(PermissionCode.EMPLOYEE_EDIT)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create shift' })
   async createShift(@CurrentTenantId() tenantId: string, @Body() dto: CreateShiftDto): Promise<ShiftDto> {
@@ -353,6 +365,7 @@ export class MastersController {
   }
 
   @Put('shifts/:id')
+  @RequirePermissions(PermissionCode.EMPLOYEE_EDIT)
   @ApiOperation({ summary: 'Update shift' })
   async updateShift(
     @CurrentTenantId() tenantId: string,
@@ -363,6 +376,7 @@ export class MastersController {
   }
 
   @Delete('shifts/:id')
+  @RequirePermissions(PermissionCode.EMPLOYEE_EDIT)
   @ApiOperation({ summary: 'Delete shift' })
   async deleteShift(@CurrentTenantId() tenantId: string, @Param('id') id: string) {
     return this.mastersService.deleteShift(tenantId, id);
@@ -379,6 +393,7 @@ export class MastersController {
   }
 
   @Post('employment-types')
+  @RequirePermissions(PermissionCode.EMPLOYEE_EDIT)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create employment category' })
   async createEmploymentType(
@@ -389,6 +404,7 @@ export class MastersController {
   }
 
   @Put('employment-types/:id')
+  @RequirePermissions(PermissionCode.EMPLOYEE_EDIT)
   @ApiOperation({ summary: 'Update employment category' })
   async updateEmploymentType(
     @CurrentTenantId() tenantId: string,
@@ -399,6 +415,7 @@ export class MastersController {
   }
 
   @Delete('employment-types/:id')
+  @RequirePermissions(PermissionCode.EMPLOYEE_EDIT)
   @ApiOperation({ summary: 'Delete employment category' })
   async deleteEmploymentType(@CurrentTenantId() tenantId: string, @Param('id') id: string) {
     return this.mastersService.deleteEmploymentType(tenantId, id);

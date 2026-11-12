@@ -6,7 +6,6 @@ import {
   Mail,
   Lock,
   ArrowRight,
-  ShieldCheck,
   Building2,
   Eye,
   EyeOff,
@@ -158,30 +157,14 @@ function LoginContent() {
             </button>
           </form>
 
-          {/* Security & Compliance Callout */}
-          <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-center gap-2 text-[11px] text-slate-400 font-medium">
-            <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-            <span>256-Bit SSL Encryption • SOC-2 Type II Compliant</span>
-          </div>
-
         </div>
       </div>
 
       {/* Page Footer */}
-      <div className="relative z-10 max-w-md w-full mx-auto text-center mt-6 text-[11px] text-slate-400 space-y-2">
+      <div className="relative z-10 max-w-md w-full mx-auto text-center mt-6 text-[11px] text-slate-400">
         <p className="font-semibold text-slate-500">
           © 2026 Noltrion Innovations. All rights reserved.
         </p>
-        <p className="text-[10px] text-slate-400">
-          Protected by PeopleHub Enterprise Guard. Unauthorized access is monitored.
-        </p>
-        <div className="flex items-center justify-center gap-4 text-slate-500 font-semibold text-[10px] pt-1">
-          <a href="#privacy" onClick={(e) => { e.preventDefault(); alert('PeopleHub adheres strictly to GDPR, SOC-2, and international workforce data compliance.'); }} className="hover:text-slate-800 transition hover:underline">Privacy Policy</a>
-          <span>•</span>
-          <a href="#terms" onClick={(e) => { e.preventDefault(); alert('Terms of Service: Standard SaaS Enterprise Agreement.'); }} className="hover:text-slate-800 transition hover:underline">Terms of Service</a>
-          <span>•</span>
-          <a href="#support" onClick={(e) => { e.preventDefault(); alert('For enterprise assistance, contact support@peoplehub.com.'); }} className="hover:text-slate-800 transition hover:underline">Enterprise Support</a>
-        </div>
       </div>
 
       {/* Forgot Password Modal */}

@@ -10,7 +10,7 @@ import {
   Search, Building, ChevronRight, ChevronDown,
   Menu, X, BadgeCheck, FileText, Landmark, 
   Scissors, SlidersHorizontal, UserCheck, Bell, Building2,
-  Wallet, Plus, CalendarDays
+  Wallet, Plus, CalendarDays, Home
 } from 'lucide-react';
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
@@ -425,24 +425,93 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile-Only Header Bar (Hidden on Desktop) */}
-        <header className="flex lg:hidden items-center justify-between px-4 h-11 bg-white border-b border-slate-200/80">
-          <button 
-            className="text-slate-600 p-1.5 rounded-lg bg-white border border-slate-200"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open Navigation"
-          >
-            <Menu className="w-4 h-4" />
-          </button>
-          <span className="text-xs font-bold text-slate-800 truncate">{activeTenant?.name || 'PeopleHub'}</span>
-        </header>
+        {/* Unified Compact Top Breadcrumb Bar */}
+        {(() => {
+          const routeBreadcrumbs: Array<{ label: string; href?: string }> = (() => {
+            if (pathname === '/dashboard') return [{ label: 'Dashboard' }];
+            if (pathname.startsWith('/dashboard/leave')) return [{ label: 'Leave Management' }];
+            if (pathname.startsWith('/dashboard/piece-rate')) return [{ label: 'Attendance & Production' }];
+            if (pathname.startsWith('/dashboard/payroll')) return [{ label: 'Payroll & Compensation' }];
+            if (pathname.startsWith('/dashboard/accounts')) return [{ label: 'Accounts & Ledgers' }];
+            if (pathname.startsWith('/dashboard/audit-logs')) return [{ label: 'Audit Trail' }];
+            if (pathname.startsWith('/dashboard/tenants')) return [{ label: 'Tenants' }];
+            if (pathname.startsWith('/dashboard/employees')) {
+              return [{ label: 'Masters', href: '/dashboard/masters' }, { label: 'Employees' }];
+            }
+            if (pathname.startsWith('/dashboard/masters')) {
+              return [{ label: 'Masters', href: '/dashboard/masters' }, { label: 'Organization Masters' }];
+            }
+            if (pathname.startsWith('/dashboard/settings/modules')) {
+              return [{ label: 'Masters', href: '/dashboard/masters' }, { label: 'Module Visibility' }];
+            }
+            if (pathname.startsWith('/dashboard/users')) {
+              return [{ label: 'Masters', href: '/dashboard/masters' }, { label: 'Users & Roles' }];
+            }
+            return [{ label: 'Workspace' }];
+          })();
+
+          return (
+            <header className="h-11 bg-white border-b border-slate-200/80 px-3 sm:px-5 flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <button
+                  className="lg:hidden text-slate-600 p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50"
+                  onClick={() => setSidebarOpen(true)}
+                  aria-label="Open Navigation"
+                >
+                  <Menu className="w-4 h-4" />
+                </button>
+                <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs min-w-0">
+                  <Link
+                    href="/dashboard"
+                    className="inline-flex items-center gap-1 text-slate-400 hover:text-slate-700 font-medium transition shrink-0"
+                  >
+                    <Home className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">PeopleHub</span>
+                  </Link>
+                  {routeBreadcrumbs.map((crumb, idx) => {
+                    const isLast = idx === routeBreadcrumbs.length - 1;
+                    return (
+                      <React.Fragment key={crumb.label}>
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                        {crumb.href && !isLast ? (
+                          <Link
+                            href={crumb.href}
+                            className="text-slate-500 hover:text-slate-800 font-medium transition truncate"
+                          >
+                            {crumb.label}
+                          </Link>
+                        ) : (
+                          <span className="font-bold text-slate-900 truncate">
+                            {crumb.label}
+                          </span>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </nav>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {activeTenant?.name && (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 bg-slate-50 border border-slate-200/80 px-2.5 py-0.5 rounded-full truncate max-w-[220px]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="truncate">{activeTenant.name}</span>
+                    {activeBranchScope && (
+                      <span className="text-slate-400 hidden md:inline">• {activeBranchScope}</span>
+                    )}
+                  </span>
+                )}
+              </div>
+            </header>
+          );
+        })()}
 
         {/* Dynamic Content Container with Bottom Copyright Footer */}
-        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 lg:p-6 flex flex-col justify-between">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 flex flex-col justify-between">
           <div className="flex-1">
             {children}
           </div>
-          <footer className="mt-6 pt-3 pb-1 border-t border-slate-200/60 text-center text-[10px] text-slate-400 shrink-0">
+          <footer className="mt-5 pt-2.5 pb-1 border-t border-slate-200/60 text-center text-[10px] text-slate-400 shrink-0">
             © 2026 Noltrion Innovations. All rights reserved.
           </footer>
         </main>

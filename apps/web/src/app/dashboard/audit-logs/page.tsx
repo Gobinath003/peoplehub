@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { API_BASE_URL } from '../../../config/api';
-import { Shield, Clock, Terminal, ChevronDown, ChevronUp, Download } from 'lucide-react';
+import { Clock, Terminal, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import { AuditLogResponse } from '@people-hub/shared-types';
 import { exportToExcel } from '../../../utils/excelExport';
+import { EnterpriseToolbar } from '../../../components/enterprise';
 
 export default function AuditLogsPage() {
   const { activeTenant, accessToken } = useApp();
@@ -64,23 +65,23 @@ export default function AuditLogsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">System Audit Trail</h1>
-          <p className="text-slate-500 text-xs mt-0.5">Immutable system event records for monitoring user actions, tenant isolation and authentication contexts.</p>
-        </div>
-        <button
-          type="button"
-          onClick={handleExportExcel}
-          title="Download Excel (.xlsx)"
-          className="px-3 py-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-700 transition flex items-center gap-1.5 text-xs font-medium shadow-2xs self-start sm:self-auto"
-        >
-          <Download className="w-3.5 h-3.5 text-slate-500" />
-          <span>Export Excel</span>
-        </button>
-      </div>
+    <div className="space-y-3">
+      {/* Compact Toolbar */}
+      <EnterpriseToolbar
+        title="Audit Trail"
+        totalCount={logs.length}
+        filters={
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            title="Download Excel (.xlsx)"
+            className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-700 transition flex items-center gap-1.5 text-xs font-medium shadow-2xs"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export Excel</span>
+          </button>
+        }
+      />
 
       {loading ? (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 flex items-center justify-center">

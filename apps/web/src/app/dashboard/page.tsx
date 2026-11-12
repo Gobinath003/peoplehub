@@ -139,23 +139,13 @@ export default function DashboardHome() {
   const presentOffset = circ - (circ * (attendanceRate / 100));
 
   return (
-    <div className="space-y-6 max-w-[1400px] mx-auto pb-12">
-      
-      {/* ======================================================== */}
-      {/* 1. DASHBOARD HEADER                                      */}
-      {/* ======================================================== */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            Dashboard
-          </h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Operational analytics and visual floor intelligence for <strong className="text-slate-800">{activeTenant?.name || 'Company'}</strong>.
-          </p>
-        </div>
-
-        {/* Date & Shift Context */}
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 shadow-2xs self-start sm:self-auto">
+    <div className="space-y-3">
+      {/* Compact Operations Status Bar */}
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <span className="text-slate-500 font-medium">
+          Operations Overview • <strong className="text-slate-800">{activeTenant?.name || 'Company'}</strong>
+        </span>
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 bg-white px-2.5 py-1 rounded-lg border border-slate-200/80 shadow-2xs">
           <Calendar className="w-3.5 h-3.5 text-slate-400" />
           <span>{todayFormatted}</span>
           {activeBranchScope && (
@@ -167,7 +157,7 @@ export default function DashboardHome() {
           <span className="text-slate-300">•</span>
           <span className="text-emerald-600 font-bold flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Live Operations
+            Live
           </span>
         </div>
       </div>

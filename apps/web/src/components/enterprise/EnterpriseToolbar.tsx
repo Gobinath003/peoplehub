@@ -2,7 +2,7 @@ import React from 'react';
 import { Search, Plus, LucideIcon } from 'lucide-react';
 
 interface EnterpriseToolbarProps {
-  title: string;
+  title?: string;
   totalCount?: number;
   tenantName?: string;
   searchPlaceholder?: string;
@@ -29,17 +29,19 @@ export const EnterpriseToolbar: React.FC<EnterpriseToolbarProps> = ({
   children,
 }) => {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-      {/* Left Title and Badges */}
-      <div className="flex items-center gap-2">
-        <h1 className="text-base font-bold text-slate-900 tracking-tight">{title}</h1>
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      {/* Left Compact Section Label and Count */}
+      <div className="flex items-center gap-2 min-h-[28px]">
+        {title && (
+          <span className="text-xs font-bold text-slate-700 tracking-tight">{title}</span>
+        )}
         {typeof totalCount === 'number' && (
-          <span className="text-xs text-slate-400 font-medium">
-            ({totalCount})
+          <span className="text-[11px] text-slate-500 font-semibold px-1.5 py-0.5 rounded-md bg-slate-100 border border-slate-200/60">
+            {totalCount} records
           </span>
         )}
-        {tenantName && (
-          <span className="text-[11px] text-slate-500 font-medium px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200/60">
+        {tenantName && !title && (
+          <span className="text-[11px] text-slate-500 font-medium">
             {tenantName}
           </span>
         )}

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../../../context/AppContext';
 import { API_BASE_URL } from '../../../../config/api';
 import { Layers, ShieldCheck, ToggleLeft, ToggleRight, Check } from 'lucide-react';
+import { EnterpriseToolbar } from '../../../../components/enterprise';
 
 interface ModuleItem {
   code: string;
@@ -89,13 +90,11 @@ export default function ModulesSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-800">SaaS Feature Management</h1>
-          <p className="text-slate-500 text-sm mt-1">Activate or deactivate HRMS features and industry extensions dynamically for {activeTenant.name}.</p>
-        </div>
-      </div>
+    <div className="space-y-3">
+      <EnterpriseToolbar
+        title="Module Visibility"
+        totalCount={modulesList.length}
+      />
 
       {successMsg && (
         <div className="bg-emerald-50 border-l-4 border-emerald-500 rounded p-4 text-emerald-800 text-xs flex items-center gap-2 font-semibold">

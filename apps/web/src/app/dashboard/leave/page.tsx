@@ -21,7 +21,6 @@ import {
   Pencil,
   Trash2,
   Link2,
-  Briefcase,
 } from 'lucide-react';
 import {
   LeaveWorkspaceSummaryDto,
@@ -625,40 +624,149 @@ export default function LeaveManagementPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-[1400px] mx-auto pb-12">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <CalendarDays className="w-6 h-6 text-emerald-600" />
-            <span>Corporate Leave Management</span>
-          </h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Track annual leave availability, submit time-off requests, configure corporate leave policies, and manage Reporting Manager approvals.
-          </p>
-        </div>
+    <div className="space-y-2.5">
+      {/* Compact Employee Context & Availability Strip (Only when logged in as an Employee) */}
+      {!loading && workspace?.currentEmployee && (
+        <div className="bg-white rounded-xl border border-slate-200/80 px-3 py-2 shadow-2xs flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="font-bold text-slate-900">
+              {workspace.currentEmployee.firstName} {workspace.currentEmployee.lastName}
+            </span>
+            <span className="font-mono text-[11px] text-slate-500">
+              ({workspace.currentEmployee.employeeCode})
+            </span>
+            <span className="text-slate-300">•</span>
+            <span className="text-slate-500">
+              Approver:{' '}
+              <strong className={workspace.reportingManager ? 'text-slate-800' : 'text-amber-700'}>
+                {workspace.reportingManager
+                  ? `${workspace.reportingManager.name} (${workspace.reportingManager.employeeCode})`
+                  : 'HR / Admin Queue'}
+              </strong>
+            </span>
+            {workspace.directReportsCount > 0 && (
+              <span className="text-[11px] font-semibold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md border border-indigo-200/70">
+                {workspace.directReportsCount} Direct Reports
+              </span>
+            )}
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+          {workspace.balances.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {workspace.balances.map((bal) => {
+                const totalQuota = bal.allocated + bal.carryForward;
+                return (
+                  <button
+                    key={bal.id}
+                    type="button"
+                    onClick={() => openApplyModal(bal.leaveTypeId)}
+                    title={`${bal.leaveTypeName} — Click to apply`}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50/70 hover:bg-slate-100 text-[11px] transition"
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: bal.leaveTypeColor || '#10B981' }}
+                    />
+                    <span className="font-bold text-slate-700">{bal.leaveTypeCode}:</span>
+                    <span className="font-extrabold text-slate-900">
+                      {bal.isPaid ? `${bal.available}/${totalQuota}` : '∞'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Single Compact Navigation Tabs + Actions Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 pb-1">
+        <EnterpriseTabs<TabKey>
+          className="border-b-0 pb-0"
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          tabs={[
+            ...(workspace?.currentEmployee
+              ? [
+                  {
+                    key: 'MY_LEAVES' as TabKey,
+                    label: 'My Leave History',
+                    icon: Clock,
+                    count: workspace.myRequests.length,
+                  },
+                ]
+              : []),
+            ...(workspace?.isManager || pendingTeamCount > 0 || (workspace?.teamRequests?.length || 0) > 0
+              ? [
+                  {
+                    key: 'TEAM_APPROVALS' as TabKey,
+                    label: 'Team Approvals',
+                    icon: UserCheck,
+                    count: pendingTeamCount,
+                  },
+                ]
+              : []),
+            ...(canManageAdmin
+              ? [
+                  {
+                    key: 'ORG_REGISTER' as TabKey,
+                    label: 'Organization Register',
+                    icon: ShieldCheck,
+                    count: pendingOrgCount,
+                  },
+                  {
+                    key: 'LEAVE_TYPES' as TabKey,
+                    label: 'Leave Type Masters',
+                    icon: Settings,
+                    count: workspace?.leaveTypes.length || 0,
+                  },
+                  {
+                    key: 'BALANCES' as TabKey,
+                    label: 'Employee Entitlements',
+                    icon: Users,
+                    count: orgBalances.length,
+                  },
+                ]
+              : []),
+          ]}
+        />
+
+        <div className="flex flex-wrap items-center gap-1.5 pb-1">
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 shadow-2xs"
+            className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 shadow-2xs"
           >
             {[selectedYear - 1, selectedYear, selectedYear + 1].map((yr) => (
               <option key={yr} value={yr}>
-                Leave Year {yr}
+                Year {yr}
               </option>
             ))}
           </select>
+
+          {!workspace?.currentEmployee && canManageAdmin && employees.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setLinkEmployeeId(employees[0]?.id || '');
+                setLinkModalOpen(true);
+              }}
+              title="Link Admin login to an employee profile for self-service"
+              className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center gap-1.5 shadow-2xs transition"
+            >
+              <Link2 className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Link Profile</span>
+            </button>
+          )}
 
           {canManageAdmin && (
             <button
               type="button"
               onClick={openCreateTypeModal}
-              className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition"
+              className="px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition"
             >
-              <Settings className="w-3.5 h-3.5 text-slate-600" />
-              <span>+ Add Leave Type</span>
+              <Plus className="w-3.5 h-3.5 text-slate-600" />
+              <span>Add Leave Type</span>
             </button>
           )}
 
@@ -666,9 +774,9 @@ export default function LeaveManagementPage() {
             <button
               type="button"
               onClick={() => openApplyModal()}
-              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-2xs transition"
+              className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition"
             >
-              <Plus className="w-4 h-4 text-emerald-400" />
+              <Plus className="w-3.5 h-3.5 text-emerald-400" />
               <span>Apply for Leave</span>
             </button>
           )}
@@ -677,7 +785,7 @@ export default function LeaveManagementPage() {
 
       {/* Banners */}
       {successMsg && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between font-medium">
+        <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs flex items-center justify-between font-medium">
           <div className="flex items-center gap-2">
             <Check className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{successMsg}</span>
@@ -689,7 +797,7 @@ export default function LeaveManagementPage() {
       )}
 
       {errorMsg && (
-        <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center justify-between font-medium">
+        <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs flex items-center justify-between font-medium">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{errorMsg}</span>
@@ -699,233 +807,6 @@ export default function LeaveManagementPage() {
           </button>
         </div>
       )}
-
-      {/* Reporting Hierarchy & Profile Context Strip */}
-      {!loading && workspace && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          {workspace.currentEmployee ? (
-            <div className="flex flex-wrap items-center gap-4 text-xs">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-slate-900 text-emerald-400 font-extrabold flex items-center justify-center text-xs">
-                  {workspace.currentEmployee.firstName[0]}
-                  {workspace.currentEmployee.lastName[0]}
-                </div>
-                <div>
-                  <div className="font-bold text-slate-900">
-                    {workspace.currentEmployee.firstName} {workspace.currentEmployee.lastName}{' '}
-                    <span className="font-mono text-[11px] text-slate-500">
-                      ({workspace.currentEmployee.employeeCode})
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-slate-500">
-                    {workspace.currentEmployee.designation} • {workspace.currentEmployee.department}
-                  </div>
-                </div>
-              </div>
-
-              <div className="h-7 w-px bg-slate-200 hidden sm:block" />
-
-              <div className="flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                {workspace.reportingManager ? (
-                  <div>
-                    <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">
-                      Reporting Manager (Leave Approver)
-                    </span>
-                    <span className="font-bold text-slate-800">
-                      {workspace.reportingManager.name}{' '}
-                      <span className="text-slate-400 font-mono text-[10px]">
-                        ({workspace.reportingManager.employeeCode})
-                      </span>
-                    </span>
-                  </div>
-                ) : (
-                  <div>
-                    <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">
-                      Reporting Manager
-                    </span>
-                    <span className="text-amber-700 font-semibold">
-                      Not Assigned (Routes to HR / Admin Queue)
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {workspace.directReportsCount > 0 && (
-                <>
-                  <div className="h-7 w-px bg-slate-200 hidden sm:block" />
-                  <div className="flex items-center gap-1.5 bg-indigo-50 text-indigo-800 px-2.5 py-1 rounded-lg border border-indigo-200/80 text-[11px] font-bold">
-                    <Users className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Reporting Manager for {workspace.directReportsCount} employee(s)</span>
-                  </div>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-wrap items-center justify-between w-full gap-3 text-xs">
-              <div className="flex items-center gap-2.5 text-slate-700">
-                <div className="p-2 bg-amber-50 text-amber-700 rounded-xl border border-amber-200">
-                  <Briefcase className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="font-bold text-slate-900">Administrator / HR Governance View</div>
-                  <div className="text-[11px] text-slate-500">
-                    Your login is not currently mapped to an Employee record. Configure Leave Type Masters, review organization requests, or link your profile to test self-service leave balances.
-                  </div>
-                </div>
-              </div>
-              {canManageAdmin && employees.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLinkEmployeeId(employees[0]?.id || '');
-                    setLinkModalOpen(true);
-                  }}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold text-[11px] flex items-center gap-1.5"
-                >
-                  <Link2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Link Employee Profile</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Leave Availability Cards */}
-      {workspace?.currentEmployee && workspace.balances.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {workspace.balances.map((bal) => {
-            const totalQuota = bal.allocated + bal.carryForward;
-            const consumedRatio = totalQuota > 0 ? Math.min(100, Math.round(((bal.used + bal.pending) / totalQuota) * 100)) : 0;
-            return (
-              <div
-                key={bal.id}
-                className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between gap-3 hover:border-slate-300 transition"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: bal.leaveTypeColor || '#10B981' }}
-                      />
-                      <span className="font-mono text-[11px] font-extrabold text-slate-500">{bal.leaveTypeCode}</span>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
-                        bal.isPaid
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-slate-100 text-slate-600 border-slate-200'
-                      }`}>
-                        {bal.isPaid ? 'PAID' : 'UNPAID'}
-                      </span>
-                    </div>
-                    <h3 className="font-bold text-slate-900 text-sm mt-1">{bal.leaveTypeName}</h3>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => openApplyModal(bal.leaveTypeId)}
-                    className="px-2 py-1 text-[10px] font-bold rounded-lg bg-slate-900 hover:bg-slate-800 text-white transition"
-                  >
-                    Apply
-                  </button>
-                </div>
-
-                <div>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-2xl font-black text-slate-900">
-                      {bal.isPaid ? bal.available : '∞'}
-                    </span>
-                    <span className="text-[11px] text-slate-500 font-medium">
-                      {bal.isPaid ? `days available of ${totalQuota}` : 'Unpaid LOP Policy'}
-                    </span>
-                  </div>
-                  {bal.isPaid && (
-                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-2">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: `${consumedRatio}%`,
-                          backgroundColor: bal.leaveTypeColor || '#10B981',
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-4 gap-1 pt-2 border-t border-slate-100 text-[10px]">
-                  <div>
-                    <span className="text-slate-400 block">Quota</span>
-                    <span className="font-bold text-slate-800">{bal.allocated}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">Carry Fwd</span>
-                    <span className="font-bold text-slate-800">{bal.carryForward}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">Used</span>
-                    <span className="font-bold text-emerald-700">{bal.used}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">Pending</span>
-                    <span className="font-bold text-amber-600">{bal.pending}</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Navigation Tabs */}
-      <EnterpriseTabs<TabKey>
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        tabs={[
-          ...(workspace?.currentEmployee
-            ? [
-                {
-                  key: 'MY_LEAVES' as TabKey,
-                  label: 'My Leave History',
-                  icon: Clock,
-                  count: workspace.myRequests.length,
-                },
-              ]
-            : []),
-          ...(workspace?.isManager || pendingTeamCount > 0 || (workspace?.teamRequests?.length || 0) > 0
-            ? [
-                {
-                  key: 'TEAM_APPROVALS' as TabKey,
-                  label: 'Team Approvals (Manager)',
-                  icon: UserCheck,
-                  count: pendingTeamCount,
-                },
-              ]
-            : []),
-          ...(canManageAdmin
-            ? [
-                {
-                  key: 'ORG_REGISTER' as TabKey,
-                  label: 'Organization Register',
-                  icon: ShieldCheck,
-                  count: pendingOrgCount,
-                },
-                {
-                  key: 'LEAVE_TYPES' as TabKey,
-                  label: 'Leave Type Masters',
-                  icon: Settings,
-                  count: workspace?.leaveTypes.length || 0,
-                },
-                {
-                  key: 'BALANCES' as TabKey,
-                  label: 'Employee Entitlements',
-                  icon: Users,
-                  count: orgBalances.length,
-                },
-              ]
-            : []),
-        ]}
-      />
 
       {/* Toolbar for Register Tabs */}
       {(activeTab === 'MY_LEAVES' || activeTab === 'TEAM_APPROVALS' || activeTab === 'ORG_REGISTER' || activeTab === 'BALANCES') && (
@@ -1144,29 +1025,11 @@ export default function LeaveManagementPage() {
 
       {/* TAB 4: LEAVE TYPE MASTERS (TENANT ADMIN / HR) */}
       {activeTab === 'LEAVE_TYPES' && canManageAdmin && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-slate-200/80 shadow-2xs">
-            <div>
-              <h2 className="text-sm font-extrabold text-slate-900">Corporate Leave Type Masters</h2>
-              <p className="text-[11px] text-slate-500">
-                Configure annual leave quotas (days/year), accrual methods, carry-forward caps, half-day rules, and paid status.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={openCreateTypeModal}
-              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Add Leave Type Master</span>
-            </button>
-          </div>
-
-          <EnterpriseTable
-            loading={loading}
-            isEmpty={(workspace?.leaveTypes || []).length === 0}
-            emptyMessage="No leave type masters defined."
-          >
+        <EnterpriseTable
+          loading={loading}
+          isEmpty={(workspace?.leaveTypes || []).length === 0}
+          emptyMessage="No leave type masters defined. Click 'Add Leave Type' above."
+        >
             <table className="w-full text-left border-collapse text-xs">
               <EnterpriseTableHeader>
                 <EnterpriseTableTh>Leave Type</EnterpriseTableTh>
@@ -1259,7 +1122,6 @@ export default function LeaveManagementPage() {
               </EnterpriseTableBody>
             </table>
           </EnterpriseTable>
-        </div>
       )}
 
       {/* TAB 5: EMPLOYEE LEAVE BALANCES MATRIX */}
@@ -1624,7 +1486,7 @@ export default function LeaveManagementPage() {
                   {editingType ? `Update Leave Type Master — ${editingType.code}` : 'Create Leave Type Master'}
                 </h3>
                 <p className="text-[11px] text-slate-500">
-                  Define annual leave entitlement (Total leaves / year) and corporate policy rules.
+                  Define annual leave entitlement (Total leaves / year) and policy rules.
                 </p>
               </div>
               <button onClick={() => setTypeModalOpen(false)} className="text-slate-400 hover:text-slate-600">

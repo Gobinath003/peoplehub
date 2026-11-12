@@ -452,31 +452,7 @@ export default function TenantsManagementPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-[1400px] mx-auto pb-12">
-      
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            Tenant Management & Creation
-          </h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Provision and create enterprise client companies with complete legal profile, address, phone, email, and administrator credentials.
-          </p>
-        </div>
-
-        <button
-          onClick={() => {
-            resetForm();
-            setModalOpen(true);
-          }}
-          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-2xs transition self-start sm:self-auto cursor-pointer"
-        >
-          <Plus className="w-4 h-4 text-emerald-400" />
-          <span>+ Create New Tenant</span>
-        </button>
-      </div>
-
+    <div className="space-y-3">
       {/* Success Notification */}
       {successMsg && (
         <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between font-medium">
@@ -524,6 +500,11 @@ export default function TenantsManagementPage() {
             <span>Export Excel</span>
           </button>
         }
+        primaryActionLabel="New Tenant"
+        onPrimaryAction={() => {
+          resetForm();
+          setModalOpen(true);
+        }}
       />
 
       {/* Companies Enterprise Table */}

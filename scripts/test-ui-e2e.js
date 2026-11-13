@@ -441,8 +441,13 @@ async function main() {
   try {
     // 1. Start NestJS API on dedicated E2E port
     const apiEnv = { ...process.env, PORT: String(API_PORT) };
-    apiProc = spawn('node', ['apps/api/dist/main.js'], { cwd: ROOT_DIR, env: apiEnv, stdio: 'pipe' });
-    await waitForHttp(`${API_ORIGIN}/api/v1/health`, 45000);
+    apiProc = spawn('node', ['apps/api/dist/main.js'], { cwd: ROOT_DIR, env: apiEnv, stdio: ['ignore', 'pipe', 'pipe'] });
+    apiProc.stdout.on('data', (d) => {
+      const msg = d.toString();
+      if (msg.includes('People Hub API Running')) process.stdout.write(`  [API] ${msg.trim()}\n`);
+    });
+    apiProc.stderr.on('data', (d) => process.stderr.write(`[API ERR] ${d.toString()}`));
+    await waitForHttp(`${API_ORIGIN}/api/v1/tenants`, 45000);
 
     // 2. Ensure Next.js Web has a production build with API_BASE_URL pointing to our E2E API if needed
     const buildIdPath = path.join(WEB_DIR, '.next', 'BUILD_ID');
@@ -548,6 +553,10 @@ async function main() {
 
       await page.clickButton('Add Employee');
       await page.waitFor(`document.body.innerText.includes('Add New Employee')`);
+      await page.waitFor(`(() => {
+        const selects = Array.from(document.querySelectorAll('form select'));
+        return selects.length >= 3 && selects.slice(0, 3).every(s => Boolean(s.value));
+      })()`, 15000);
 
       // Verify Department, Designation, Branch dropdowns hold real UUIDs (NOT 'dept-cut' fallback IDs)
       const masterValues = await page.evalJs(`(() => {
@@ -756,6 +765,10 @@ async function main() {
       // Priya (branch-scoped HR Manager) clicks Add Employee -> sees real UUID masters & can create + delete
       await page.clickButton('Add Employee');
       await page.waitFor(`document.body.innerText.includes('Add New Employee')`);
+      await page.waitFor(`(() => {
+        const selects = Array.from(document.querySelectorAll('form select'));
+        return selects.length >= 3 && selects.slice(0, 3).every(s => Boolean(s.value));
+      })()`, 15000);
       const hrFirst = `HrUi${uniqueSuffix}`;
       await page.fillInput('input[placeholder="e.g. Ramesh"]', hrFirst);
       await page.fillInput('input[placeholder="e.g. Kumar"]', 'Staff');

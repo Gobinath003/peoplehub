@@ -122,8 +122,8 @@ export default function EmployeesPage() {
   const [portalLoginRole, setPortalLoginRole] = useState('EMPLOYEE');
   const [savingPortalLogin, setSavingPortalLogin] = useState(false);
 
-  const fetchMasters = async () => {
-    if (!activeTenant || !accessToken) return;
+  const fetchMasters = async (): Promise<MasterBundleDto> => {
+    if (!activeTenant || !accessToken) return EMPTY_MASTER_BUNDLE;
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/masters/bundle`, {
         headers: {
@@ -141,18 +141,20 @@ export default function EmployeesPage() {
           employmentTypes: Array.isArray(bundleData?.employmentTypes) ? bundleData.employmentTypes : [],
         };
         setMasterBundle(normalized);
-        setSelectedDeptId(normalized.departments[0]?.id || '');
-        setDepartment(normalized.departments[0]?.name || '');
-        setSelectedDesigId(normalized.designations[0]?.id || '');
-        setDesignation(normalized.designations[0]?.name || '');
-        setSelectedBranchId(normalized.branches[0]?.id || '');
-        setBranch(normalized.branches[0]?.name || '');
-        setSelectedShiftId(normalized.shifts[0]?.id || '');
-        setSelectedEmpTypeId(normalized.employmentTypes[0]?.id || '');
+        setSelectedDeptId(prev => prev || normalized.departments[0]?.id || '');
+        setDepartment(prev => prev || normalized.departments[0]?.name || '');
+        setSelectedDesigId(prev => prev || normalized.designations[0]?.id || '');
+        setDesignation(prev => prev || normalized.designations[0]?.name || '');
+        setSelectedBranchId(prev => prev || normalized.branches[0]?.id || '');
+        setBranch(prev => prev || normalized.branches[0]?.name || '');
+        setSelectedShiftId(prev => prev || normalized.shifts[0]?.id || '');
+        setSelectedEmpTypeId(prev => prev || normalized.employmentTypes[0]?.id || '');
+        return normalized;
       }
     } catch (e) {
       console.warn('Could not fetch master bundle from API', e);
     }
+    return EMPTY_MASTER_BUNDLE;
   };
 
   const fetchEmployees = async () => {
@@ -213,8 +215,12 @@ export default function EmployeesPage() {
     return generated;
   };
 
-  const handleOpenAddModal = () => {
+  const handleOpenAddModal = async () => {
     setErrorMsg(null);
+    let currentBundle = masterBundle;
+    if (currentBundle.departments.length === 0) {
+      currentBundle = await fetchMasters();
+    }
     const autoCode = getNextEmployeeCode();
     setEmployeeCode(autoCode);
     setFirstName('');
@@ -233,17 +239,14 @@ export default function EmployeesPage() {
     setConveyanceAllowance('1500');
     setPfDeduction('1800');
     setTaxDeduction('1000');
-    setSelectedDeptId(masterBundle.departments[0]?.id || '');
-    setDepartment(masterBundle.departments[0]?.name || '');
-    setSelectedDesigId(masterBundle.designations[0]?.id || '');
-    setDesignation(masterBundle.designations[0]?.name || '');
-    setSelectedBranchId(masterBundle.branches[0]?.id || '');
-    setBranch(masterBundle.branches[0]?.name || '');
-    setSelectedShiftId(masterBundle.shifts[0]?.id || '');
-    setSelectedEmpTypeId(masterBundle.employmentTypes[0]?.id || '');
-    if (masterBundle.departments.length === 0) {
-      fetchMasters();
-    }
+    setSelectedDeptId(currentBundle.departments[0]?.id || '');
+    setDepartment(currentBundle.departments[0]?.name || '');
+    setSelectedDesigId(currentBundle.designations[0]?.id || '');
+    setDesignation(currentBundle.designations[0]?.name || '');
+    setSelectedBranchId(currentBundle.branches[0]?.id || '');
+    setBranch(currentBundle.branches[0]?.name || '');
+    setSelectedShiftId(currentBundle.shifts[0]?.id || '');
+    setSelectedEmpTypeId(currentBundle.employmentTypes[0]?.id || '');
     setReportingManagerId('');
     setCreatePortalLogin(false);
     setPortalPassword('Welcome@123');
